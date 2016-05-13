@@ -15,6 +15,10 @@ import skimage.transform as skt  # This 'resize' function is more useful than np
 import matplotlib as plt
 import cspice
 
+# Now import additional functions into this module
+
+from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
+
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
 # I want to define this all as a class, I guess? Class HBT?
@@ -31,13 +35,11 @@ def remove_brightest(arr, frac_max):
     
     clipval_max = np.percentile(arr, frac_max * 100.)
     return np.clip(arr, np.amin(arr), clipval_max)
-
     
 def ln01(arr, offset=0.01):
     "Scale an array logarithmically. Use an offset and ensure that values are positive before scaling."
     
     return np.log(arr - np.amin(arr) + offset)
-
 
 def scale_image(min, max, polynomial, percentile=False):
     "Applies a pre-calculated scaling to an array"
@@ -52,7 +54,6 @@ def is_array(arg):
     import numpy as np
 
     return isinstance(arg, (tuple, collections.Sequence, np.ndarray)) and not isinstance(arg, (str, unicode))
-
 
 def get_range_user(maxrange = 10000):
 
