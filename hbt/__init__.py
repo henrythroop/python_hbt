@@ -14,6 +14,16 @@ import astropy.modeling
 import skimage.transform as skt  # This 'resize' function is more useful than np's
 import matplotlib as plt
 import cspice
+from   astropy.io import fits
+
+
+# First define some constants. These are available to the outside world, 
+# just like math.pi is available as a constant (*not* a function).
+# http://stackoverflow.com/questions/5027400/
+#  constants-in-python-at-the-root-of-the-module-or-in-a-namespace-inside-the-modu
+
+d2r = np.pi/180.
+r2d = 1./d2r
 
 # Now import additional functions into this module
 
@@ -29,6 +39,26 @@ from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
 # Function for wheremin()
 #########
 
+##########
+# Get a single FITS image header
+##########
+ 
+def get_image_header(file, single=False):
+    "Return header for a fits file, as a text array."
+    "If single set, then return as a single line, not an np array of strings."
+    
+    hdulist = fits.open(file)
+    header = hdulist[0].header
+    
+    if (single):
+#            out = ''
+#            for line in header:
+#                out += line + '\n'
+        return repr(header)
+    
+    else:
+        return header
+        
 def remove_brightest(arr, frac_max):
     "Clips the brightest values in an array to the level specified" 
     " e.g., frac = 0.95 will clip brightest 5% of pixels)"
@@ -92,7 +122,7 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         arr = np.array([name_bodies])
     else:
         arr = name_bodies
-    quit   
+#    quit   
 #    i = 0     
     for i,name_body in enumerate(arr):
       st,ltime = cspice.spkezr(name_body, et, frame, abcorr, name_observer)    
@@ -106,7 +136,7 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
       
       
 def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='radec', wcs=False, 
-                    frame='J2000', abcorr='LT+S'):
+                    frame='J2000', abcorr='LT+S', name_observer='New Horizons'):
     
     "Get an array of points for a ring, at a specified radius, seen from observer at the given ET."
     "Result is in RA / Dec radians. If units='pixels', then it is in x y pixels, based on the supplied wcs."

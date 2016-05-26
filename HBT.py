@@ -147,7 +147,9 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
         return xring, yring
               
     return ra_ring, dec_ring
-    
+
+
+            
 def fullprint(*args, **kwargs):  # From http://stackoverflow.com/questions/1987694/print-the-full-numpy-array
   "Print a numpy array, without truncating it."
   "This is really slow for large arrays (> 10K)"

@@ -9,6 +9,13 @@ def get_fits_info_from_files_lorri(path,
     from astropy.table import Table
     import astropy.table
 
+# Flags: Do we do all of the files? Or just a truncated subset of them, for testing purposes?
+    
+    DO_TRUNCATED = False
+
+    if (DO_TRUNCATED):
+        files = files[0:100]
+        
 # We should work to standardize this, perhaps allowing different versions of this function 
 # for different instruments.
 
@@ -27,11 +34,7 @@ def get_fits_info_from_files_lorri(path,
     files = np.array(file_list)
     indices = np.argsort(file_list)
     files = files[indices]
-    
-    DO_FAST = True
-    if (DO_FAST):
-        files = files[0:100]
-    
+
 # Read the JD from each file. Then sort the files based on JD.
 
     jd = []
@@ -49,7 +52,8 @@ def get_fits_info_from_files_lorri(path,
     fits_spcinst0= [] 
     fits_spcutcjd= []   
     fits_naxis1= [] 
-    fits_naxis2 = [] 
+    fits_naxis2 = []
+    fits_sformat = [] # Data format -- '1x1' or '4x4'
     fits_spctscx = [] # sc - target, dx 
     fits_spctscy = [] # dy
     fits_spctscz = [] # dz
@@ -86,6 +90,7 @@ def get_fits_info_from_files_lorri(path,
         fits_spctscy.append(header['SPCTSCY'])
         fits_spctscz.append(header['SPCTSCZ'])    
         fits_spctnaz.append(header['SPCTNAZ'])    
+        fits_sformat.append(header['SFORMAT'])    
            
         hdulist.close() # Close the FITS file
 
@@ -118,6 +123,7 @@ def get_fits_info_from_files_lorri(path,
     met1       = np.array(fits_stopmet)
     exptime    = np.array(fits_exptime)
     rotation   = np.array(fits_spctnaz)
+    sformat    = np.array(fits_sformat)
     rotation   = np.rint(rotation).astype(int)  # Turn rotation into integer. I only want this to be 0, 90, 180, 270... 
     files_short = np.zeros(num_obs, dtype = 'S30')
 
@@ -170,12 +176,12 @@ def get_fits_info_from_files_lorri(path,
     t = Table([i_obs, met, utc, et, jd, files, files_short, naxis1, naxis2, target, instrument, 
                dx_targ, dy_targ, dz_targ, desc, 
                met0, met1, exptime, phase, subsclat, subsclon, naxis1, 
-               naxis2, rotation], 
+               naxis2, rotation, sformat], 
                
                names = ('#', 'MET', 'UTC', 'ET', 'JD', 'Filename', 'Shortname', 'N1', 'N2', 'Target', 'Inst', 
                         'dx', 'dy', 'dz', 'Desc',
                         'MET Start', 'MET End', 'Exptime', 'Phase', 'Sub-SC Lat', 'Sub-SC Lon', 'dx_pix', 
-                        'dy_pix', 'Rotation'))
+                        'dy_pix', 'Rotation', 'Format'))
     
 # Define units for a few of the columns
                         
