@@ -11,11 +11,10 @@ def get_fits_info_from_files_lorri(path,
 
 # Flags: Do we do all of the files? Or just a truncated subset of them, for testing purposes?
     
-    DO_TRUNCATED = False
+    DO_TRUNCATED = True
+    NUM_TRUNC = 100
 
-    if (DO_TRUNCATED):
-        files = files[0:100]
-        
+
 # We should work to standardize this, perhaps allowing different versions of this function 
 # for different instruments.
 
@@ -60,6 +59,9 @@ def get_fits_info_from_files_lorri(path,
     fits_spctcb  = [] # target name
     fits_spctnaz = [] # Pole angle between target and instrument (i.e., boresight rotation angle)
 
+    if (DO_TRUNCATED):
+        files = files[0:NUM_TRUNC]
+        
 #files_short = np.array(files)
 #for i in range(files.size):
 #    files_short = files[i].split('/')[-1]  # Get just the filename itself
