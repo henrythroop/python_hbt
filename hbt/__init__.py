@@ -10,6 +10,7 @@
 # @author: throop
 
 import numpy as np
+import astropy
 import astropy.modeling
 import skimage.transform as skt  # This 'resize' function is more useful than np's
 import matplotlib as plt
@@ -26,8 +27,10 @@ d2r = np.pi/180.
 r2d = 1./d2r
 
 # Now import additional functions into this module
+# These are a part of this module now, and accessible via hbt.<function>
 
 from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
+from get_image_nh                   import get_image_nh
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
