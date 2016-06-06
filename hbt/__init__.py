@@ -42,6 +42,24 @@ from get_image_nh                   import get_image_nh
 # Function for wheremin()
 #########
 
+
+##########
+# Define a range. This is more useful than python's np.arange(), which doesn't allow for logarithmic steps.
+# Syntax is identical to HBT's IDL frange() function.
+# nb: I could use np.linspace and np.logspace here... in fact, probably better.
+##########
+
+def frange(start, end, num, linear=True, log=False):
+    
+    if (log == False):
+        step = (end - start)/(num * 1.)
+        out = np.arange(start, end, step)
+        return out
+        
+    if (log):
+        out = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
+        return np.array(out)
+        
 ##########
 # Get a single FITS image header
 ##########
