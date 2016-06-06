@@ -12,9 +12,15 @@ import numpy as np
 import cspice
 import wcsaxes
 import hbt
+from   astropy.wcs import WCS
 
-from pylab import *
+
+#from pylab import *
 # Create backplanes based on an image number. This is a stand-alone function, not part of the method
+
+# SPICE is required here, but it is *not* initialized. It is assumed that that has already been done.
+# pds-tools does not implement the CSPICE.KTOTAL('ALL') function, which is the way I know of to list loaded 
+# kernel files. So, just run something else first which initializes SPICE with a good kernel set.
 
 # For each pixel, do the followiung:
 # o Get its RA/Dec value from WCS
@@ -28,15 +34,23 @@ from pylab import *
 
 # Q: How do I deal with offsets?
 #    o Modify the WCS pointing to be what is correct? Though slow if I am recomputing a lot.
-#    o Shift the backplane by e.g., (-11, -18) pixels? Though will skip the edges.
+#    o Shift the backplane by e.g., (-11, -18) pixels? This will crop some edges... but that is no big deal
+#      since a lot of the edges are pretty contaminated by stray light and I can't really use them anyhow.
+#
+# I have some preference not to modify the original datafiles. 
+# Also, I want to be able to tweak my centering position very slightly (few pixels), and get new radial profiles
+# quickly. I guess this all means that I should make one set of backplanes based on the FITS WCS data, and
+# shift them as neeeded.
+#
+# And, this means I should just make a script that does all the backplanes one time... rather than generating them 
+# from within the GUI.
 
-# 
 def create_backplane(file_image, frame = 'IAU_JUPITER', name_target='Jupiter', name_observer='New Horizons'):
     
     "Returns a set of backplanes for a given image. The image must have WCS coords available in its header."
     "Backplanes include navigation info for every pixel, including RA, Dec, Eq Lon, Phase, etc."
 
-    file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034609323_0x630_sci_1.fit'
+#    file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034609323_0x630_sci_1.fit'
        
     file_tm = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
     
@@ -166,7 +180,11 @@ def create_backplane(file_image, frame = 'IAU_JUPITER', name_target='Jupiter', n
                  
     return backplane
 
-# Now write some code to run this function. I think I can do this here?
+##### END OF FUNCTION #####
+
+##########
+# Now write some code to run this function. This is just an example to create and plot the backplane for one image
+##########
     
 file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034609323_0x630_sci_1.fit'
 
