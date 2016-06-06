@@ -14,7 +14,6 @@ def get_fits_info_from_files_lorri(path,
     DO_TRUNCATED = True
     NUM_TRUNC = 100
 
-
 # We should work to standardize this, perhaps allowing different versions of this function 
 # for different instruments.
 

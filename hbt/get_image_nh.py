@@ -11,6 +11,7 @@ Created on Tue May 31 21:13:41 2016
 
 import astropy
 from astropy.io import fits
+import numpy as np
 import hbt # Seems kind of weird to have to import the module to which this function belongs...
         
 def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='Polynomial', bg_argument=4):
