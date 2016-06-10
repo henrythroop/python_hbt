@@ -16,7 +16,7 @@ import skimage.transform as skt  # This 'resize' function is more useful than np
 import matplotlib as plt
 import cspice
 from   astropy.io import fits
-
+import subprocess
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -51,6 +51,10 @@ from get_image_nh                   import get_image_nh
 # conventions for start and end locations, etc. so it's fine to just do it explicitly here like I do.
 
 def frange(start, end, num, linear=True, log=False):
+    '''
+    Define a range, using either linear or logarithmic spacing. 
+    Both the start and end values are used as bins.
+    '''
     
     if (log == False):
         step = (end - start)/(num * 1.)
@@ -68,8 +72,10 @@ def frange(start, end, num, linear=True, log=False):
 ##########
  
 def get_image_header(file, single=False):
-    "Return header for a fits file, as a text array."
-    "If single set, then return as a single line, not an np array of strings."
+    '''
+    Return header for a fits file, as a text array.
+    If single set, then return as a single line, not an np array of strings.
+    '''
     
     hdulist = fits.open(file)
     header = hdulist[0].header
@@ -82,27 +88,49 @@ def get_image_header(file, single=False):
     
     else:
         return header
+
+##########
+# Write a string to the Mac clipboard
+##########
+# http://stackoverflow.com/questions/1825692/can-python-send-text-to-the-mac-clipboard
+
+def write_to_clipboard(str):
+    """
+    Write an arbitrary string to the Mac clipboard.
+    """
+    
+    process = subprocess.Popen(
+        'pbcopy', env={'LANG': 'en_US.UTF-8'}, stdin=subprocess.PIPE)
+    process.communicate(str.encode('utf-8'))
         
 def remove_brightest(arr, frac_max):
-    "Clips the brightest values in an array to the level specified" 
-    " e.g., frac = 0.95 will clip brightest 5% of pixels)"
+    """
+    Clips the brightest values in an array to the level specified; e.g., frac = 0.95 will clip brightest 5% of pixels)
+    """
     
     clipval_max = np.percentile(arr, frac_max * 100.)
     return np.clip(arr, np.amin(arr), clipval_max)
     
 def ln01(arr, offset=0.01):
-    "Scale an array logarithmically. Use an offset and ensure that values are positive before scaling."
+    """
+    Scale an array logarithmically. 
+    Use an offset and ensure that values are positive before scaling.
+    """
     
     return np.log(arr - np.amin(arr) + offset)
 
 def scale_image(min, max, polynomial, percentile=False):
-    "Applies a pre-calculated scaling to an array"
+    """
+    Applies a pre-calculated scaling to an array. NOT WORKING.
+    """
     pass
 
 
 def is_array(arg):
-    "Return a boolean about whether the passed value is an array, or a scalar."
-    "A string is considered *not* to be a scalar."
+    """
+    Return a boolean about whether the passed value is an array, or a scalar.
+    A string is considered *not* to be a scalar.
+    """
     
     import collections
     import numpy as np
@@ -111,8 +139,10 @@ def is_array(arg):
 
 def get_range_user(maxrange = 10000):
 
-    "Request a range of input values from the user. No error checking."
-    "  *; 1-10; 44   are all valid inputs. If  *  then output is 1 .. maxrange."
+    """
+    Request a range of input values from the user. No error checking.
+    "  *; 1-10; 44   are all valid inputs. If  *  then output is 1 .. maxrange.
+    """
     
     inp2 = raw_input("Range of files [e.g. *; 1-10; 44]: ")
 
@@ -133,9 +163,11 @@ def get_range_user(maxrange = 10000):
 def get_pos_bodies(et, name_bodies, units='radec', wcs=False, 
                      frame='J2000', abcorr='LT', name_observer='New Horizons'):
     
-    "Get an array of points for a list of bodies, seen from an observer at the given ET."
-    "Result is in RA / Dec radians. If units='pixels', then it is in x y pixels, based on the supplied wcs."
-    "name_bodies may be scalar or vector."
+    """
+    Get an array of points for a list of bodies, seen from an observer at the given ET.
+    Result is in RA / Dec radians. If units='pixels', then it is in x y pixels, based on the supplied wcs.
+    name_bodies may be scalar or vector.
+    """
 
     num_bodies = np.size(name_bodies) # Return 1 if scalar, 2 if pair, etc; len() gets confused on strings.
     
@@ -162,8 +194,10 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
 def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='radec', wcs=False, 
                     frame='J2000', abcorr='LT+S', name_observer='New Horizons'):
     
-    "Get an array of points for a ring, at a specified radius, seen from observer at the given ET."
-    "Result is in RA / Dec radians. If units='pixels', then it is in x y pixels, based on the supplied wcs."
+    """
+    Get an array of points for a ring, at a specified radius, seen from observer at the given ET.
+    Result is in RA / Dec radians. If units='pixels', then it is in x y pixels, based on the supplied wcs.
+    """
     
 # Now calculate the ring points...
 
@@ -204,8 +238,10 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
     return ra_ring, dec_ring
     
 def fullprint(*args, **kwargs):  # From http://stackoverflow.com/questions/1987694/print-the-full-numpy-array
-  "Print a numpy array, without truncating it."
-  "This is really slow for large arrays (> 10K)"
+  """
+  Print a numpy array, without truncating it.
+  This is really slow for large arrays (> 10K)
+  """
   
   from pprint import pprint
   import numpy
@@ -215,12 +251,16 @@ def fullprint(*args, **kwargs):  # From http://stackoverflow.com/questions/19876
   numpy.set_printoptions(**opt)
   
 def imsize((size)):
-    "Set plot size. Same as using rc, but easier syntax."
+    """
+    Set plot size. Same as using rc, but easier syntax.
+    """
     plt.rc('figure', figsize=(size[0], size[1]))
     
 def correct_stellab(radec, vel):
-    "Corect for stellar aberration."
-    "radec is array (n,2) in radians. velocity in km/sec. Both should be in J2K coords."
+    """
+    Corect for stellar aberration.
+    radec is array (n,2) in radians. velocity in km/sec. Both should be in J2K coords.
+    """
 
     radec_abcorr = radec.copy()    
     for i in range(np.shape(radec)[0]):
@@ -231,8 +271,10 @@ def correct_stellab(radec, vel):
     return radec_abcorr
     
 def image_from_list_points(points, shape, diam_kernel):
-    "Given an ordered list of xy points, and an output size, creates an image."
-    "Useful for creating synthetic star fields."
+    """
+    Given an ordered list of xy points, and an output size, creates an image.
+    Useful for creating synthetic star fields.
+    """
     
     kernel = dist_center(diam_kernel, invert=True, normalize=True)
     arr = np.zeros(shape)
@@ -253,7 +295,10 @@ def set_plot_defaults():
     plt.rc('image', cmap='Greys')               # Default color table for imshow
     
 def wheremin( arr ):
-   "Determines the index at which an array has its minimum value"
+   """
+   Determines the index at which an array has its minimum value
+   """
+   
    index = np.where(arr == np.amin(arr))
    return (np.array([index]).flatten())[0] # Crazy syntax returns either a scalar, or the 0th element of a vector
 
@@ -266,8 +311,11 @@ def commonOverlapNaive(text1, text2):
   return x 
 
 def dist_center(diam, circle=False, centered=True, invert=False, normalize=False):
-    "Returns an array of dimensions diam x diam, with each cell being the distance from the center cell"
-    "Works best if diam is an odd integer."    
+    """
+    Returns an array of dimensions diam x diam, with each cell being the distance from the center cell.
+    Works best if diam is an odd integer.
+    """
+    
     xx, yy = np.mgrid[:diam, :diam]
     
     if (centered):
@@ -284,8 +332,10 @@ def dist_center(diam, circle=False, centered=True, invert=False, normalize=False
     return dist
     
 def longest_common_substring(S,T):
-    "Given two strings, returns the longest common substring as a set"
-    "http://www.bogotobogo.com/python/python_longest_common_substring_lcs_algorithm_generalized_suffix_tree.php"
+    """
+    Given two strings, returns the longest common substring as a set.
+    """
+#    http://www.bogotobogo.com/python/python_longest_common_substring_lcs_algorithm_generalized_suffix_tree.php"
     m = len(S)
     n = len(T)
     counter = [[0]*(n+1) for x in range(m+1)]
@@ -306,7 +356,9 @@ def longest_common_substring(S,T):
     return lcs_set.pop() # Original function returned lcs_set itself. I don't know why -- I just want to extract one element.
 
 def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input array before doing the fit.
-    "Fit polynomial to a 2D array, aka surface."
+    """
+    Fit polynomial to a 2D array, aka surface.
+    """
 
 # For info on resizing, see http://stackoverflow.com/questions/29958670/how-to-use-matlabs-imresize-in-python
     
