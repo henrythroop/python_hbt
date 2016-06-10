@@ -41,19 +41,19 @@ def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='Polynomial', bg_a
     
 # 'None' : If requested, return the raw unscaled image, with no background subtraction
 
-    if (bg_method == 'None'):
+    if (bg_method.upper() in ['NONE', 'RAW']):
         return arr_clipped
                
 # 'Polynomial' : Fit the data using a polynomial
 
-    if (bg_method == 'Polynomial'):
+    if (bg_method.upper() == 'POLYNOMIAL'):
         power = int(bg_argument)
         polyfit = hbt.sfit(arr_clipped, power)        
         return arr_clipped - polyfit
 
 # 'Previous' : Subtract off the previous frame (which is passed in as an argument)
 
-    if (bg_method == 'Previous') or (bg_method == 'Next') or (bg_method == 'Median'):
+    if (bg_method.upper in ['PREVIOUS', 'NEXT', 'MEDIAN']):
         arr2 = bg_argument
         arr2_clipped = hbt.remove_brightest(arr2, frac_clip)
         return arr_clipped - arr2_clipped
