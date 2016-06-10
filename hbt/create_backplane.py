@@ -57,9 +57,7 @@ def create_backplane(file_image, frame = 'IAU_JUPITER', name_target='Jupiter', n
     #    arr = get_image_nh(file)
     
     w = WCS(file)
-    
-    header = hbt.get_image_header(file_image)
-    
+        
 #    print 'crval[i] = ' + repr(w.wcs.crval)
     
 #    image_arr = hbt.get_image_nh(file_image)
