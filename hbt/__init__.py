@@ -46,14 +46,17 @@ from get_image_nh                   import get_image_nh
 ##########
 # Define a range. This is more useful than python's np.arange(), which doesn't allow for logarithmic steps.
 # Syntax is identical to HBT's IDL frange() function.
-# nb: I could use np.linspace and np.logspace here... in fact, probably better.
 ##########
+# NB: I could use np.linspace and np.logspace here... in fact, probably better. However, they use slightly different 
+# conventions for start and end locations, etc. so it's fine to just do it explicitly here like I do.
 
 def frange(start, end, num, linear=True, log=False):
     
     if (log == False):
         step = (end - start)/(num * 1.)
-        out = np.arange(start, end, step)
+        out = np.arange(start, end+step, step)
+        out = np.array(range(num))/(num - 1.) * (end-start) + start
+
         return out
         
     if (log):
