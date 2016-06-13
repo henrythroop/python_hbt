@@ -372,7 +372,7 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     y_small = skt.resize(y_big, shape_small, order=1, preserve_range=True)
     
     arr_small = skt.resize(arr, shape_small, order=1, preserve_range=True)
-    p_init = astropy.modeling.models.Polynomial2D(degree=degree)
+    p_init = astropy.modeling.models.Polynomial2D(degree=int(degree))
 
 # Define the fitting routine
 
