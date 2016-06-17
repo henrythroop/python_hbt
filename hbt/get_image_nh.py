@@ -6,7 +6,7 @@ Created on Tue May 31 21:13:41 2016
 """
 
 ##########
-# Read an NH FITS file from disk
+# Read a FITS file from disk, and 
 ##########
 
 import astropy
@@ -14,12 +14,12 @@ from astropy.io import fits
 import numpy as np
 import hbt # Seems kind of weird to have to import the module to which this function belongs...
         
-def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='Polynomial', bg_argument=4):
-    " Reads an NH FITS file from disk. Does simple image processing on it, removes background,"
-    " and roughly scales is for display."
-    " Might still need a log scaling applied for J-ring images."
-
-#    print "get_image_nh, bg_method =" + bg_method
+# was get_image_nh.py
+        
+def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4):
+    """    
+    Reads an FITS file from disk. Does simple image processing on it, to scale for display.
+    """
     
 # If there is an empty filename passed, just return an array of random noise, but right size    
     if (file == ''):
@@ -35,14 +35,17 @@ def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='Polynomial', bg_a
 # Close the image
     hdulist.close()
 
-# Clip any pixels brighter than a specified %ile (e.g., 0.9 = clip to 90th percentile)
-               
-    arr_clipped = hbt.remove_brightest(arr, frac_clip)
-    
 # 'None' : If requested, return the raw unscaled image, with no background subtraction
 
     if (bg_method.upper() in ['NONE', 'RAW']):
-        return arr_clipped
+        return arr
+        
+# Clip any pixels brighter than a specified %ile (e.g., 0.9 = clip to 90th percentile)
+
+    if (frac_clip < 1.):               
+        arr_clipped = hbt.remove_brightest(arr, frac_clip)
+    else:
+        arr_clipped = arr
                
 # 'Polynomial' : Fit the data using a polynomial
 
@@ -50,11 +53,3 @@ def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='Polynomial', bg_a
         power = int(bg_argument)
         polyfit = hbt.sfit(arr_clipped, power)        
         return arr_clipped - polyfit
-
-# 'Previous' : Subtract off the previous frame (which is passed in as an argument)
-
-    if (bg_method.upper in ['PREVIOUS', 'NEXT', 'MEDIAN']):
-        arr2 = bg_argument
-        arr2_clipped = hbt.remove_brightest(arr2, frac_clip)
-        return arr_clipped - arr2_clipped
-        
