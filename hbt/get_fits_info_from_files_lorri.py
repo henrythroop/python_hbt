@@ -11,7 +11,7 @@ def get_fits_info_from_files_lorri(path,
 
 # Flags: Do we do all of the files? Or just a truncated subset of them, for testing purposes?
     
-    DO_TRUNCATED = True
+    DO_TRUNCATED = False
     NUM_TRUNC = 100
 
 # We should work to standardize this, perhaps allowing different versions of this function 
@@ -68,6 +68,8 @@ def get_fits_info_from_files_lorri(path,
 # Set up one iteration variable so we don't need to create it over and over
     num_obs = np.size(files)
     i_obs = np.arange(num_obs)
+    
+    print "Read " + repr(np.size(files)) + " files."
     
     for file in files:
         print "Reading file " + file
