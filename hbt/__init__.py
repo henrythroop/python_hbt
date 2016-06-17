@@ -103,13 +103,20 @@ def write_to_clipboard(str):
         'pbcopy', env={'LANG': 'en_US.UTF-8'}, stdin=subprocess.PIPE)
     process.communicate(str.encode('utf-8'))
         
-def remove_brightest(arr, frac_max):
+def remove_brightest(arr, frac_max, symmetric=False):
     """
-    Clips the brightest values in an array to the level specified; e.g., frac = 0.95 will clip brightest 5% of pixels)
+    Clips the brightest values in an array to the level specified; e.g., frac = 0.95 will clip brightest 5% of pixels).
+    If 'symmetric' set, will also clip same fraction from bottom.				
     """
-    
+
     clipval_max = np.percentile(arr, frac_max * 100.)
-    return np.clip(arr, np.amin(arr), clipval_max)
+    
+    if (symmetric):
+        clipval_min = np.percentile(arr, (1-frac_max) * 100)
+    else:
+        clipval_min = np.amin(arr)
+								
+    return np.clip(arr, clipval_min, clipval_max)
     
 def ln01(arr, offset=0.01):
     """
@@ -330,6 +337,16 @@ def dist_center(diam, circle=False, centered=True, invert=False, normalize=False
         dist = (dist - np.amin(dist)) / np.ptp(dist)
         
     return dist
+
+def smooth_boxcar(ydata, binning):
+   """ Do a boxcar smoothing. Array returned has same length as input array.
+   """
+   
+# In theory this works basically the same as astropy.convolution.kernels.convolve with Box1DKernel, 
+# but that kept giving me python error, so better to bring it in house.
+   
+   smoothed = np.convolve(ydata, 1./binning + np.zeros(binning), mode = 'same')
+   return smoothed
     
 def longest_common_substring(S,T):
     """
@@ -391,6 +408,36 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     surf_big = poly(x_big, y_big)
     
     return surf_big
+
+def butter2d_lp(shape, f, n, pxd=1):
+    """Designs an n-th order lowpass 2D Butterworth filter with cutoff
+   frequency f. pxd defines the number of pixels per unit of frequency (e.g.,
+   degrees of visual angle)."""
+    pxd = float(pxd)
+    rows, cols = shape
+    x = np.linspace(-0.5, 0.5, cols)  * cols / pxd
+    y = np.linspace(-0.5, 0.5, rows)  * rows / pxd
+    radius = np.sqrt((x**2)[np.newaxis] + (y**2)[:, np.newaxis])
+    filt = 1 / (1.0 + (radius / f)**(2*n))
+    return filt
+    
+def ffit(arr, f=0.1, n=2, pxd=43):
+    """
+    Applies an FFT filter to fit an image. Returns a low-order fit to the image, similar to sfit.
+    The default frequency / cutoff parameters are tuned by hand to fit NH J-ring light-scattering
+    data, and are very roughly comparable to sfit(5) under some circumstances.
+    """
+
+    # See image_filtering_examples.py, and http://www.srmathias.com/image-filtering/
+
+    fft_orig = np.fft.fftshift(np.fft.fft2(arr))
+    recon_image = np.abs(np.fft.ifft2(np.fft.ifftshift(arr)))
+ 
+    filt = butter2d_lp(arr.shape, f, n, pxd=43)
+    fft_new = fft_orig * filt
+    image_fft = np.abs(np.fft.ifft2(np.fft.ifftshift(fft_new)))
+    
+    return image_fft
     
 ##########
 # Function to determine if an entered string is a number. 
