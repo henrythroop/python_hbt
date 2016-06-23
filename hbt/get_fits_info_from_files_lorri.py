@@ -193,6 +193,6 @@ def get_fits_info_from_files_lorri(path,
 
 # Create a dxyz_targ column, from dx dy dz. Easy!
 
-    t['dxyz'] = np.sqrt(t['dx']**2 + t['dy']**2 + t['dz']**2)
+    t['dxyz'] = np.sqrt(t['dx']**2 + t['dy']**2 + t['dz']**2)  # Distance, in km
 
     return t
