@@ -152,8 +152,9 @@ def get_fits_info_from_files_lorri(path,
 
 # Fix the MET. The 'MET' field in fits header is actually not the midtime, but the time of the first packet.
 # I am going to replace it with the midtime.
+# *** No, don't do that. The actual MET field is used for timestamping -- keep it as integer.
 
-    met = (met0 + met1) / 2.
+#    met = (met0 + met1) / 2.
 
 # Loop over all images
 
