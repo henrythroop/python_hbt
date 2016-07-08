@@ -12,28 +12,55 @@ Created on Tue May 31 21:13:41 2016
 import astropy
 from astropy.io import fits
 import numpy as np
+import glob
 import hbt # Seems kind of weird to have to import the module to which this function belongs...
+import scipy.misc
         
 # was get_image_nh.py
         
-def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4):
+def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4, autozoom=False):
     """    
     Reads an FITS file from disk. Does simple image processing on it, to scale for display.
     """
+
+    dir_images = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all'
     
 # If there is an empty filename passed, just return an array of random noise, but right size    
     if (file == ''):
         return np.random.random(size=(1024,1024))
+
+# If filename is just an MET (either string or int), then look up the rest of it.
+
+    if hbt.is_number(file):
+        file_list = glob.glob(dir_images + '/*{}*fit'.format(int(file)))
+        
+        if not file_list:
+            print 'File not found'
+            return 0
+        
+        file = file_list[0]
         
 #    if ('hdulist') in locals():        # If there is already an hdulist, then close it. (Might double-close it, but that is OK.)
 #        hdulist.close() 
+
+# If filename has no '/' in it, then prepend the path
+
+    if (dir_images.find('/') == -1):        
+        hdulist = fits.open(dir_images + file)
         
-    hdulist = fits.open(file)
+    else:
+        hdulist = fits.open(file)
+        
     image = hdulist['PRIMARY'] # options are 'PRIMARY', 'LORRI Error', 'LORRI Quality'
     arr = image.data
 
 # Close the image
     hdulist.close()
+
+# Zoom it if requested and logical. This expands the 4x4 image to a 1x1.
+
+    if (autozoom) and (np.shape(arr)[0] == 256):
+        arr = scipy.ndimage.zoom(arr, 4)
 
 # 'None' : If requested, return the raw unscaled image, with no background subtraction
 

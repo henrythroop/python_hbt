@@ -17,6 +17,8 @@ import matplotlib as plt
 import cspice
 from   astropy.io import fits
 import subprocess
+from   scipy.stats import linregress
+import hbt
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -31,6 +33,9 @@ r2d = 1./d2r
 
 from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
 from get_image_nh                   import get_image_nh
+from nh_create_straylight_median    import nh_create_straylight_median
+from nh_get_straylight_median       import nh_get_straylight_median
+from nh_create_straylight_median_filename import nh_create_straylight_median_filename
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
@@ -50,11 +55,32 @@ from get_image_nh                   import get_image_nh
 # NB: I could use np.linspace and np.logspace here... in fact, probably better. However, they use slightly different 
 # conventions for start and end locations, etc. so it's fine to just do it explicitly here like I do.
 
-def frange(start, end, num, linear=True, log=False):
+#def frange(start, end, linear=True, log=False, *args):
+def frange(start, end, *args, **kwargs):
+
     '''
     Define a range, using either linear or logarithmic spacing. 
     Both the start and end values are used as bins.
+    Syntax: frange(start, end, [num_bins], linear=True, log=False)
     '''
+    
+# First check if number was passed via *args. If not, figure out what it should be.    
+
+    linear = True         # Default is for a linear range
+    log    = False
+
+    for key, value in kwargs.iteritems():
+        if (key == 'linear'):
+            linear = value
+        if (key == 'log'):
+            log = value
+    
+    if (len(args) > 0):
+        num = args[0]
+        print "num = " + repr(num)
+        
+    else:
+        num = end - start + 1
     
     if (log == False):
         step = (end - start)/(num * 1.)
@@ -66,6 +92,7 @@ def frange(start, end, num, linear=True, log=False):
     if (log):
         out = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
         return np.array(out)
+
         
 ##########
 # Get a single FITS image header
@@ -197,6 +224,26 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         
     return ra, dec # Return in radians
       
+
+##########
+# Normalize two images using linear regression
+##########
+
+def normalize_images(arr1, arr2):
+    "Performs linear regression on two images to try to match them."
+    "Returns fit parameter r: for best fit, use arr2 * r[0] + r[1]"
+    "Goal is to set arr1 to the level of arr2"
+    
+#       arr1_filter = hbt.remove_brightest(arr1, frac) # Rem
+#       arr2_filter = hbt.remove_brightest(arr2, frac)
+    r = linregress(arr1.flatten(), arr2.flatten())
+    
+    m = r[0] # Multiplier = slope
+    b = r[1] # Offset = intercept
+
+    arr1_norm = arr1 * m + b
+
+    return (arr1_norm, (m,b))
       
 def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='radec', wcs=False, 
                     frame='J2000', abcorr='LT+S', name_observer='New Horizons'):
@@ -409,10 +456,24 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     
     return surf_big
 
+##########
+# REMOVE_SFIT
+##########
+
+def remove_sfit(arr, degree=3):
+    """
+    Return an array with a polynomial fit removed. Same as sfit, but better for inline usage.
+    """
+    
+    return arr - hbt.sfit(arr, degree=degree)
+    
 def butter2d_lp(shape, f, n, pxd=1):
     """Designs an n-th order lowpass 2D Butterworth filter with cutoff
    frequency f. pxd defines the number of pixels per unit of frequency (e.g.,
    degrees of visual angle)."""
+
+    # See image_filtering_examples.py, and http://www.srmathias.com/image-filtering/
+
     pxd = float(pxd)
     rows, cols = shape
     x = np.linspace(-0.5, 0.5, cols)  * cols / pxd
