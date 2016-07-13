@@ -33,6 +33,7 @@ r2d = 1./d2r
 
 from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
 from read_lorri                     import read_lorri
+from read_alice                     import read_alice
 from nh_create_straylight_median    import nh_create_straylight_median
 from nh_get_straylight_median       import nh_get_straylight_median
 from nh_create_straylight_median_filename import nh_create_straylight_median_filename
