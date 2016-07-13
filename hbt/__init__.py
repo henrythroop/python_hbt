@@ -393,7 +393,17 @@ def smooth_boxcar(ydata, binning):
 # In theory this works basically the same as astropy.convolution.kernels.convolve with Box1DKernel, 
 # but that kept giving me python error, so better to bring it in house.
    
-   smoothed = np.convolve(ydata, 1./binning + np.zeros(binning), mode = 'same')
+#   ydata_ = ydata.copy()
+   
+# Add some padding on the edge. Pad with the single edge value
+   
+   ydata_lhs = np.zeros(binning) + ydata[0]
+   ydata_rhs = np.zeros(binning) + ydata[-1]
+   ydata_padded = np.concatenate((ydata_lhs, ydata, ydata_rhs))
+   
+   smoothed_padded = np.convolve(ydata_padded, 1./binning + np.zeros(binning), mode = 'same')
+   smoothed = smoothed_padded[binning:-binning]
+   
    return smoothed
     
 def longest_common_substring(S,T):
