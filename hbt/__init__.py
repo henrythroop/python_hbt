@@ -32,7 +32,7 @@ r2d = 1./d2r
 # These are a part of this module now, and accessible via hbt.<function>
 
 from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
-from get_image_nh                   import get_image_nh
+from read_lorri                     import read_lorri
 from nh_create_straylight_median    import nh_create_straylight_median
 from nh_get_straylight_median       import nh_get_straylight_median
 from nh_create_straylight_median_filename import nh_create_straylight_median_filename

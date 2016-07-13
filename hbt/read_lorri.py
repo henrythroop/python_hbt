@@ -6,7 +6,7 @@ Created on Tue May 31 21:13:41 2016
 """
 
 ##########
-# Read a FITS file from disk, and 
+# Read a LORRI FITS file from disk, and optionally do some simple scaling on it 
 ##########
 
 import astropy
@@ -18,7 +18,7 @@ import scipy.misc
         
 # was get_image_nh.py
         
-def get_image_nh(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4, autozoom=False):
+def read_lorri(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4, autozoom=False):
     """    
     Reads an FITS file from disk. Does simple image processing on it, to scale for display.
     """
