@@ -305,7 +305,18 @@ def fullprint(*args, **kwargs):  # From http://stackoverflow.com/questions/19876
   numpy.set_printoptions(threshold='nan')
   pprint(*args, **kwargs)
   numpy.set_printoptions(**opt)
-  
+
+def trunc(f, n):
+    '''Truncates/pads a float f to n decimal places (not sig figs!) without rounding.'''
+    '''Returns string.'''
+    # From http://stackoverflow.com/questions/783897/truncating-floats-in-python
+
+    s = '{}'.format(f)
+    if 'e' in s or 'E' in s:
+        return '{0:.{1}f}'.format(f, n)
+    i, p, d = s.partition('.')
+    return '.'.join([i, (d+'0'*n)[:n]])
+
 def imsize((size)):
     """
     Set plot size. Same as using rc, but easier syntax.

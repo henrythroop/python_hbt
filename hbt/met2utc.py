@@ -50,7 +50,7 @@ def met2utc(met_in, name_observer = 'NEW HORIZONS'):
 
   for i in range(np.size(ntime)):  
      et[i] = cspice.sct2e(-98, sclk_ticks[i])
-     utc[i] = cspice.et2utc(et[i], 'ISOC', 3)
+     utc[i] = cspice.et2utc(et[i], 'C', 3)
 #        utc[i] = cspice_et2utc, et_i, 'ISOD', 3, utc_i
   
   if (ntime == 1):
