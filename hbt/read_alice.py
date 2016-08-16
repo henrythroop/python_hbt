@@ -31,7 +31,7 @@ def read_alice(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=
 
 # If filename is just an MET (either string or int), then look up the rest of it.
 
-#    file = '0299391368'
+    file = '0299391368'
     
     if hbt.is_number(file):
         file_list = glob.glob(dir_images + '/*{}*fit'.format(int(file)))
@@ -59,7 +59,7 @@ def read_alice(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=
     error = hdulist['ERROR_IMAGE'].data        # 32           x 1024
     header_spect = hdulist['PRIMARY'].header
     header_count_rate = hdulist['COUNT_RATE'].header
-    
+    hk = hdulist['HOUSEKEEPING_TABLE']
 # Close the image
 
     hdulist.close()
