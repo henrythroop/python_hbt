@@ -195,6 +195,12 @@ def get_range_user(maxrange = 10000):
         print 'Range: ' + repr(range_selected)
             
     return range_selected
+
+def mm(arr):
+    """
+    Return the min and max of an array, in a tuple.
+    """
+    return (np.min(arr), np.max(arr))
     
 def get_pos_bodies(et, name_bodies, units='radec', wcs=False, 
                      frame='J2000', abcorr='LT', name_observer='New Horizons'):
