@@ -85,9 +85,9 @@ def frange(start, end, *args, **kwargs):
         num = end - start + 1
     
     if (log == False):
-        step = (end - start)/(num * 1.)
+        step = (end - start)/((num-1) * 1.)
         out = np.arange(start, end+step, step)
-        out = np.array(range(num))/(num - 1.) * (end-start) + start
+#        out = np.array(range(num))/(num - 1.) * (end-start) + start
 
         return out
         
