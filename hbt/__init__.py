@@ -363,9 +363,12 @@ def image_from_list_points(points, shape, diam_kernel):
      
     return arr
     
-def set_plot_defaults():
+def set_plot_defaults(cmap='Greys'):
+    """ 
+    Set default values for matplotlib
+    """
     plt.rc('image', interpolation='None')       # Turn of interpolation for imshow
-    plt.rc('image', cmap='Greys')               # Default color table for imshow
+    plt.rc('image', cmap=cmap)               # Default color table for imshow
     
 def wheremin( arr ):
    """
