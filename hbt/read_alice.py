@@ -11,6 +11,7 @@ Created on Wed Jul 13 13:48:10 2016
 ##########
 # Read an Alice FITS file from disk
 ##########
+# This function just reads a few specific fields. It is not really general enough to be used for most things.
 
 import astropy
 from   astropy.io import fits
@@ -20,7 +21,8 @@ import hbt # Seems kind of weird to have to import the module to which this func
                 
 def read_alice(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4, autozoom=False):
     """    
-    Reads an FITS file from disk. Returns via dictionary: 'spect', 'alam', 'count_rate', 'error'
+    Reads an FITS file from disk, and returns a few specific fields as 
+    a dictionary: 'spect', 'alam', 'count_rate', 'error'.
     """
 
     dir_images = '/Users/throop/data/NH_Alice_Ring/data/pluto/level2/ali/all'
