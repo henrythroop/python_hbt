@@ -72,7 +72,7 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     for i,n in enumerate(index_files):
         file = t_group['Filename'][n] # Look up filename
         print "Reading: " + file
-        frame = hbt.get_image_nh(file,frac_clip = 1)
+        frame = hbt.read_lorri(file,frac_clip = 1)
         if (np.shape(frame)[0] == 256):
             
     # Resize the image to 1024x1024, if it is a 4x4 frame. 
