@@ -21,6 +21,7 @@ import scipy.misc
 def read_lorri(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=4, autozoom=False):
     """    
     Reads an FITS file from disk. Does simple image processing on it, to scale for display.
+    bg_method = None, Polynomial
     """
 
     dir_images = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all'
