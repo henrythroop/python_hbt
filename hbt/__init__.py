@@ -378,6 +378,14 @@ def wheremin( arr ):
    index = np.where(arr == np.amin(arr))
    return (np.array([index]).flatten())[0] # Crazy syntax returns either a scalar, or the 0th element of a vector
 
+def wheremax( arr ):
+   """
+   Determines the index at which an array has its max value
+   """
+   
+   index = np.where(arr == np.amax(arr))
+   return (np.array([index]).flatten())[0] # Crazy syntax returns either a scalar, or the 0th element of a vector
+   
 def commonOverlapNaive(text1, text2):  
   x = min(len(text1), len(text2))  
   while x > 0:  
