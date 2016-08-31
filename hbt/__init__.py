@@ -81,7 +81,7 @@ def frange(start, end, *args, **kwargs):
     
     if (len(args) > 0):
         num = args[0]
-        print "num = " + repr(num)
+#        print "num = " + repr(num)
         
     else:
         num = end - start + 1
