@@ -65,6 +65,8 @@ def frange(start, end, *args, **kwargs):
     Both the start and end values are used as bins.
     Syntax: frange(start, end, [num_bins], linear=True, log=False)
     '''
+
+# 31-Aug-2016: Changed from arange() to linspace() since frange(0,1,1000) was returning 1001 bins, due to rounding.
     
 # First check if number was passed via *args. If not, figure out what it should be.    
 
@@ -85,8 +87,10 @@ def frange(start, end, *args, **kwargs):
         num = end - start + 1
     
     if (log == False):
-        step = (end - start)/((num-1) * 1.)
-        out = np.arange(start, end+step, step)
+        
+        out = np.linspace(start, end, num) # Documentation says linspace() is better than arange()
+#        step = (end - start)/((num-1) * 1.)
+#        out = np.arange(start, end+step, step) 
 #        out = np.array(range(num))/(num - 1.) * (end-start) + start
 
         return out
