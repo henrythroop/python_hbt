@@ -38,6 +38,7 @@ from met2utc                        import met2utc
 from nh_create_straylight_median    import nh_create_straylight_median
 from nh_get_straylight_median       import nh_get_straylight_median
 from nh_create_straylight_median_filename import nh_create_straylight_median_filename
+from nh_jring_process_image         import nh_jring_process_image
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
