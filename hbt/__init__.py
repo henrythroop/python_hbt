@@ -151,6 +151,14 @@ def remove_brightest(arr, frac_max, symmetric=False):
         clipval_min = np.amin(arr)
 								
     return np.clip(arr, clipval_min, clipval_max)
+
+def remove_extrema(arr, frac_max=0.95, symmetric=True):
+    """
+    Clips the brightest and darkest values in an array.				
+    """
+								
+    return hbt.remove_brightest(arr, frac_max, symmetric)
+    
     
 def ln01(arr, offset=0.01):
     """
@@ -243,9 +251,9 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
 ##########
 
 def normalize_images(arr1, arr2):
-    "Performs linear regression on two images to try to match them."
-    "Returns fit parameter r: for best fit, use arr2 * r[0] + r[1]"
-    "Goal is to set arr1 to the level of arr2"
+    """Performs linear regression on two images to try to match them.
+     Returns fit parameter r: for best fit, use arr2 * r[0] + r[1]
+     Goal is to set arr1 to the level of arr2"""
     
 #       arr1_filter = hbt.remove_brightest(arr1, frac) # Rem
 #       arr2_filter = hbt.remove_brightest(arr2, frac)
