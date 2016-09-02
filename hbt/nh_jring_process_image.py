@@ -178,8 +178,13 @@ def nh_jring_process_image(image_raw, method, argument, index_group, index_image
 
         image_proc = hbt.remove_sfit(image_raw, 5)
 
-# Normali            
-        (stray_norm,coeffs) = hbt.normalize_images(stray, image_proc) # Normalize the images to each other ()
+# Normalize
+     
+        (stray_norm, coeffs) = hbt.normalize_images(stray, image_proc) # Normalize the images to each other ()
+
+        print
+        print "Normalized: med(stray_norm) = " + repr(np.median(stray_norm)) + ', med(image_proc) = ' + repr(np.median(image_proc))
+        print "Normalized: mean(stray_norm) = " + repr(np.mean(stray_norm)) + ', mean(image_proc) = ' + repr(np.mean(image_proc))
         
         image_sub = image_proc - stray_norm
         
@@ -199,25 +204,63 @@ def nh_jring_process_image(image_raw, method, argument, index_group, index_image
 
     image_processed = image
 
-# For analysis, and perhaps eventual integration into the GUI: plot the image,
-# and the background that I remove. Plot to Python console, not the GUI.
+# If requested: plot the image, and the background that I remove. 
+# Plot to Python console, not the GUI.
     
     DO_DIAGNOSTIC = True
     
     if (DO_DIAGNOSTIC):
-        plt.rcParams['figure.figsize'] = 12,6
+        plt.rcParams['figure.figsize'] = 16,16
 
-        plt.subplot(1,3,1)
-        plt.imshow(hbt.remove_brightest(hbt.remove_sfit(image_raw,5), 0.95, symmetric=True))
-        plt.title('Original')
+        im = image_raw
+
+        plt.subplot(3,3,1) # vertical, horizontal, index
+        plt.title('image_raw, mean=' + hbt.trunc(np.mean(im),3))
+        plt.imshow(im)
         
-        plt.subplot(1,3,2)
-        plt.imshow(hbt.remove_brightest(image_bg, 0.95, symmetric=True))
-        plt.title('Background')
+        im = hbt.remove_extrema(im)
+
+        plt.subplot(3,3,4) # vertical, horizontal, index
+        plt.imshow(im)
+        plt.title('re(image_raw), mean=' + hbt.trunc(np.mean(im),3))
+
+        im = hbt.remove_sfit(im,5)
+        plt.subplot(3,3,7) # vertical, horizontal, index
+        plt.imshow(im)
+        plt.title('re(image_raw) - s5(imag_raw), mean=' + hbt.trunc(np.mean(im),3))
         
-        plt.subplot(1,3,3)
-        plt.imshow(image)
-        plt.title('Result, med=')
+#       
+        im = stray_norm
+ 
+        plt.subplot(3,3,2)
+        plt.imshow(im)
+        plt.title('stray_norm, mean=' + hbt.trunc(np.mean(im),3))
+
+        im = hbt.remove_extrema(im)
+        plt.subplot(3,3,5)
+        plt.imshow(im)
+        plt.title('re(stray_norm), mean=' + hbt.trunc(np.mean(im),3))
+
+        im = hbt.remove_sfit(im,5)
+        plt.subplot(3,3,8)
+        plt.imshow(im)
+        plt.title('re(stray_norm) - s5(stray_norm), mean=' + hbt.trunc(np.mean(im),3))
+#
+        
+        im = image_proc - stray_norm
+        plt.subplot(3,3,3)
+        plt.imshow(im)
+        plt.title('raw - stray, mean=' + hbt.trunc(np.mean(im),3))
+
+        im = hbt.remove_extrema(im)
+        plt.subplot(3,3,6)
+        plt.imshow(im)
+        plt.title('re(raw-stray), mean=' + hbt.trunc(np.mean(im),3))
+
+        im = hbt.remove_sfit(im,5)
+        plt.subplot(3,3,9)
+        plt.imshow(im)
+        plt.title('re(raw-stray) - s5(raw-stray), med ' + hbt.trunc(np.median(im),3))
         
         plt.show()
 
