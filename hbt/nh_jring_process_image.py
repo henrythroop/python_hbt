@@ -220,7 +220,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         plt.imshow(stretch(hbt.remove_sfit(im,5)))
         plt.title('image_raw - s5(imag_raw), mean=' + hbt.trunc(np.mean(im),3))
         
-#       Column 2: Stray only
+#       Column 2: Stray only. This will throw an error if we haven't read in a stray light file -- just ignore it.
 
 #        im = stray
  
