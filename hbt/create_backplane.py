@@ -14,8 +14,6 @@ import wcsaxes
 import hbt
 from   astropy.wcs import WCS
 
-
-#from pylab import *
 # Create backplanes based on an image number. This is a stand-alone function, not part of the method
 
 # SPICE is required here, but it is *not* initialized. It is assumed that that has already been done.
@@ -55,6 +53,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 #    file_tm = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
     
     #    arr = get_image_nh(file)
+#    file = '/Users/throop/Data/NH_MVIC_Ring/mvic_d305_sum_mos_v1-new-image_fixed.fits'
     
     w = WCS(file)
         
@@ -73,10 +72,10 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     hdulist = fits.open(file)
     
     et      = float(hdulist[0].header['SPCSCET']) # ET of mid-exposure, on s/c
-    exptime = float(hdulist[0].header['EXPOSURE']) / 1000 # Convert to seconds
-    utc     = hdulist[0].header['SPCUTCID'] # UTC of mid-exposure, on s/c
+#    exptime = float(hdulist[0].header['EXPOSURE']) / 1000 # Convert to seconds
+#    utc     = hdulist[0].header['SPCUTCID'] # UTC of mid-exposure, on s/c
     
-    n_dx    = int(hdulist[0].header['NAXIS1']) # Pixel dimensions of image
+    n_dx    = int(hdulist[0].header['NAXIS1']) # Pixel dimensions of image. Both LORRI and MVIC have this.
     n_dy    = int(hdulist[0].header['NAXIS2'])
     
 #    print 'ET = ' + repr(et)
