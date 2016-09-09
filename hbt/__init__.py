@@ -337,7 +337,7 @@ def trunc(f, n):
     i, p, d = s.partition('.')
     return '.'.join([i, (d+'0'*n)[:n]])
 
-def imsize((size)):
+def figsize((size)): # Was imsize(), but I think this is better
     """
     Set plot size. Same as using rc, but easier syntax.
     """
