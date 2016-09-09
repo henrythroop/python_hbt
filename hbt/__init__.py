@@ -40,6 +40,7 @@ from nh_get_straylight_median       import nh_get_straylight_median
 from nh_create_straylight_median_filename import nh_create_straylight_median_filename
 from nh_jring_process_image         import nh_jring_process_image
 from create_backplane               import create_backplane
+from calc_offset_points             import calc_offset_points
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
@@ -358,9 +359,10 @@ def correct_stellab(radec, vel):
     return radec_abcorr
     
 def image_from_list_points(points, shape, diam_kernel):  # Shape is (num_rows, num_cols)
+                                                
     """
     Given an ordered list of xy points, and an output size, creates an image.
-    Useful for creating synthetic star fields.
+    Useful for creating synthetic star fields. Each point is [row, column] = [y, x]
     """
     
     kernel = hbt.dist_center(diam_kernel, invert=True, normalize=True)
@@ -566,3 +568,20 @@ def is_number(s):
     except ValueError:
         return False
 
+##########
+# Find stars in an image
+##########
+        
+def find_stars(im):
+    """Locate stars in an image array, using DAOphot. Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
+    Each star has position [row, column] = [y, x]."""
+         
+    mean, median, std = sigma_clipped_stats(im, sigma=3.0, iters=5)
+    sources = daofind(im - median, fwhm=3.0, threshold=5.*std)
+    x_phot = sources['xcentroid']
+    y_phot = sources['ycentroid']
+        
+    points_phot = np.transpose((y_phot, x_phot)) # Create an array N x 2
+
+    return points_phot
+    
