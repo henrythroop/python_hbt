@@ -97,12 +97,12 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
     plane_jup = cspice.nvp2pl([0,0,1], [0,0,0])    # nvp2pl: Normal Vec + Point to Plane
     
-    lon_arr = np.zeros((n_dx, n_dy))        # Longitude of pixel (defined with recpgr)
-    lat_arr = np.zeros((n_dx, n_dy))        # Latitude of pixel (which is zero, so meaningless)
-    radius_arr = np.zeros((n_dx, n_dy))     # Equatorial radius
-    ra_arr = np.zeros((n_dx, n_dy))         # RA of pixel
-    dec_arr = np.zeros((n_dx, n_dy))        # Dec of pixel
-    phase_arr = np.zeros((n_dx, n_dy))      # Phase angle    
+    lon_arr    = np.zeros((n_dy, n_dx))     # Longitude of pixel (defined with recpgr)
+    lat_arr    = np.zeros((n_dy, n_dx))     # Latitude of pixel (which is zero, so meaningless)
+    radius_arr = np.zeros((n_dy, n_dx))     # Equatorial radius
+    ra_arr     = np.zeros((n_dy, n_dx))     # RA of pixel
+    dec_arr    = np.zeros((n_dy, n_dx))     # Dec of pixel
+    phase_arr  = np.zeros((n_dy, n_dx))     # Phase angle    
     
     # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
             
@@ -131,16 +131,18 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
 #    rj = 71492  # Jupiter radius, in km. Just for q&d conversions
     
-    i_y_2d = np.outer(range(n_dy), 1 + np.zeros(n_dy))
-    i_x_2d = np.transpose(i_y_2d)
+    xs = range(n_dx)
+    ys = range(n_dy)
+    (i_x_2d, i_y_2d) = np.meshgrid(xs, ys)  # 5000 x 700: same shape as input MVIC image
+    
     (ra_2d, dec_2d) = w.wcs_pix2world(i_x_2d, i_y_2d, False)
     
-    for i_x in range(n_dx):
-        for i_y in range(n_dy):
+    for i_x in xs:
+        for i_y in ys:
     
             # Look up the vector direction of this single pixel, which is defined by an RA and Dec
     
-            vec_pix_j2k =  cspice.radrec(1., ra_2d[i_x, i_y]*hbt.d2r, dec_2d[i_x, i_y]*hbt.d2r) # Vector thru pixel to ring, in J2K [args ok]
+            vec_pix_j2k =  cspice.radrec(1., ra_2d[i_y, i_x]*hbt.d2r, dec_2d[i_y, i_x]*hbt.d2r) # Vector thru pixel to ring, in J2K [args ok]
             
             # Convert vector along the pixel direction, from J2K into IAU_JUP frame
       
@@ -161,14 +163,14 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
             lon, lat, alt = cspice.recpgr(name_target, pt_intersect_jup, r_e, flat)
             alt, lon, lat = cspice.reclat(pt_intersect_jup)
             
-            radius_arr[i_x, i_y] = alt
-            lon_arr[i_x, i_y] = lon
-            phase_arr[i_x, i_y] = angle_phase
+            radius_arr[i_y, i_x] = alt
+            lon_arr[i_y, i_x] = lon
+            phase_arr[i_y, i_x] = angle_phase
             
     # Assemble the results
 
-    backplane = {'RA'        : ra_2d * hbt.d2r, # return radians
-                 'Dec'       : dec_2d * hbt.d2r, # return radians
+    backplane = {'RA'           : ra_2d * hbt.d2r, # return radians
+                 'Dec'          : dec_2d * hbt.d2r, # return radians
                  'Radius_eq'    : radius_arr,
                  'Longitude_eq' : lon_arr, 
                  'Phase'        : phase_arr}
