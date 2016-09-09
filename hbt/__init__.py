@@ -357,21 +357,21 @@ def correct_stellab(radec, vel):
 
     return radec_abcorr
     
-def image_from_list_points(points, shape, diam_kernel):
+def image_from_list_points(points, shape, diam_kernel):  # Shape is (num_rows, num_cols)
     """
     Given an ordered list of xy points, and an output size, creates an image.
     Useful for creating synthetic star fields.
     """
     
-    kernel = dist_center(diam_kernel, invert=True, normalize=True)
+    kernel = hbt.dist_center(diam_kernel, invert=True, normalize=True)
     arr = np.zeros(shape)
-    dx = shape[0]
-    dy = shape[1]
-    x = points[:,0]
-    y = points[:,1]
+    dx = shape[1]
+    dy = shape[0]
+    x = points[:,1]
+    y = points[:,0]
     for i in range(len(x)):
-        xi = points[i,0]
-        yi = points[i,1]
+        xi = points[i,1]
+        yi = points[i,0]
         if (xi >= 0) & (xi + diam_kernel < dx) & (yi >= 0) & (yi + diam_kernel < dy):
             arr[yi:yi+diam_kernel, xi:xi+diam_kernel] = kernel
      
