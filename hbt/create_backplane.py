@@ -55,7 +55,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     #    arr = get_image_nh(file)
 #    file = '/Users/throop/Data/NH_MVIC_Ring/mvic_d305_sum_mos_v1-new-image_fixed.fits'
     
-    w = WCS(file)
+    w = WCS(file) # Warning: I have gotten a segfault here before if passing a FITS file with no WCS info.
         
 #    print 'crval[i] = ' + repr(w.wcs.crval)
     
