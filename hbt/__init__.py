@@ -28,6 +28,9 @@ import hbt
 d2r = np.pi/180.
 r2d = 1./d2r
 
+r2as = 60. * 60. / d2r # Radians to arcsec
+as2r = 1. / r2as       # Arcsec to radians
+
 # Now import additional functions into this module
 # These are a part of this module now, and accessible via hbt.<function>
 
