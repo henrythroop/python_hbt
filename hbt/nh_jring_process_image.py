@@ -192,7 +192,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 # Plot to Python console, not the GUI.
 
 # Test stretching here
-# We use astropy's stretching here, rather than matplotlib's norm= keyword. The baasic idea of both of these 
+# We use astropy's stretching here, rather than matplotlib's norm= keyword. The basic idea of both of these 
 # is the same, but I know that astropy has a percentile stretch available.
 
     DO_DIAGNOSTIC = True
@@ -218,7 +218,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         im = hbt.remove_sfit(im,5)
         plt.subplot(1,3,1) # vertical, horizontal, index
         plt.imshow(stretch(hbt.remove_sfit(im,5)))
-        plt.title('image_raw - s5(imag_raw), mean=' + hbt.trunc(np.mean(im),3))
+        plt.title('image_raw - sfit(imag_raw,5), mean=' + hbt.trunc(np.mean(im),3))
         
 #       Column 2: Stray only. This will throw an error if we haven't read in a stray light file -- just ignore it.
 
@@ -233,9 +233,12 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 #        plt.title('stray_norm, mean=' + hbt.trunc(np.mean(im),3))
         
         plt.subplot(1,3,2)
-        plt.imshow(stretch(hbt.remove_sfit(image_stray,5))) # This won't do much since it is already applied
+        try:
+            plt.imshow(stretch(hbt.remove_sfit(image_stray,5))) # This won't do much since it is already applied
+        except UnboundLocalError:
+            print "No stray light to subtract"
         
-        plt.title('stray_norm - s5(stray_norm), mean=' + hbt.trunc(np.mean(im),3))
+        plt.title('stray_norm - sfit(stray_norm,5), mean=' + hbt.trunc(np.mean(im),3))
 
         # Column 3: raw - stray
         
@@ -251,10 +254,15 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 #        plt.imshow(stretch(im))
 #        plt.title('raw-s5(raw) - stray, mean=' + hbt.trunc(np.mean(im),3))
 
-        im = hbt.remove_sfit(image_raw - image_stray,5)
         plt.subplot(1,3,3)
-        plt.imshow(stretch(im))
-        plt.title('s5(raw-stray), med ' + hbt.trunc(np.median(im),3))
+
+        try:
+            im = hbt.remove_sfit(image_raw - image_stray,5)
+            plt.imshow(stretch(im))
+        except UnboundLocalError:  
+            print "No stray light to subtract"
+        
+        plt.title('sfit(raw-stray,5), med ' + hbt.trunc(np.median(im),3))
         
         plt.show()
 
