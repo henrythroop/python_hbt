@@ -578,7 +578,10 @@ def is_number(s):
 def find_stars(im):
     """Locate stars in an image array, using DAOphot. Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
     Each star has position [row, column] = [y, x]."""
-         
+
+    from   astropy.stats import sigma_clipped_stats
+    from   photutils import daofind
+
     mean, median, std = sigma_clipped_stats(im, sigma=3.0, iters=5)
     sources = daofind(im - median, fwhm=3.0, threshold=5.*std)
     x_phot = sources['xcentroid']

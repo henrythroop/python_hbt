@@ -11,6 +11,10 @@ Created on Fri Sep  9 15:52:17 2016
 ##########
 
 def calc_offset_points(points_1, points_2, shape, plot=False):
+    import hbt
+    import matplotlib.pyplot as plt
+    import imreg_dft as ird
+
     "Calculate the offset between a pair of ordered points -- e.g., an xy list"
     "of star positions, and and xy list of model postns."
     "Returned offset is integer pixels as tuple (dy, dx)."
