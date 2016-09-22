@@ -170,15 +170,24 @@ def ln01(arr, offset=0.01):
     Scale an array logarithmically. 
     Use an offset and ensure that values are positive before scaling.
     """
+    ## I think it is better to use astropy's scaling than this!
     
     return np.log(arr - np.amin(arr) + offset)
 
-def scale_image(min, max, polynomial, percentile=False):
+def y2bin(val, bins, vals):
     """
-    Applies a pre-calculated scaling to an array. NOT WORKING.
+    Returns the integer bin number corresponding to the closest y value to a given y.  
+    bins: monotonic x value
+    y   : monotonic y values
+    val : y value for which we want to look up the bin number. Can be scalar or vector.
+    
+    Result: Same as input. Converted to an integer.
     """
-    pass
-
+    
+    # This routine is a parallel to the one I had in IDL: sx2bin2 ('spline, x-to-bin, v2'). That 
+    # used splines only because it had a good interface, not because it needed them computationally.
+    
+    return (np.rint(np.interp(val, vals, bins))).astype(int)
 
 def is_array(arg):
     """
