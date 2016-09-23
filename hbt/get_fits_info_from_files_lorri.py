@@ -57,6 +57,7 @@ def get_fits_info_from_files_lorri(path,
     fits_spctscz = [] # dz
     fits_spctcb  = [] # target name
     fits_spctnaz = [] # Pole angle between target and instrument (i.e., boresight rotation angle)
+    fits_rsolar  = [] # (DN/s)/(erg/cm^2/s/Ang/sr), Solar spectrum. Use for resolved sources.
 
     if (DO_TRUNCATED):
         files = files[0:NUM_TRUNC]
@@ -93,8 +94,9 @@ def get_fits_info_from_files_lorri(path,
         fits_spctscy.append(header['SPCTSCY'])
         fits_spctscz.append(header['SPCTSCZ'])    
         fits_spctnaz.append(header['SPCTNAZ'])    
-        fits_sformat.append(header['SFORMAT'])    
-           
+        fits_sformat.append(header['SFORMAT'])
+        fits_rsolar.append(header['RSOLAR'])   # NB: This will be in the level-2 FITS, but not level 1
+                                             
         hdulist.close() # Close the FITS file
 
 #print object
@@ -128,6 +130,7 @@ def get_fits_info_from_files_lorri(path,
     rotation   = np.array(fits_spctnaz)
     sformat    = np.array(fits_sformat)
     rotation   = np.rint(rotation).astype(int)  # Turn rotation into integer. I only want this to be 0, 90, 180, 270... 
+    rsolar     = np.array(rsolar)
     files_short = np.zeros(num_obs, dtype = 'S30')
 
 # Now do some geometric calculations and create new values for a few fields
@@ -180,12 +183,12 @@ def get_fits_info_from_files_lorri(path,
     t = Table([i_obs, met, utc, et, jd, files, files_short, naxis1, naxis2, target, instrument, 
                dx_targ, dy_targ, dz_targ, desc, 
                met0, met1, exptime, phase, subsclat, subsclon, naxis1, 
-               naxis2, rotation, sformat], 
+               naxis2, rotation, sformat, rsolar], 
                
                names = ('#', 'MET', 'UTC', 'ET', 'JD', 'Filename', 'Shortname', 'N1', 'N2', 'Target', 'Inst', 
                         'dx', 'dy', 'dz', 'Desc',
                         'MET Start', 'MET End', 'Exptime', 'Phase', 'Sub-SC Lat', 'Sub-SC Lon', 'dx_pix', 
-                        'dy_pix', 'Rotation', 'Format'))
+                        'dy_pix', 'Rotation', 'Format', 'RSolar'))
     
 # Define units for a few of the columns
                         

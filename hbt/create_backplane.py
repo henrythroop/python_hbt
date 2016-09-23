@@ -136,7 +136,15 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     (i_x_2d, i_y_2d) = np.meshgrid(xs, ys)  # 5000 x 700: same shape as input MVIC image
     
     (ra_2d, dec_2d) = w.wcs_pix2world(i_x_2d, i_y_2d, False)
+
+# Now compute position for Adrastea, Metis, Thebe
+
+    vec_metis, = cspice.spkez('Metis', et, frame, 'LT', 'Metis')
+    (ra_metis, dec_metis, junk) = cspice.recrad(vec_metis)
+
+    stop
     
+    vec_thebe, = c 
     for i_x in xs:
         for i_y in ys:
     
