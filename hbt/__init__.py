@@ -189,6 +189,14 @@ def y2bin(val, bins, vals):
     
     return (np.rint(np.interp(val, vals, bins))).astype(int)
 
+def x2bin(val, bins):
+    """
+    Returns the index of a bin, given its value.
+    Note that I have x2bin and y2bin, and they are different.
+    """
+    
+    return hbt.y2bin(val, range(np.size(bins)), bins)
+
 def is_array(arg):
     """
     Return a boolean about whether the passed value is an array, or a scalar.
