@@ -48,12 +48,19 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     "Returns a set of backplanes for a given image. The image must have WCS coords available in its header."
     "Backplanes include navigation info for every pixel, including RA, Dec, Eq Lon, Phase, etc."
 
-#    file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034609323_0x630_sci_1.fit'
-       
-#    file_tm = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
+    DO_TEST = False
+    
+    if DO_TEST:
+        
+        file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'       
+        file_tm = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
+        cspice.furnsh(file_tm)
+        name_target = 'Jupiter'
+        frame = 'IAU_JUPITER'
+        name_observer = 'New Horizons'
     
     #    arr = get_image_nh(file)
-#    file = '/Users/throop/Data/NH_MVIC_Ring/mvic_d305_sum_mos_v1-new-image_fixed.fits'
+#    file = '/Users/throop/Data/'
     
     w = WCS(file) # Warning: I have gotten a segfault here before if passing a FITS file with no WCS info.
         
@@ -65,7 +72,6 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
     # Start up SPICE
     
-#    cspice.furnsh(file_tm)
 
     # Print some values. Not sure if this will work now that I have converted it to a string, not a dictionary...
     
@@ -104,6 +110,11 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     dec_arr    = np.zeros((n_dy, n_dx))     # Dec of pixel
     phase_arr  = np.zeros((n_dy, n_dx))     # Phase angle    
     
+    ang_metis_arr = np.zeros((n_dy, n_dx))   # Angle from pixel to body, in radians
+    ang_adras_arr = ang_metis_arr.copy()
+    ang_thebe_arr = ang_metis_arr.copy()
+    ang_amal_arr = ang_metis_arr.copy()
+    
     # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
             
     mx_j2k_jup = cspice.pxform('J2000', frame, et) # from, to, et
@@ -139,12 +150,18 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 
 # Now compute position for Adrastea, Metis, Thebe
 
-    vec_metis, = cspice.spkez('Metis', et, frame, 'LT', 'Metis')
-    (ra_metis, dec_metis, junk) = cspice.recrad(vec_metis)
-
-    stop
+    vec_metis_j2k,lt = cspice.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
+    vec_adras_j2k,lt = cspice.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
+    vec_thebe_j2k,lt = cspice.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
+    vec_amal_j2k,lt  = cspice.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
     
-    vec_thebe, = c 
+    vec_metis_j2k = np.array(vec_metis_j2k[0:3])
+    vec_thebe_j2k = np.array(vec_thebe_j2k[0:3])
+    vec_adras_j2k = np.array(vec_adras_j2k[0:3])
+    vec_amal_j2k  = np.array(vec_amal_j2k[0:3])
+    
+#    stop
+    
     for i_x in xs:
         for i_y in ys:
     
@@ -165,6 +182,14 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
             vec_ring_sun_jup = -pt_intersect_jup + vec_jup_sun_jup
             
             angle_phase = cspice.vsep(-vec_pix_jup, vec_ring_sun_jup)
+
+            # Now calc angular separation between this pixel, and the satellites in our list
+            # Since these are huge arrays, cast into floats to make sure they are not doubles.
+            
+            ang_thebe_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_thebe_j2k)
+            ang_adras_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_adras_j2k)
+            ang_metis_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_metis_j2k)
+            ang_amal_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_amal_j2k)
             
             # Save various derived quantities
             
@@ -177,11 +202,15 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
             
     # Assemble the results
 
-    backplane = {'RA'           : ra_2d * hbt.d2r, # return radians
-                 'Dec'          : dec_2d * hbt.d2r, # return radians
-                 'Radius_eq'    : radius_arr,
-                 'Longitude_eq' : lon_arr, 
-                 'Phase'        : phase_arr}
+    backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians
+                 'Dec'          : (dec_2d * hbt.d2r).astype(float), # return radians
+                 'Radius_eq'    : radius_arr.astype(float),
+                 'Longitude_eq' : lon_arr.astype(float), 
+                 'Phase'        : phase_arr.astype(float),
+                 'Ang_Thebe'    : ang_thebe_arr.astype(float),   # Angle to Thebe, in radians
+                 'Ang_Metis'    : ang_metis_arr.astype(float),
+                 'Ang_Amalthea' : ang_amal_arr.astype(float),
+                 'Ang_Adrastea' : ang_adras_arr.astype(float)}
     
     # And return them
                  
