@@ -48,6 +48,8 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     "Returns a set of backplanes for a given image. The image must have WCS coords available in its header."
     "Backplanes include navigation info for every pixel, including RA, Dec, Eq Lon, Phase, etc."
 
+    fov_lorri = 0.3 * hbt.d2r
+    
     DO_TEST = False
     
     if DO_TEST:
@@ -111,9 +113,9 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     phase_arr  = np.zeros((n_dy, n_dx))     # Phase angle    
     
     ang_metis_arr = np.zeros((n_dy, n_dx))   # Angle from pixel to body, in radians
-    ang_adras_arr = ang_metis_arr.copy()
+    ang_adrastea_arr = ang_metis_arr.copy()
     ang_thebe_arr = ang_metis_arr.copy()
-    ang_amal_arr = ang_metis_arr.copy()
+    ang_amalthea_arr = ang_metis_arr.copy()
     
     # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
             
@@ -151,14 +153,14 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 # Now compute position for Adrastea, Metis, Thebe
 
     vec_metis_j2k,lt = cspice.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
-    vec_adras_j2k,lt = cspice.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
+    vec_adrastea_j2k,lt = cspice.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
     vec_thebe_j2k,lt = cspice.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
-    vec_amal_j2k,lt  = cspice.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
+    vec_amalthea_j2k,lt  = cspice.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
     
     vec_metis_j2k = np.array(vec_metis_j2k[0:3])
     vec_thebe_j2k = np.array(vec_thebe_j2k[0:3])
-    vec_adras_j2k = np.array(vec_adras_j2k[0:3])
-    vec_amal_j2k  = np.array(vec_amal_j2k[0:3])
+    vec_adrastea_j2k = np.array(vec_adrastea_j2k[0:3])
+    vec_amalthea_j2k  = np.array(vec_amalthea_j2k[0:3])
     
 #    stop
     
@@ -187,9 +189,9 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
             # Since these are huge arrays, cast into floats to make sure they are not doubles.
             
             ang_thebe_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_thebe_j2k)
-            ang_adras_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_adras_j2k)
+            ang_adrastea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_adrastea_j2k)
             ang_metis_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_metis_j2k)
-            ang_amal_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_amal_j2k)
+            ang_amalthea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_amalthea_j2k)
             
             # Save various derived quantities
             
@@ -209,9 +211,31 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
                  'Phase'        : phase_arr.astype(float),
                  'Ang_Thebe'    : ang_thebe_arr.astype(float),   # Angle to Thebe, in radians
                  'Ang_Metis'    : ang_metis_arr.astype(float),
-                 'Ang_Amalthea' : ang_amal_arr.astype(float),
-                 'Ang_Adrastea' : ang_adras_arr.astype(float)}
+                 'Ang_Amalthea' : ang_amalthea_arr.astype(float),
+                 'Ang_Adrastea' : ang_adrastea_arr.astype(float)}
+
+    # If distance to any of the small sats is < 0.3 deg, then delete that entry in the dictionary
     
+    if (np.amin(ang_thebe_arr) > fov_lorri):
+        del backplane['Ang_Thebe']
+    else:
+        print "Keeping Thebe".format(np.min(ang_thebe_arr) * hbt.r2d)
+
+    if (np.amin(ang_metis_arr) > fov_lorri):
+        del backplane['Ang_Metis']
+    else:
+        print "Keeping Metis, min = {} deg".format(np.min(ang_metis_arr) * hbt.r2d)
+        
+    if (np.amin(ang_amalthea_arr) > fov_lorri):
+        del backplane['Ang_Amalthea']
+    else:
+        print "Keeping Amalthea, min = {} deg".format(np.amin(ang_amalthea_arr) * hbt.r2d)
+
+    if (np.amin(ang_adrastea_arr) > fov_lorri):
+        del backplane['Ang_Adrastea']
+    else:
+        print "Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d)
+        
     # And return them
                  
     return backplane
