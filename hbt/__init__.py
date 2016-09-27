@@ -238,7 +238,7 @@ def mm(arr):
     return (np.min(arr), np.max(arr))
     
 def get_pos_bodies(et, name_bodies, units='radec', wcs=False, 
-                     frame='J2000', abcorr='LT', name_observer='New Horizons'):
+                     frame='J2000', abcorr='LT+S', name_observer='New Horizons'):
     
     """
     Get an array of points for a list of bodies, seen from an observer at the given ET.
@@ -255,17 +255,18 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         arr = np.array([name_bodies])
     else:
         arr = name_bodies
-#    quit   
-#    i = 0     
+    
     for i,name_body in enumerate(arr):
       st,ltime = cspice.spkezr(name_body, et, frame, abcorr, name_observer)    
       radius,ra[i],dec[i] = cspice.recrad(st[0:3])
     
     if (units == 'pixels'):
         x, y = wcs.wcs_world2pix(ra*r2d, dec*r2d, 0) # Convert to pixels
-        return x, y
         
-    return ra, dec # Return in radians
+        return x, y
+
+    else:    
+      return ra, dec # Return in radians
       
 
 ##########
