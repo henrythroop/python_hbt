@@ -50,6 +50,8 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 
     fov_lorri = 0.3 * hbt.d2r
     
+    DO_SATELLITES = False  # Flag: Do we create an additional backplane for each of Jupiter's small sats?
+    
     DO_TEST = False
     
     if DO_TEST:
@@ -112,9 +114,9 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     dec_arr    = np.zeros((n_dy, n_dx))     # Dec of pixel
     phase_arr  = np.zeros((n_dy, n_dx))     # Phase angle    
     
-    ang_metis_arr = np.zeros((n_dy, n_dx))   # Angle from pixel to body, in radians
+    ang_metis_arr    = np.zeros((n_dy, n_dx))   # Angle from pixel to body, in radians
     ang_adrastea_arr = ang_metis_arr.copy()
-    ang_thebe_arr = ang_metis_arr.copy()
+    ang_thebe_arr    = ang_metis_arr.copy()
     ang_amalthea_arr = ang_metis_arr.copy()
     
     # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
@@ -152,15 +154,15 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 
 # Now compute position for Adrastea, Metis, Thebe
 
-    vec_metis_j2k,lt = cspice.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
-    vec_adrastea_j2k,lt = cspice.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
-    vec_thebe_j2k,lt = cspice.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
+    vec_metis_j2k,lt     = cspice.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
+    vec_adrastea_j2k,lt  = cspice.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
+    vec_thebe_j2k,lt     = cspice.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
     vec_amalthea_j2k,lt  = cspice.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
     
-    vec_metis_j2k = np.array(vec_metis_j2k[0:3])
-    vec_thebe_j2k = np.array(vec_thebe_j2k[0:3])
-    vec_adrastea_j2k = np.array(vec_adrastea_j2k[0:3])
-    vec_amalthea_j2k  = np.array(vec_amalthea_j2k[0:3])
+    vec_metis_j2k        = np.array(vec_metis_j2k[0:3])
+    vec_thebe_j2k        = np.array(vec_thebe_j2k[0:3])
+    vec_adrastea_j2k     = np.array(vec_adrastea_j2k[0:3])
+    vec_amalthea_j2k     = np.array(vec_amalthea_j2k[0:3])
     
 #    stop
     
@@ -188,11 +190,12 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
             # Now calc angular separation between this pixel, and the satellites in our list
             # Since these are huge arrays, cast into floats to make sure they are not doubles.
             
-            ang_thebe_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_thebe_j2k)
-            ang_adrastea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_adrastea_j2k)
-            ang_metis_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_metis_j2k)
-            ang_amalthea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_amalthea_j2k)
-            
+            if DO_SATELLITES:
+                ang_thebe_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_thebe_j2k)
+                ang_adrastea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_adrastea_j2k)
+                ang_metis_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_metis_j2k)
+                ang_amalthea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_amalthea_j2k)
+                
             # Save various derived quantities
             
             lon, lat, alt = cspice.recpgr(name_target, pt_intersect_jup, r_e, flat)
@@ -204,7 +207,8 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
             
     # Assemble the results
 
-    backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians
+    if DO_SATELLITES:
+        backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians
                  'Dec'          : (dec_2d * hbt.d2r).astype(float), # return radians
                  'Radius_eq'    : radius_arr.astype(float),
                  'Longitude_eq' : lon_arr.astype(float), 
@@ -216,25 +220,33 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 
     # If distance to any of the small sats is < 0.3 deg, then delete that entry in the dictionary
     
-    if (np.amin(ang_thebe_arr) > fov_lorri):
-        del backplane['Ang_Thebe']
-    else:
-        print "Keeping Thebe".format(np.min(ang_thebe_arr) * hbt.r2d)
+        if (np.amin(ang_thebe_arr) > fov_lorri):
+            del backplane['Ang_Thebe']
+        else:
+            print "Keeping Thebe".format(np.min(ang_thebe_arr) * hbt.r2d)
+    
+        if (np.amin(ang_metis_arr) > fov_lorri):
+            del backplane['Ang_Metis']
+        else:
+            print "Keeping Metis, min = {} deg".format(np.min(ang_metis_arr) * hbt.r2d)
+            
+        if (np.amin(ang_amalthea_arr) > fov_lorri):
+            del backplane['Ang_Amalthea']
+        else:
+            print "Keeping Amalthea, min = {} deg".format(np.amin(ang_amalthea_arr) * hbt.r2d)
+    
+        if (np.amin(ang_adrastea_arr) > fov_lorri):
+            del backplane['Ang_Adrastea']
+        else:
+            print "Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d)
 
-    if (np.amin(ang_metis_arr) > fov_lorri):
-        del backplane['Ang_Metis']
     else:
-        print "Keeping Metis, min = {} deg".format(np.min(ang_metis_arr) * hbt.r2d)
-        
-    if (np.amin(ang_amalthea_arr) > fov_lorri):
-        del backplane['Ang_Amalthea']
-    else:
-        print "Keeping Amalthea, min = {} deg".format(np.amin(ang_amalthea_arr) * hbt.r2d)
+        backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians
+                 'Dec'          : (dec_2d * hbt.d2r).astype(float), # return radians
+                 'Radius_eq'    : radius_arr.astype(float),
+                 'Longitude_eq' : lon_arr.astype(float), 
+                 'Phase'        : phase_arr.astype(float)}
 
-    if (np.amin(ang_adrastea_arr) > fov_lorri):
-        del backplane['Ang_Adrastea']
-    else:
-        print "Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d)
         
     # And return them
                  
