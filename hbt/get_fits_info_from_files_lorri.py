@@ -11,7 +11,9 @@ def get_fits_info_from_files_lorri(path,
     import math
 
 # For testing:
-# file = '/Users/throop/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0035020322_0x630_sci_1.fit'
+# file = '/Users/throop/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0035020322_0x630_sci_1.fit' # 119 deg phase as per gv
+# file = '/Users/throop/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034599122_0x630_sci_1.fit' # 7 deg phase, inbound
+
 # t = hbt.get_fits_info_from_files_lorri(file)
 
 # Flags: Do we do all of the files? Or just a truncated subset of them, for testing purposes?
@@ -27,7 +29,7 @@ def get_fits_info_from_files_lorri(path,
 
     cspice.furnsh(file_tm)
 
-# *** If path ends with .fit or .fits, then it is a file not a path. Don't expand it, but read it as a file.
+# *** If path ends with .fit or .fits, then it is a file not a path. Don't expand it, but read it as a single file.
 
     if (('.fits' in path) or ('.fit' in path)):
         file_list = path
@@ -188,6 +190,7 @@ def get_fits_info_from_files_lorri(path,
       (st_sun_jup, ltime) = cspice.spkezr('Sun', et[i], frame, abcorr, 'Jupiter')
       ang_scat = cspice.vsep(st_sun_jup[0:3], st_jup_sc[0:3])
       phase[i] = math.pi - ang_scat
+#      phase[i] = ang_scat
       files_short[i] = files[i].split('/')[-1]
 # Calc sub-sc lon/lat
       
