@@ -56,4 +56,4 @@ def calc_offset_points(points_1, points_2, shape, plot=False):
         
         plt.show()
         
-    return t0
+    return (dy, dx)

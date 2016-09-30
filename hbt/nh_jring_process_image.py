@@ -74,23 +74,27 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         image_bg = hbt.read_lorri(file_prev, frac_clip = 1.0, bg_method = 'None', autozoom=True)
         image_fg = image_raw
         image = image_fg - image_bg
+        image_processed = image
 
     if (method == 'Next'):
         file_next = t_group['Filename'][index_image+1]
         image_bg = hbt.read_lorri(file_next, frac_clip = 1.0, bg_method = 'None', autozoom=True)
         image_fg = image_raw
         image = image_fg - image_bg
+        image_processed = image
         
     if (method == 'Median'): # XXX not working yet
         file_prev = t_group['Filename'][index_image-1]
         image_bg = hbt.read_lorri(file_prev, frac_clip = 1.0, bg_method = 'None')
         image_fg = image_raw
         image = image_fg - image_bg
+        image_processed = image
 
     if (method == 'Polynomial'):
         
-     power = vars
-     image = image_raw - hbt.sfit(image_raw, power) # Look up the exponenent and apply it 
+        power = vars
+        image = image_raw - hbt.sfit(image_raw, power) # Look up the exponenent and apply it 
+        image_processed = image
                                             
     if (method == 'Grp Num Frac Pow'):  # Specify to subtract a specified group#/image#, mult factor, and sfit power.
                                         # I thought this would be useful, but it turns out we usually need to subtract
