@@ -8,6 +8,11 @@ def get_fits_info_from_files_lorri(path,
     from astropy.io import fits
     from astropy.table import Table
     import astropy.table
+    import math
+
+# For testing:
+# file = '/Users/throop/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0035020322_0x630_sci_1.fit'
+# t = hbt.get_fits_info_from_files_lorri(file)
 
 # Flags: Do we do all of the files? Or just a truncated subset of them, for testing purposes?
     
@@ -20,18 +25,27 @@ def get_fits_info_from_files_lorri(path,
     d2r = np.pi /180.
     r2d = 1. / d2r
 
-    dir_data = path          
-#dir_data = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all'
-# Start up SPICE
-
     cspice.furnsh(file_tm)
 
-# Get the full list of files
+# *** If path ends with .fit or .fits, then it is a file not a path. Don't expand it, but read it as a file.
 
-    file_list = glob.glob(dir_data + '/*fit')
-    files = np.array(file_list)
-    indices = np.argsort(file_list)
-    files = files[indices]
+    if (('.fits' in path) or ('.fit' in path)):
+        file_list = path
+        files = [file_list]
+
+    else:
+        
+        dir_data = path          
+    #dir_data = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all'
+    # Start up SPICE
+    
+    
+    # Get the full list of files
+    
+        file_list = glob.glob(dir_data + '/*fit')
+        files = np.array(file_list)
+        indices = np.argsort(file_list)
+        files = files[indices]
 
 # Read the JD from each file. Then sort the files based on JD.
 
@@ -130,7 +144,7 @@ def get_fits_info_from_files_lorri(path,
     rotation   = np.array(fits_spctnaz)
     sformat    = np.array(fits_sformat)
     rotation   = np.rint(rotation).astype(int)  # Turn rotation into integer. I only want this to be 0, 90, 180, 270... 
-    rsolar     = np.array(rsolar)
+    rsolar     = np.array(fits_rsolar)
     files_short = np.zeros(num_obs, dtype = 'S30')
 
 # Now do some geometric calculations and create new values for a few fields
@@ -172,7 +186,8 @@ def get_fits_info_from_files_lorri(path,
     
       (st_jup_sc, ltime) = cspice.spkezr('Jupiter', et[i], frame, abcorr, 'New Horizons') #obs, targ
       (st_sun_jup, ltime) = cspice.spkezr('Sun', et[i], frame, abcorr, 'Jupiter')
-      phase[i] = cspice.vsep(st_sun_jup[0:3], st_jup_sc[0:3])
+      ang_scat = cspice.vsep(st_sun_jup[0:3], st_jup_sc[0:3])
+      phase[i] = math.pi - ang_scat
       files_short[i] = files[i].split('/')[-1]
 # Calc sub-sc lon/lat
       
