@@ -608,4 +608,27 @@ def find_stars(im):
     points_phot = np.transpose((y_phot, x_phot)) # Create an array N x 2
 
     return points_phot
+
+
+#==============================================================================
+# Do a simple cosmic ray rejection
+#==============================================================================
+
+def decosmic(im, sigma=3):
+    """ Return a cleaned version of an image. Single pixels well above the sigma*stdev
+        are replaced with the image median value.
+    """
+# NB: I should offer to return a mask. And I should offer to replace with something other than the median.
+# Logic here is roughly based on https://python4astronomers.github.io/core/numpy_scipy.html
+
+    import scipy.signal
+        
+    med = np.nanmedian(im)
+    std = np.nanstd(im)
+    im_sm = scipy.signal.medfilt(im, 5)  # Smooth the image
+    is_bad = (im - im_sm) > (std*sigma)  # Flag pixels which drop in value a lot when smoothed
+    im_fix = im.copy()                   # Create output array
+    im_fix[is_bad] = med                 # Replace pixels
+    
+    return im_fix
     
