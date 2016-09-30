@@ -25,8 +25,7 @@ def calc_offset_points(points_1, points_2, shape, plot=False):
     image_1 = hbt.image_from_list_points(points_1, shape, diam_kernel)
     image_2 = hbt.image_from_list_points(points_2, shape, diam_kernel)
  
-    t0,t1 = ird.translation(image_1, image_2) # Return shift, with t0 = (dy, dx). t1 is a flag or quality or something.
-    (dy,dx) = t0
+    (dy,dx) = ird.translation(image_1, image_2)['tvec'] # Return shift, with t0 = (dy, dx). ** API changed ~ Sep-16, Anaconda 4.2?
     
     if (plot):
 
