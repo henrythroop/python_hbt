@@ -199,7 +199,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 # We use astropy's stretching here, rather than matplotlib's norm= keyword. The basic idea of both of these 
 # is the same, but I know that astropy has a percentile stretch available.
 
-    DO_DIAGNOSTIC = True
+    DO_DIAGNOSTIC = False
     
     if (DO_DIAGNOSTIC):
 
