@@ -359,6 +359,16 @@ def trunc(f, n):
     i, p, d = s.partition('.')
     return '.'.join([i, (d+'0'*n)[:n]])
 
+def reprfix(arr):
+    ''' This does the same as repr(arr) when passed a numpy arr. However,
+    as of numpy 2-Oct-2016, repr(arr) ignores the value of np.set_printoptions(threshold),
+    and thus array repr have '...' in them *always*, which is not what I want.
+    '''
+    
+    out = 'array(' + repr(list(arr)) + ')'
+
+    return out
+     
 def figsize((size)): # Was imsize(), but I think this is better
     """
     Set plot size. Same as using rc, but easier syntax.
