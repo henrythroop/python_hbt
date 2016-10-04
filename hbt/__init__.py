@@ -371,7 +371,7 @@ def reprfix(arr):
      
 def figsize((size)): # Was imsize(), but I think this is better
     """
-    Set plot size. Same as using rc, but easier syntax.
+    Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
     """
     plt.rc('figure', figsize=(size[0], size[1]))
     
