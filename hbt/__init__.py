@@ -636,7 +636,8 @@ def is_number(s):
 ##########
         
 def find_stars(im):
-    """Locate stars in an image array, using DAOphot. Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
+    """Locate stars in an image array, using DAOphot. 
+    Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
     Each star has position [row, column] = [y, x]."""
 
     from   astropy.stats import sigma_clipped_stats
