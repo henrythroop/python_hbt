@@ -371,7 +371,7 @@ def reprfix(arr):
      
 def figsize((size)): # Was imsize(), but I think this is better
     """
-    Set plot size. Same as using rc, but easier syntax.
+    Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
     """
     plt.rc('figure', figsize=(size[0], size[1]))
     
@@ -506,9 +506,41 @@ def longest_common_substring(S,T):
 
     return lcs_set.pop() # Original function returned lcs_set itself. I don't know why -- I just want to extract one element.
 
+#==============================================================================
+# POLYFIT
+#==============================================================================
+
+def polyfit(arr, degree=3):
+    
+    """
+    Fit polynomial to a 1D curve. Returns the value of the value of the curve itself.
+    Y values are not specified, but are assumed to be monotonic and evenly spaced.
+    """
+    
+    x = range(np.size(arr))
+    
+    coeffs_out = np.polyfit(x, arr, degree)
+ 
+    func = np.poly1d(coeffs_out)
+    
+    return func(x)
+    
+#==============================================================================
+# REMOVE_POLYFIT
+#==============================================================================
+
+def remove_polyfit(arr, **kwargs):
+    """ Return a function with a polynomial fit removed """
+    
+    return arr - hbt.polyfit(arr, **kwargs)
+
+#==============================================================================
+# SFIT
+#==============================================================================
+    
 def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input array before doing the fit.
     """
-    Fit polynomial to a 2D array, aka surface.
+    Fit polynomial to a 2D array, aka surface. Like IDL sfit.
     """
 
 # For info on resizing, see http://stackoverflow.com/questions/29958670/how-to-use-matlabs-imresize-in-python
