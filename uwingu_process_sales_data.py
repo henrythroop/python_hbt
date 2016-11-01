@@ -90,7 +90,7 @@ file_pickle = file_csv.replace('.csv', '.pkl')
 file_coupons = 'Uwingu03-Oct-2016_15_15_06 Coupon History.csv'
 
 if (DO_READ_PICKLE):
-    lun = open(file_pickle, 'rb')
+    lun = open(dir_data + '/' + file_pickle, 'rb')
     t = pickle.load(lun)
     lun.close()
     print('Read: ' + file_pickle)
@@ -100,7 +100,7 @@ else:
     # Read the main table from csv (which is very very slow)
     
     with set_locale('en_US.UTF-8'):
-        t = Table.read(dir_data + '/' + 'uwingu-orders-export_all.csv', format='ascii') # This is really slow. Several minutes to read 23K-line file.
+        t = Table.read(dir_data + '/' + file_csv, format='ascii') # This is really slow. Several minutes to read 23K-line file.
 
 # Sort it in place (overwrites existing)
 
