@@ -87,7 +87,7 @@ def frange(start, end, *args, **kwargs):
     
     if (len(args) > 0):
         num = args[0]
-#        print "num = " + repr(num)
+#        print("num = " + repr(num))
         
     else:
         num = end - start + 1
@@ -227,7 +227,7 @@ def get_range_user(maxrange = 10000):
 
     else:        # Only a single file
         range_selected = [int(inp2)]
-        print 'Range: ' + repr(range_selected)
+        print('Range: ' + repr(range_selected))
             
     return range_selected
 
@@ -369,7 +369,7 @@ def reprfix(arr):
 
     return out
      
-def figsize((size)): # Was imsize(), but I think this is better
+def figsize(size): # Was imsize(), but I think this is better
     """
     Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
     """
