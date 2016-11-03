@@ -27,6 +27,7 @@ from   matplotlib.figure import Figure
 import numpy as np
 import astropy.modeling
 from   scipy.optimize import curve_fit
+import astropy.time as Time
 #from   pylab import *  # So I can change plot size.
                        # Pylab defines the 'plot' command
 #import cspice
@@ -133,15 +134,57 @@ def plot_hist_craters(num, bins, title=''):
 # Plot a time series of sales
 #==============================================================================
 
-def plot_weekly(num, num_bins, title=''):
-    plt.hist((num-np.amin(num))/7, bins=num_bins, facecolor='lightblue')
-#plt.ylim((0,100))
-    plt.xlabel('Week')
-    plt.ylabel('Items per week')
+def plot_v_time(t, mask, val='Number', chunk='Month', title=''):
+    jd = t['jd']
+    jd0 = np.amin(jd)
+    
+    times = {'Day':      1, 
+             'Week':     7, 
+             'Month':   30, 
+             'Quarter': 90, 
+             'Year' :  365}
+
+    dt = times[chunk]  
+        
+    num_bins = int( (np.amax(jd) - np.amin(jd)) / dt )
+
+    if (val == 'Number'):
+        plt.hist((t[mask]['jd']-jd0)/dt, bins=num_bins, facecolor='pink')
+
+# For revenue, we want to count how many are in each JD bin, and then 
+# sum the dollar values in a corresponding bin. We use 
+# binned_statistic() for this. Sort of like IDL's reverse_indices.
+
+    if (val == 'Revenue'):
+        (revenue, bins, indices) = \
+            scipy.stats.binned_statistic((t[w]['jd']-jd0)/dt, 
+                                          t[w]['item_total'], 'sum', num_bins)
+
+# plt.bar() -- makes same plot as histogram
+            
+        plt.bar(bins[0:-1], revenue, facecolor='pink')
+        
+    plt.xlabel(chunk)
+    plt.ylabel(val + ' per ' + chunk)
     plt.title(title)
     plt.show()
     
-   
+def plot_weekly(num, num_bins, title=''):
+    
+    DO_MONTHLY = True
+    if DO_MONTHLY:
+        num_days = 30
+        xlabel = 'Month'
+    else:
+        num_days = 7
+        xlabel = 'Week'
+        
+    plt.hist((num-np.amin(num))/num_days, bins=num_bins, facecolor='lightblue')
+#plt.ylim((0,100))
+    plt.xlabel(xlabel)
+    plt.ylabel('Items per ' + xlabel)
+    plt.title(title)
+    plt.show()
     
 #==============================================================================
 # Start of main program
@@ -294,7 +337,7 @@ for i in range(len(t)):
     
 
 # Convert time to JD
-time = Time(t['date'], format='iso', scale='utc')
+time = astropy.time.Time(t['date'], format='iso', scale='utc')
 time.format = 'jd'
 jd = time.value
     
@@ -451,9 +494,11 @@ plot_weekly(t[w]['jd'], num_weeks, 'CMCFM')
 
 w = np.logical_and(is_good, t['is_crater'])
 plot_weekly(t[w]['jd'], num_weeks, 'Craters')
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Craters')
 
 w = np.logical_and(is_good, t['billing_last_name'] == 'Harnett')
 plot_weekly(t[w]['jd'], num_weeks, 'Harnett')
+plot_v_time(t, w, val='Number', chunk='Week', title = 'Harnett')
 
 w = np.logical_and(is_good, t['has_framed_cert'])
 plot_weekly(t[w]['jd'], num_weeks, 'Framed')
@@ -466,6 +511,9 @@ plot_weekly(t[w]['jd'], num_weeks, 'UDSE')
 
 w = np.logical_and(is_good, t['is_gift_cert'])
 plot_weekly(t[w]['jd'], num_weeks, 'Gift Cert')
+
+plot_v_time(t, w, val='Number', chunk='Week', title = 'Gift Cert')
+plot_v_time(t, w, val='Number', chunk='Day', title = 'Gift Cert')
 
 #==============================================================================
 # Make some more plots
