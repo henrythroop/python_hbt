@@ -8,45 +8,26 @@ Created on Sun Oct 30 20:36:37 2016
 
 import pdb
 import glob
-import math       # We use this to get pi. Documentation says math is 'always available' 
-                  # but apparently it still must be imported.
-from   subprocess import call
-import warnings
+
 import pdb
-import os.path
-import os
-import subprocess
+
+import scipy.stats
 
 import astropy
-from   astropy.io import fits
 from   astropy.table import Table
 import astropy.table   # I need the unique() function here. Why is in in table and not Table??
-import matplotlib as mpl
 import matplotlib.pyplot as plt # pyplot
 from   matplotlib.figure import Figure
 import numpy as np
 import astropy.modeling
-from   scipy.optimize import curve_fit
 import astropy.time as Time
-#from   pylab import *  # So I can change plot size.
-                       # Pylab defines the 'plot' command
-#import cspice
-#from   itertools import izip    # To loop over groups in a table -- see astropy tables docs
-#from   astropy.wcs import WCS
-#from   astropy.vo.client import conesearch # Virtual Observatory, ie star catalogs
-from   astropy import units as u           # Units library
-from   astropy.coordinates import SkyCoord # To define coordinates to use in star search
+
 #from   photutils import datasets
-from   scipy.stats import mode
-from   scipy.stats import linregress
 #import wcsaxes
 import time
-from scipy.interpolate import griddata
 
-import re # Regexp
 import pickle # For load/save
 
-import cProfile # For profiling
 
 # Imports for Tk
 
@@ -54,7 +35,6 @@ import cProfile # For profiling
 #import ttk
 #import tkMessageBox
 #from   matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from   matplotlib.figure import Figure
 
 from astropy.utils.misc import set_locale
 
@@ -77,7 +57,8 @@ from astropy.utils.misc import set_locale
 # 'item_total'  -- this is the raw price of the item, pre-coupon.
 # 'order_id'    -- If someone orders multiple items, all of the rows have the same order ID.
 #
-# Printed certs: Has item_meta = "Certificate Format=Downloadable PLUS Printed &amp= Framed Certificate (&#036=39.95)" and shipping_items = "method:'
+# Printed certs: Has item_meta = "Certificate Format=Downloadable PLUS Printed &am
+#                 Framed Certificate (&#036=39.95)" and shipping_items = "method:'
 #                They also have a 'shipping_total'.
 #                For these, item_total is the crater + $39.95 cert.
 #                item_total does *not* include shipping.
@@ -113,7 +94,8 @@ def parse_coupon(s):
 #==============================================================================
 
 def display_item(t,arr):
-  t[arr]['order_total', 'shipping_total', 'cart_discount', 'item_name', 'item_total', 'item_actual_paid', 'item_total_unframed', 
+  t[arr]['order_total', 'shipping_total', 'cart_discount', 'item_name', 
+         'item_total', 'item_actual_paid', 'item_total_unframed', 
          'coupon_amount', 'coupon_code', 'has_framed_cert'].pprint(max_width=400, max_lines=100)
 
 #==============================================================================
@@ -131,12 +113,67 @@ def plot_hist_craters(num, bins, title=''):
     plt.show()
 
 #==============================================================================
+# Plot new users (and total users) per month
+#==============================================================================
+
+def plot_monthly_users(t):
+    
+    jd = t['jd']
+    jd_min = np.amin(jd)
+    jd_max = np.amax(jd)
+    jd_range = jd_max - jd_min
+    
+    dt = 30  # Plot by month
+    num_bins = int(jd_range / dt)  # 23 bins total, or whatever
+    d_bin = jd_range / (num_bins-1) # Width of each bin, in days
+    bins = np.arange(jd_min, jd_max, d_bin) # Might be an off-by-one issue here
+
+    num_users = 0 * bins.copy()
+    
+    # Go thru and manually search for the number of unique users
+    # in month 0..1, then 0..2, then 0..3, etc.
+    # This is brute force and slow, but it works.
+    
+    # Cannot just search for the max userid -- that is 30K, but we have only 10K 
+    # who have actually bought something.
+    
+    for i in range(num_bins-2):
+        is_good_jd = t['jd'] < bins[i + 1]
+        num_users[i] = np.size(np.unique(t[is_good_jd]['customer_id']))
+    
+    added = num_users - np.roll(num_users,1)
+    num_users = num_users[0:-2]
+    added     = added[0:-2]
+    
+    # Get the total # of active users
+     
+    total = np.size(np.unique(t['customer_id']))
+    
+    plt.plot(added)
+    plt.xlabel('Month')
+    plt.ylabel('New Users Added Per Month')
+    plt.title('New Active Users, total = ' + repr(total))
+    plt.ylim((0,np.amax(added[1:])))
+    plt.show()
+    
+    plt.plot(num_users)
+    plt.xlabel('Month')
+    plt.ylabel('Total Users')
+    plt.title('Active Users, total = ' + repr(total))
+    plt.ylim((np.amin(num_users),np.amax(num_users[1:])))
+    plt.show()
+    
+#==============================================================================
 # Plot a time series of sales
 #==============================================================================
 
-def plot_v_time(t, mask, val='Number', chunk='Month', title=''):
+def plot_v_time(t, mask, val='Number', chunk='Month', title='', 
+                skip_first=False, show_total=True):
+
     jd = t['jd']
-    jd0 = np.amin(jd)
+    jd_min = np.amin(jd)
+    jd_max = np.amax(jd)
+    jd_range = jd_max - jd_min
     
     times = {'Day':      1, 
              'Week':     7, 
@@ -144,12 +181,20 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title=''):
              'Quarter': 90, 
              'Year' :  365}
 
-    dt = times[chunk]  
+    dt = times[chunk]  # Bin with, in days
         
-    num_bins = int( (np.amax(jd) - np.amin(jd)) / dt )
-
+    num_bins = int(jd_range / dt)  # 23 bins total, or whatever
+    d_bin = jd_range / (num_bins-1) # Width of each bin, in days
+    
+    bins = np.arange(jd_min, jd_max, d_bin) # Might be an off-by-one issue here
+    
     if (val == 'Number'):
-        plt.hist((t[mask]['jd']-jd0)/dt, bins=num_bins, facecolor='pink')
+        (number, bins) = \
+            np.histogram((t[mask]['jd']-jd_min)/dt, bins=num_bins)
+        yval = number
+        valstr = ''
+        
+#        plt.hist((t[mask]['jd']-jd0)/dt, bins=(bins-np.amin(bins))/dt, facecolor='pink')
 
 # For revenue, we want to count how many are in each JD bin, and then 
 # sum the dollar values in a corresponding bin. We use 
@@ -157,34 +202,46 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title=''):
 
     if (val == 'Revenue'):
         (revenue, bins, indices) = \
-            scipy.stats.binned_statistic((t[w]['jd']-jd0)/dt, 
-                                          t[w]['item_total'], 'sum', num_bins)
-
+            scipy.stats.binned_statistic((t[mask]['jd']-jd0)/dt, 
+                                          t[mask]['item_total'], 'sum', num_bins)
+        yval = revenue
+        valstr = '$'
+        
 # plt.bar() -- makes same plot as histogram
             
-        plt.bar(bins[0:-1], revenue, facecolor='pink')
-        
+    plt.bar(bins[0:-1], yval, facecolor='pink')
+    
+    total = np.sum(yval)
+    
+    if (skip_first):
+        plt.ylim((0, np.amax(yval[1:])))
+    
     plt.xlabel(chunk)
     plt.ylabel(val + ' per ' + chunk)
-    plt.title(title)
-    plt.show()
-    
-def plot_weekly(num, num_bins, title=''):
-    
-    DO_MONTHLY = True
-    if DO_MONTHLY:
-        num_days = 30
-        xlabel = 'Month'
+    if (show_total):    
+        plt.title(title + ', total = ' + valstr + repr(int(total)))
     else:
-        num_days = 7
-        xlabel = 'Week'
-        
-    plt.hist((num-np.amin(num))/num_days, bins=num_bins, facecolor='lightblue')
-#plt.ylim((0,100))
-    plt.xlabel(xlabel)
-    plt.ylabel('Items per ' + xlabel)
-    plt.title(title)
+        plt.title(title)
     plt.show()
+    
+#==============================================================================
+# def plot_weekly(num, num_bins, title=''):
+#==============================================================================
+    
+#    DO_MONTHLY = True
+#    if DO_MONTHLY:
+#        num_days = 30
+#        xlabel = 'Month'
+#    else:
+#        num_days = 7
+#        xlabel = 'Week'
+#        
+#    plt.hist((num-np.amin(num))/num_days, bins=num_bins, facecolor='lightblue')
+##plt.ylim((0,100))
+#    plt.xlabel(xlabel)
+#    plt.ylabel('Items per ' + xlabel)
+#    plt.title(title)
+#    plt.show()
     
 #==============================================================================
 # Start of main program
@@ -212,8 +269,9 @@ else:
     
     with set_locale('en_US.UTF-8'):
         print("Reading CSV file " + dir_data + "/" + file_csv)
-        t = Table.read(dir_data + '/' + file_csv, format='ascii') # This is really slow. Several minutes to read 23K-line file.
-                                                                  # Format must be 'ascii', not 'csv', in order to read unicode properly.
+        t = Table.read(dir_data + '/' + file_csv, format='ascii') 
+        # This is really slow. Several minutes to read 23K-line file.
+        # Format must be 'ascii', not 'csv', in order to read unicode properly.
 
 # Sort it in place (overwrites existing)
 
@@ -256,7 +314,8 @@ is_udse_gift         = np.zeros(num_rows, dtype='bool')
 is_planet            = np.zeros(num_rows, dtype='bool')
 is_ppd               = np.zeros(num_rows, dtype='bool')
 is_bm2m              = np.zeros(num_rows, dtype='bool')
-coupon_code          = np.zeros(num_rows, dtype='U100') # U means unicode string. S is a list of bytes, which in py3 is dfft than a string.
+coupon_code          = np.zeros(num_rows, dtype='U100') # U means unicode string. S is a list of bytes, 
+                                                        # which in py3 is dfft than a string.
 coupon_amount        = np.zeros(num_rows, dtype='f')
 coupon_description   = np.zeros(num_rows, dtype='U100')
 has_framed_cert      = np.zeros(num_rows, dtype='bool')
@@ -371,7 +430,8 @@ pickle.dump(t, lun)
 lun.close()
 print('Wrote: ' + file_pickle)
         
-is_other = (is_vote + is_crater + is_gift_cert + is_cmcfm + is_udse + is_planet + is_udse_gift + is_ppd + is_bm2m) == 0    
+is_other = (is_vote + is_crater + is_gift_cert + is_cmcfm + is_udse + \
+            is_planet + is_udse_gift + is_ppd + is_bm2m) == 0    
     
 # Make a histogram of craters
 
@@ -491,29 +551,143 @@ plot_weekly(t[w]['jd'], num_weeks, 'Planet Name')
 
 w = np.logical_and(is_good, t['is_cmcfm'])
 plot_weekly(t[w]['jd'], num_weeks, 'CMCFM')
+plot_v_time(t, w, val='Number', chunk='Month', title = 'CMCFM', skip_first=True)
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'CMCFM', skip_first=True)
 
 w = np.logical_and(is_good, t['is_crater'])
 plot_weekly(t[w]['jd'], num_weeks, 'Craters')
 plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Craters')
 
 w = np.logical_and(is_good, t['billing_last_name'] == 'Harnett')
-plot_weekly(t[w]['jd'], num_weeks, 'Harnett')
-plot_v_time(t, w, val='Number', chunk='Week', title = 'Harnett')
+plot_v_time(t, w, val='Number', chunk='Week', title = 'Harnett', skip_first=True)
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Harnett', skip_first=True)
 
 w = np.logical_and(is_good, t['has_framed_cert'])
-plot_weekly(t[w]['jd'], num_weeks, 'Framed')
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Framed Certs', show_total=True, skip_first=False)
 
 w = np.logical_and(is_good, t['is_bm2m'])
-plot_weekly(t[w]['jd'], num_weeks, 'BM2M')
+plot_v_time(t, w, val='Revenue', chunk='Day', title = 'BM2M', skip_first=False)
+plot_v_time(t, w, val='Number', chunk='Day', title = 'BM2M', skip_first=False)
 
 w = np.logical_and(is_good, t['is_udse'])
 plot_weekly(t[w]['jd'], num_weeks, 'UDSE')
 
 w = np.logical_and(is_good, t['is_gift_cert'])
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Gift Cert', skip_first=False)
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Gift Cert', skip_first=False)
+
 plot_weekly(t[w]['jd'], num_weeks, 'Gift Cert')
 
 plot_v_time(t, w, val='Number', chunk='Week', title = 'Gift Cert')
 plot_v_time(t, w, val='Number', chunk='Day', title = 'Gift Cert')
+
+#==============================================================================
+# Plot new users (and total users) per month
+#==============================================================================
+
+plot_monthly_users(t)
+
+    
+    ### XXX There is some problem here. I am assuming that customer_id=30K
+    # implies we have 30K customers, and that is not true. There are a lot
+    # of skipped values.
+
+#==============================================================================
+# Plot monthly revenue of each stream
+#==============================================================================
+
+jd = t['jd']
+jd_min = np.amin(jd)
+jd_max = np.amax(jd)
+jd_range = jd_max - jd_min
+
+dt = 30  # Plot by month
+num_bins = int(jd_range / dt)  # 23 bins total, or whatever
+d_bin = jd_range / (num_bins-1) # Width of each bin, in days
+bins = np.arange(jd_min, jd_max, d_bin) # Might be an off-by-one issue here
+    
+w = np.logical_and(is_good, t['is_crater'])
+(revenue_craters, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+
+w = np.logical_and(is_good, t['is_cmcfm'])
+(revenue_cmcfm, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+
+w = np.logical_and(is_good, t['is_bm2m'])
+(revenue_bm2m, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+
+w = np.logical_and(is_good, t['is_vote'])
+(revenue_vote, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+
+w = np.logical_and(is_good, t['is_planet'])
+(revenue_planet, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+    
+w = np.logical_and(is_good, t['is_udse'])
+(revenue_udse, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+### XXX There is some error here in excluding Harnett.
+
+w = np.logical_and(is_good, 
+                   np.logical_and(t['is_gift_cert'], t['shipping_last_name'] != 'Harnett'))
+(revenue_gift_cert, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  t[w]['item_total'], 'sum', bins)
+
+
+w = np.logical_and(is_good, t['has_framed_cert'])
+(revenue_framed, bins_out, indices) = \
+    scipy.stats.binned_statistic((t[w]['jd']), 
+                                  PRICE_CERT+np.zeros(np.sum(w)), 'sum', bins)    
+    
+revenue_total = revenue_craters + revenue_cmcfm + revenue_bm2m + revenue_vote + \
+                revenue_planet + revenue_gift_cert + revenue_udse + revenue_framed
+
+revenue_craters_frac = revenue_craters / revenue_total
+revenue_cmcfm_frac        = revenue_cmcfm / revenue_total
+revenue_bm2m_frac         = revenue_bm2m / revenue_total
+revenue_vote_frac         = revenue_vote / revenue_total
+revenue_planet_frac       = revenue_planet / revenue_total
+revenue_gift_cert_frac    = revenue_gift_cert / revenue_total
+revenue_udse_frac = revenue_udse / revenue_total
+revenue_framed_frac      = revenue_framed / revenue_total
+
+
+#hbt.figsize((15,10))
+
+plt.stackplot((bins[0:-1]-np.amin(bins))/dt, \
+               revenue_vote_frac, 
+               revenue_planet_frac,
+               revenue_udse_frac,
+               revenue_framed_frac, 
+               revenue_bm2m_frac, 
+               revenue_craters_frac, 
+               revenue_gift_cert_frac, 
+               revenue_cmcfm_frac, 
+
+               colors = 
+               ['pink', 'lightgreen', 'lightblue', 
+                         'yellow', 'salmon', 'lightgrey', 'cornsilk', 'aqua'],
+               labels=
+               ['Vote', 'Planet', 'UDSE', 
+                         'Framed', 'BM2M', 'Craters', 'GC', 'CMCFM'])
+ 
+plt.xlim((0,(np.amax(bins[0:-1])-np.amin(bins))/dt))
+plt.ylim((0,1))
+plt.legend()
+plt.ylabel('Fraction')
+plt.xlabel('Month')
+plt.title('Revenue streams, Fraction of Total')
+plt.show()
 
 #==============================================================================
 # Make some more plots
@@ -522,6 +696,7 @@ plot_v_time(t, w, val='Number', chunk='Day', title = 'Gift Cert')
 # Total monthly revenue, from all sources summed
 # % makeup of total sales: craters vs. UDSE, etc.
 # % of orders with framing
+# Num of users vs. time (or, new users per chunk) [DONE]
 
 #item_total
 #order_total
@@ -553,7 +728,9 @@ plot_v_time(t, w, val='Number', chunk='Day', title = 'Gift Cert')
 #Make a 
 
 
-# My goal: Make a plot of sales statistics: dollar amount vs. #. In this case the dollar amount is the raw crater price itself.
+# My goal: Make a plot of sales statistics: dollar amount vs. #. In this case 
+# the dollar amount is the raw crater price itself.
 #
-# Then, make the same plot, but using not the intrinsic price of the crater, but using the *discounted* price (ie, any coupon that has been applied).
+# Then, make the same plot, but using not the intrinsic price of the crater, but using 
+# the *discounted* price (ie, any coupon that has been applied).
 # 
