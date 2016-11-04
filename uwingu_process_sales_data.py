@@ -104,7 +104,6 @@ def display_item(t,arr):
 
 def plot_hist_craters(num, bins, title=''):
     plt.hist(num, bins, facecolor='yellow')
-#    plt.plot(bins[0:-1], num)
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Dollars')
@@ -223,26 +222,7 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
     else:
         plt.title(title)
     plt.show()
-    
-#==============================================================================
-# def plot_weekly(num, num_bins, title=''):
-#==============================================================================
-    
-#    DO_MONTHLY = True
-#    if DO_MONTHLY:
-#        num_days = 30
-#        xlabel = 'Month'
-#    else:
-#        num_days = 7
-#        xlabel = 'Week'
-#        
-#    plt.hist((num-np.amin(num))/num_days, bins=num_bins, facecolor='lightblue')
-##plt.ylim((0,100))
-#    plt.xlabel(xlabel)
-#    plt.ylabel('Items per ' + xlabel)
-#    plt.title(title)
-#    plt.show()
-    
+
 #==============================================================================
 # Start of main program
 #==============================================================================
@@ -544,18 +524,18 @@ jd0 = jd[0]
 num_weeks = int( (np.amax(jd) - np.amin(jd))/7 )
 
 w = np.logical_and(is_good, t['is_vote'])
-plot_weekly(t[w]['jd'], num_weeks, 'Votes')
+#plot_weekly(t[w]['jd'], num_weeks, 'Votes')
 
 w = np.logical_and(is_good, t['is_planet'])
-plot_weekly(t[w]['jd'], num_weeks, 'Planet Name')
+#plot_weekly(t[w]['jd'], num_weeks, 'Planet Name')
 
 w = np.logical_and(is_good, t['is_cmcfm'])
-plot_weekly(t[w]['jd'], num_weeks, 'CMCFM')
+#plot_weekly(t[w]['jd'], num_weeks, 'CMCFM')
 plot_v_time(t, w, val='Number', chunk='Month', title = 'CMCFM', skip_first=True)
 plot_v_time(t, w, val='Revenue', chunk='Month', title = 'CMCFM', skip_first=True)
 
 w = np.logical_and(is_good, t['is_crater'])
-plot_weekly(t[w]['jd'], num_weeks, 'Craters')
+#plot_weekly(t[w]['jd'], num_weeks, 'Craters')
 plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Craters')
 
 w = np.logical_and(is_good, t['billing_last_name'] == 'Harnett')
@@ -570,13 +550,14 @@ plot_v_time(t, w, val='Revenue', chunk='Day', title = 'BM2M', skip_first=False)
 plot_v_time(t, w, val='Number', chunk='Day', title = 'BM2M', skip_first=False)
 
 w = np.logical_and(is_good, t['is_udse'])
-plot_weekly(t[w]['jd'], num_weeks, 'UDSE')
+#plot_weekly(t[w]['jd'], num_weeks, 'UDSE')
+plot_v_time(t, w, val='Number', chunk='Month', title = 'UDSE', skip_first=False)
 
 w = np.logical_and(is_good, t['is_gift_cert'])
 plot_v_time(t, w, val='Number', chunk='Month', title = 'Gift Cert', skip_first=False)
 plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Gift Cert', skip_first=False)
 
-plot_weekly(t[w]['jd'], num_weeks, 'Gift Cert')
+#plot_weekly(t[w]['jd'], num_weeks, 'Gift Cert')
 
 plot_v_time(t, w, val='Number', chunk='Week', title = 'Gift Cert')
 plot_v_time(t, w, val='Number', chunk='Day', title = 'Gift Cert')
@@ -687,6 +668,26 @@ plt.legend()
 plt.ylabel('Fraction')
 plt.xlabel('Month')
 plt.title('Revenue streams, Fraction of Total')
+plt.show()
+
+#==============================================================================
+# Plot gift certs as fraction of total craters
+#==============================================================================
+
+w = np.logical_and(is_good, t['is_crater'])
+(num_craters,bins_out) = np.histogram(t[w]['item_total_unframed'], bins=bins_price_crater)
+
+w = np.logical_and(is_good, t['has_framed_cert'])
+(num_certs,bins_out) = np.histogram(t[w]['item_total_unframed'], bins=bins_price_crater)
+
+# XXX I'm not sure this is totally right. I might be confusing raw price
+# with framed price, something like that. But I think it gives the right general picture.
+
+plt.plot(bins_price_crater[0:-1], num_certs / num_craters * 100)
+plt.ylabel('Percent Framed')
+plt.xlabel('Crater Price [$]')
+plt.xscale('log')
+plt.title('Framing as Percent of Total Crater Sales')
 plt.show()
 
 #==============================================================================
