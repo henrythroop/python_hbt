@@ -546,8 +546,8 @@ w = np.logical_and(is_good, t['has_framed_cert'])
 plot_v_time(t, w, val='Number', chunk='Month', title = 'Framed Certs', show_total=True, skip_first=False)
 
 w = np.logical_and(is_good, t['is_bm2m'])
-plot_v_time(t, w, val='Revenue', chunk='Day', title = 'BM2M', skip_first=False)
-plot_v_time(t, w, val='Number', chunk='Day', title = 'BM2M', skip_first=False)
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'BM2M', skip_first=False)
+plot_v_time(t, w, val='Number', chunk='Month', title = 'BM2M', skip_first=False)
 
 w = np.logical_and(is_good, t['is_udse'])
 #plot_weekly(t[w]['jd'], num_weeks, 'UDSE')
@@ -619,7 +619,7 @@ w = np.logical_and(is_good, t['is_udse'])
 ### XXX There is some error here in excluding Harnett.
 
 w = np.logical_and(is_good, 
-                   np.logical_and(t['is_gift_cert'], t['shipping_last_name'] != 'Harnett'))
+                   np.logical_and(t['is_gift_cert'], t['billing_last_name'] != 'Harnett'))
 (revenue_gift_cert, bins_out, indices) = \
     scipy.stats.binned_statistic((t[w]['jd']), 
                                   t[w]['item_total'], 'sum', bins)
@@ -652,22 +652,22 @@ plt.stackplot((bins[0:-1]-np.amin(bins))/dt, \
                revenue_framed_frac, 
                revenue_bm2m_frac, 
                revenue_craters_frac, 
-               revenue_gift_cert_frac, 
                revenue_cmcfm_frac, 
+               revenue_gift_cert_frac, 
 
                colors = 
                ['pink', 'lightgreen', 'lightblue', 
-                         'yellow', 'salmon', 'lightgrey', 'cornsilk', 'aqua'],
+                         'yellow', 'salmon', 'lightgrey', 'aqua', 'orchid'],
                labels=
                ['Vote', 'Planet', 'UDSE', 
-                         'Framed', 'BM2M', 'Craters', 'GC', 'CMCFM'])
+                         'Framing', 'BM2M', 'Craters', 'CMCFM', 'GC no Ian'])
  
 plt.xlim((0,(np.amax(bins[0:-1])-np.amin(bins))/dt))
 plt.ylim((0,1))
-plt.legend()
+plt.legend(framealpha=0.8)
 plt.ylabel('Fraction')
 plt.xlabel('Month')
-plt.title('Revenue streams, Fraction of Total')
+plt.title('Revenue stream, Fraction of Total')
 plt.show()
 
 #==============================================================================
