@@ -14,7 +14,7 @@ import astropy
 import astropy.modeling
 import skimage.transform as skt  # This 'resize' function is more useful than np's
 import matplotlib as plt
-import cspice
+import spiceypy as sp
 from   astropy.io import fits
 import subprocess
 from   scipy.stats import linregress
@@ -227,7 +227,7 @@ def get_range_user(maxrange = 10000):
 
     else:        # Only a single file
         range_selected = [int(inp2)]
-        print 'Range: ' + repr(range_selected)
+        print('Range: ' + repr(range_selected))
             
     return range_selected
 
@@ -257,8 +257,8 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         arr = name_bodies
     
     for i,name_body in enumerate(arr):
-      st,ltime = cspice.spkezr(name_body, et, frame, abcorr, name_observer)    
-      radius,ra[i],dec[i] = cspice.recrad(st[0:3])
+      st,ltime = sp.spkezr(name_body, et, frame, abcorr, name_observer)    
+      radius,ra[i],dec[i] = sp.recrad(st[0:3])
     
     if (units == 'pixels'):
         x, y = wcs.wcs_world2pix(ra*r2d, dec*r2d, 0) # Convert to pixels
@@ -306,9 +306,9 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
     ra_ring  = np.zeros(num_pts_ring)
     dec_ring = np.zeros(num_pts_ring)
     
-    rot = cspice.pxform('IAU_' + name_body, frame, et) # Get matrix from arg1 to arg2
+    rot = sp.pxform('IAU_' + name_body, frame, et) # Get matrix from arg1 to arg2
     
-    st,ltime = cspice.spkezr(name_body, et, frame, abcorr, name_observer)
+    st,ltime = sp.spkezr(name_body, et, frame, abcorr, name_observer)
     pos = st[0:3]
 #    vel = st[3:6] # velocity, km/sec, of jupiter
     
@@ -322,9 +322,9 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
 
         rho_planet    = pos                     # Position of planet
         rho_ring      = rho_planet + j2000_xyz  # Vector obs-ring
-#        dist_ring     = cspice.vnorm(rho_ring)*1000 # Convert to km... CHECK UNITS!
+#        dist_ring     = sp.vnorm(rho_ring)*1000 # Convert to km... CHECK UNITS!
         
-        range_out, ra, dec = cspice.recrad(rho_ring) # 'range' is a protected keyword in python!
+        range_out, ra, dec = sp.recrad(rho_ring) # 'range' is a protected keyword in python!
         
         ra_ring[j] = ra     # save RA, Dec as radians
         dec_ring[j] = dec
@@ -369,7 +369,7 @@ def reprfix(arr):
 
     return out
      
-def figsize((size)): # Was imsize(), but I think this is better
+def figsize(size): # Was imsize(), but I think this is better
     """
     Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
     """
@@ -383,9 +383,9 @@ def correct_stellab(radec, vel):
 
     radec_abcorr = radec.copy()    
     for i in range(np.shape(radec)[0]):
-        pos_i = cspice.radrec(1., radec[i,0], radec[i,1])
-        pos_i_abcorr = cspice.stelab(pos_i, vel)
-        rang, radec_abcorr[i,0], radec_abcorr[i,1] = cspice.recrad(pos_i_abcorr)
+        pos_i = sp.radrec(1., radec[i,0], radec[i,1])
+        pos_i_abcorr = sp.stelab(pos_i, vel)
+        rang, radec_abcorr[i,0], radec_abcorr[i,1] = sp.recrad(pos_i_abcorr)
 
     return radec_abcorr
     
