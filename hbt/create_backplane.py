@@ -58,7 +58,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
         
         file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'       
         file_tm = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
-        cspice.furnsh(file_tm)
+        sp.furnsh(file_tm)
         name_target = 'Jupiter'
         frame = 'IAU_JUPITER'
         name_observer = 'New Horizons'
@@ -95,7 +95,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
     # Look up parameters for the target body, used for PGRREC().
     
-    radii = cspice.bodvrd(name_target, 'RADII')
+    radii = sp.bodvrd(name_target, 'RADII')
     
     r_e = radii[0]
     r_p = radii[2]
@@ -105,7 +105,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
         
     # Get the plane in Jupiter coordinates. Pretty easy!  Though we might want to do it in J2K coords
     
-    plane_jup = cspice.nvp2pl([0,0,1], [0,0,0])    # nvp2pl: Normal Vec + Point to Plane
+    plane_jup = sp.nvp2pl([0,0,1], [0,0,0])    # nvp2pl: Normal Vec + Point to Plane
     
     lon_arr    = np.zeros((n_dy, n_dx))     # Longitude of pixel (defined with recpgr)
     lat_arr    = np.zeros((n_dy, n_dx))     # Latitude of pixel (which is zero, so meaningless)
@@ -121,12 +121,12 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
     # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
             
-    mx_j2k_jup = cspice.pxform('J2000', frame, et) # from, to, et
+    mx_j2k_jup = sp.pxform('J2000', frame, et) # from, to, et
     
     # Get vec from Jup to NH, in Jupiter frame (or whatever named frame is passed in)
                    
-    (st_jup_sc_jup, lt) = cspice.spkezr(name_observer, et, frame,         'LT', name_target)
-    (st_jup_sc_j2k, lt) = cspice.spkezr(name_observer, et, 'J2000',       'LT', name_target)     
+    (st_jup_sc_jup, lt) = sp.spkezr(name_observer, et, frame,         'LT', name_target)
+    (st_jup_sc_j2k, lt) = sp.spkezr(name_observer, et, 'J2000',       'LT', name_target)     
     
     vec_jup_sc_jup = st_jup_sc_jup[0:3]
     vec_jup_sc_j2k = st_jup_sc_j2k[0:3]
@@ -138,7 +138,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     # Get vector from Jupiter to Sun
     # spkezr(target ... observer)
 
-    (st_jup_sun_jup, lt) = cspice.spkezr('Sun', et, frame, 'LT', name_target) # From Jup to Sun, in Jup frame
+    (st_jup_sun_jup, lt) = sp.spkezr('Sun', et, frame, 'LT', name_target) # From Jup to Sun, in Jup frame
     vec_jup_sun_jup = st_jup_sun_jup[0:3]
     
     # NB: at 2007-055T07:50:03.368, sub-obs lat = -6, d = 6.9 million km = 95 rj.
@@ -154,10 +154,10 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 
 # Now compute position for Adrastea, Metis, Thebe
 
-    vec_metis_j2k,lt     = cspice.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
-    vec_adrastea_j2k,lt  = cspice.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
-    vec_thebe_j2k,lt     = cspice.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
-    vec_amalthea_j2k,lt  = cspice.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
+    vec_metis_j2k,lt     = sp.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
+    vec_adrastea_j2k,lt  = sp.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
+    vec_thebe_j2k,lt     = sp.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
+    vec_amalthea_j2k,lt  = sp.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
     
     vec_metis_j2k        = np.array(vec_metis_j2k[0:3])
     vec_thebe_j2k        = np.array(vec_thebe_j2k[0:3])
@@ -171,35 +171,35 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
             # Look up the vector direction of this single pixel, which is defined by an RA and Dec
     
-            vec_pix_j2k =  cspice.radrec(1., ra_2d[i_y, i_x]*hbt.d2r, dec_2d[i_y, i_x]*hbt.d2r) # Vector thru pixel to ring, in J2K [args ok]
+            vec_pix_j2k =  sp.radrec(1., ra_2d[i_y, i_x]*hbt.d2r, dec_2d[i_y, i_x]*hbt.d2r) # Vector thru pixel to ring, in J2K [args ok]
             
             # Convert vector along the pixel direction, from J2K into IAU_JUP frame
       
-            vec_pix_jup = cspice.mxv(mx_j2k_jup, vec_pix_j2k)
+            vec_pix_jup = sp.mxv(mx_j2k_jup, vec_pix_j2k)
     
             # And calculate the intercept point between this vector, and the plane defined by Jupiter's equator
                 
-            (npts, pt_intersect_jup) = cspice.inrypl(pt_jup_sc_jup, vec_pix_jup, plane_jup) # intersect ray and plane. Jup coords.
+            (npts, pt_intersect_jup) = sp.inrypl(pt_jup_sc_jup, vec_pix_jup, plane_jup) # intersect ray and plane. Jup coords.
     
             # Now calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
     
             vec_ring_sun_jup = -pt_intersect_jup + vec_jup_sun_jup
             
-            angle_phase = cspice.vsep(-vec_pix_jup, vec_ring_sun_jup)
+            angle_phase = sp.vsep(-vec_pix_jup, vec_ring_sun_jup)
 
             # Now calc angular separation between this pixel, and the satellites in our list
             # Since these are huge arrays, cast into floats to make sure they are not doubles.
             
             if DO_SATELLITES:
-                ang_thebe_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_thebe_j2k)
-                ang_adrastea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_adrastea_j2k)
-                ang_metis_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_metis_j2k)
-                ang_amalthea_arr[i_y, i_x] = cspice.vsep(vec_pix_j2k, vec_amalthea_j2k)
+                ang_thebe_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_thebe_j2k)
+                ang_adrastea_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_adrastea_j2k)
+                ang_metis_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_metis_j2k)
+                ang_amalthea_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_amalthea_j2k)
                 
             # Save various derived quantities
             
-            lon, lat, alt = cspice.recpgr(name_target, pt_intersect_jup, r_e, flat)
-            alt, lon, lat = cspice.reclat(pt_intersect_jup)
+            lon, lat, alt = sp.recpgr(name_target, pt_intersect_jup, r_e, flat)
+            alt, lon, lat = sp.reclat(pt_intersect_jup)
             
             radius_arr[i_y, i_x] = alt
             lon_arr[i_y, i_x] = lon
