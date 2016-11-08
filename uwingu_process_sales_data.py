@@ -103,17 +103,42 @@ def display_item(t,arr):
 # Plot histogram of a group of craters
 #==============================================================================
 
-def plot_hist_craters(num, bins, title='', file = ''):
-    (num_out, bins_out) = np.histogram(num, bins)
-    
-#    plt.bar(num_out, bins_out[0:-1], facecolor='yellow')
-    plt.hist(num, bins, facecolor='yellow')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('Dollars')
-    plt.ylabel('Number Sold')
-    plt.title(title)
+def plot_hist_craters(t, w, bins, title='', val = 'Number', file = ''):
 
+# Perform the histogram -- though we don't actually use this result
+    
+    price = t[w]['item_actual_paid'] # Price
+
+    (num_out, bins_out) = np.histogram(price, bins)
+
+    (revenue_out, bins_out, indices) = \
+    scipy.stats.binned_statistic(price, 
+                                  t[w]['item_actual_paid'], 'sum', bins)
+
+    width = np.absolute(np.roll(bins_out[0:-1],-1)-bins_out[0:-1])  # Calc bin width
+
+                                    
+    #    plt.bar(num_out, bins_out[0:-1], facecolor='yellow')
+# Plot the histogram, which includes recalculating it
+
+    if (val == 'Number'):
+#        plt.hist(num, bins, facecolor='yellow')
+        plt.bar(bins_out[0:-1], num_out, width=width, facecolor='yellow')
+
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('Crater Price')
+        plt.ylabel('Number Sold')
+
+    if (val == 'Revenue'):
+        plt.bar(bins_out[0:-1], revenue_out, width=width, facecolor='yellow')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('Crater Price [$]')
+        plt.ylabel('Revenue [$]')
+
+    plt.title(title)
+        
 # There is a kernel bug here. I think it is a bug in plt.text plotting on log-log plots with coordinate 0.
     
     for i in range(np.size(bins_out)-2):
@@ -122,6 +147,7 @@ def plot_hist_craters(num, bins, title='', file = ''):
 #        print(repr(xval) + ' ' + repr(yval) + ' ' + "${}: {}".format(xval, yval)) # Causes kernel death
 
 #        plt.text(xval, yval, "${}: {}".format(xval, yval)) # Causes kernel death
+
     if (file != ''):
         plt.savefig(file)
         print("Wrote: " + file)
@@ -260,7 +286,7 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
     for i,bin in enumerate(bin_jd_years):
         if (bin > 0):
             plt.vlines(bin, 0, np.amax(yval), linestyle='--')
-            plt.text(bin-1, ylim[1]/2, repr(years[i]),rotation=90)
+            plt.text(bin+1, ylim[1]/2, repr(years[i]),rotation=90)
     
     ylabel = val + ' per ' + chunk
     if (val == 'Revenue'):
@@ -557,28 +583,38 @@ is_good = np.logical_and(t['is_completed'], np.logical_not(t['is_test']))
 # Select all regular craters
 
 w = np.logical_and(is_good, t['is_crater'])
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 'All Craters, N = {:,g}'.format(np.sum(w)),
-                  file = dir_out + 'hist_craters.png')
+plot_hist_craters(t, w, bins_price_crater, title='All Craters, N = {:,g}'.format(np.sum(w)),
+                  val = 'Number', file = dir_out + 'hist_craters_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, title='All Craters, N = {:,g}'.format(np.sum(w)),
+                  val = 'Revenue', file = dir_out + 'hist_craters_revenue.png')
 
 # CMCFM only
 
 w = np.logical_and(is_good, t['is_cmcfm'])
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 'CMCFM, N = {:,g}'.format(np.sum(w)),
-                  file = dir_out + 'hist_cmcfm.png')
+plot_hist_craters(t, w, bins_price_crater, title='CMCFM, N = {:,g}'.format(np.sum(w)),
+                  val = 'Number', file = dir_out + 'hist_cmcfm_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, title='CMCFM, N = {:,g}'.format(np.sum(w)),
+                  val = 'Revenue', file = dir_out + 'hist_cmcfm_revenue.png')
 
 # Ian Harnett only
 
 w = np.logical_and(is_good,
                    t['billing_last_name'] == 'Harnett')
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 
-                 'Harnett, N = {:,g}'.format(np.sum(w)), 
-                  file=dir_out + 'hist_harnett.png')
+plot_hist_craters(t, w, bins_price_crater, 
+                  title='Harnett, N = {:,g}'.format(np.sum(w)), 
+                  val = 'Number', file=dir_out + 'hist_harnett_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, 
+                  title='Harnett, N = {:,g}'.format(np.sum(w)), 
+                  val = 'Revenue', file=dir_out + 'hist_harnett_revenue.png')
 
 # Framed certs only
 
 w = np.logical_and(is_good,
                    t['has_framed_cert'])
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 
+plot_hist_craters(t, w, bins_price_crater, 
                   'Framed Cert, N = {:,g}'.format(np.sum(w)),
                   file = dir_out + 'hist_framed.png')
 
@@ -659,12 +695,13 @@ plot_v_time(t, w, val='Number', chunk='Month', title = 'Gift Cert (no Ian)', ski
 plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Gift Cert (no Ian)', skip_first=False)
 
 # Total revenue
+
 w = is_good
 plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Total', skip_first=False,
             file = dir_out + 'plot_total_revenue.png')
 
-plot_v_time(t, w, val='Revenue', chunk='Week', title = 'Total', skip_first=False,
-            file = dir_out + 'plot_total_revenue_week.png')
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Total', skip_first=False,
+            file = dir_out + 'plot_total_number_month.png')
 
 #==============================================================================
 # Plot new users (and total users) per month
