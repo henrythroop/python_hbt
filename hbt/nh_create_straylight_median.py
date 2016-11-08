@@ -71,7 +71,7 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
      
     for i,n in enumerate(index_files):
         file = t_group['Filename'][n] # Look up filename
-        print "Reading: " + file
+        print("Reading: " + file)
         frame = hbt.read_lorri(file,frac_clip = 1)
         if (np.shape(frame)[0] == 256):
             

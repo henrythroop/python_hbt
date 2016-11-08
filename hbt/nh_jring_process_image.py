@@ -70,7 +70,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     if (method == 'Previous'):
         file_prev = t_group['Filename'][index_image-1]
 #            print "file =      " + filename
-        print "file_prev = " + file_prev
+        print("file_prev = " + file_prev)
         image_bg = hbt.read_lorri(file_prev, frac_clip = 1.0, bg_method = 'None', autozoom=True)
         image_fg = image_raw
         image = image_fg - image_bg
@@ -133,7 +133,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             frac = float(frac)
             power = int(power)
             
-            print "group={}, num={}, frac={}".format(grp, num, frac)
+            print("group={}, num={}, frac={}".format(grp, num, frac))
 #            print "Group = {}, num{}, Name = {}".format(name_group, num, name)
 
             name_group = groups[grp]
@@ -240,7 +240,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         try:
             plt.imshow(stretch(hbt.remove_sfit(image_stray,5))) # This won't do much since it is already applied
         except UnboundLocalError:
-            print "No stray light to subtract"
+            print("No stray light to subtract")
         
         plt.title('stray_norm - sfit(stray_norm,5), mean=' + hbt.trunc(np.mean(im),3))
 
@@ -264,7 +264,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             im = hbt.remove_sfit(image_raw - image_stray,5)
             plt.imshow(stretch(im))
         except UnboundLocalError:  
-            print "No stray light to subtract"
+            print("No stray light to subtract")
         
         plt.title('sfit(raw-stray,5), med ' + hbt.trunc(np.median(im),3))
         

@@ -26,7 +26,7 @@ def met2utc(met_in, name_observer = 'NEW HORIZONS'):
 #     name_observer = 'New Horizons'
 
   if (name_observer.upper().find('NEW HORIZONS') == -1):
-    print 'MET can be used only for New Horizons'
+    print('MET can be used only for New Horizons')
     return
 
 # Convert input to an array, even if it is not

@@ -223,22 +223,22 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
         if (np.amin(ang_thebe_arr) > fov_lorri):
             del backplane['Ang_Thebe']
         else:
-            print "Keeping Thebe".format(np.min(ang_thebe_arr) * hbt.r2d)
+            print("Keeping Thebe".format(np.min(ang_thebe_arr) * hbt.r2d))
     
         if (np.amin(ang_metis_arr) > fov_lorri):
             del backplane['Ang_Metis']
         else:
-            print "Keeping Metis, min = {} deg".format(np.min(ang_metis_arr) * hbt.r2d)
+            print("Keeping Metis, min = {} deg".format(np.min(ang_metis_arr) * hbt.r2d))
             
         if (np.amin(ang_amalthea_arr) > fov_lorri):
             del backplane['Ang_Amalthea']
         else:
-            print "Keeping Amalthea, min = {} deg".format(np.amin(ang_amalthea_arr) * hbt.r2d)
+            print("Keeping Amalthea, min = {} deg".format(np.amin(ang_amalthea_arr) * hbt.r2d))
     
         if (np.amin(ang_adrastea_arr) > fov_lorri):
             del backplane['Ang_Adrastea']
         else:
-            print "Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d)
+            print("Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d))
 
     else:
         backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians

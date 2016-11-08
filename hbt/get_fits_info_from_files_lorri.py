@@ -86,10 +86,10 @@ def get_fits_info_from_files_lorri(path,
     num_obs = np.size(files)
     i_obs = np.arange(num_obs)
     
-    print "Read " + repr(np.size(files)) + " files."
+    print("Read " + repr(np.size(files)) + " files.")
     
     for file in files:
-        print "Reading file " + file
+        print("Reading file " + file)
     
         hdulist = fits.open(file)
         header = hdulist[0].header
