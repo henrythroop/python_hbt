@@ -13,7 +13,7 @@ import math
 import astropy
 from   astropy.io import fits
 import numpy as np
-import cspice
+import spiceypy as sp
 import wcsaxes
 import hbt
 from   astropy.wcs import WCS
