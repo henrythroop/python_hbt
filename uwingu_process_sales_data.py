@@ -615,8 +615,12 @@ plot_hist_craters(t, w, bins_price_crater,
 w = np.logical_and(is_good,
                    t['has_framed_cert'])
 plot_hist_craters(t, w, bins_price_crater, 
-                  'Framed Cert, N = {:,g}'.format(np.sum(w)),
-                  file = dir_out + 'hist_framed.png')
+                  title = 'Framed Cert, N = {:,g}'.format(np.sum(w)),
+                  val = 'Number', file = dir_out + 'hist_framed_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, 
+                  title = 'Framed Cert, N = {:,g}'.format(np.sum(w)),
+                  val = 'Revenue', file = dir_out + 'hist_framed_revenue.png')
 
 #==============================================================================
 # Make some plots - TIME SERIES
