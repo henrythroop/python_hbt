@@ -105,6 +105,17 @@ def frange(start, end, *args, **kwargs):
         out = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
         return np.array(out)
 
+#==============================================================================
+# Set font size for xlabel, title, legend, etc.
+#==============================================================================
+    
+def set_fontsize(size=15):
+    
+    font = {'family' : 'sans-serif',
+            'weight' : 'normal',
+            'size'   : size}
+
+    plt.rc('font', **font)
         
 ##########
 # Get a single FITS image header
