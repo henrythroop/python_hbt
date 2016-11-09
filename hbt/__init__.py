@@ -33,6 +33,11 @@ as2r = 1. / r2as       # Arcsec to radians
 
 # Now import additional functions into this module
 # These are a part of this module now, and accessible via hbt.<function>
+# Note that for the import to work, the directory of these files must be on PYTHONPATH.
+# (ie, git/python_hbt/hbt must be on PYTHONPATH). 
+# This seems a little silly, but I think it is true. I must be missing something obvious
+# about how modules work because that doesn't seem right.  
+# It is necessary for both py2 and py3.
 
 from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
 from read_lorri                     import read_lorri

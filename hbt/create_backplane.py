@@ -95,7 +95,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
     # Look up parameters for the target body, used for PGRREC().
     
-    radii = sp.bodvrd(name_target, 'RADII')
+    (num, radii) = sp.bodvrd(name_target, 'RADII', 3)
     
     r_e = radii[0]
     r_p = radii[2]
@@ -170,16 +170,18 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
         for i_y in ys:
     
             # Look up the vector direction of this single pixel, which is defined by an RA and Dec
+            # Vector is thru mpixel to ring, in J2K 
     
-            vec_pix_j2k =  sp.radrec(1., ra_2d[i_y, i_x]*hbt.d2r, dec_2d[i_y, i_x]*hbt.d2r) # Vector thru pixel to ring, in J2K [args ok]
+            vec_pix_j2k =  sp.radrec(1., ra_2d[i_y, i_x]*hbt.d2r, dec_2d[i_y, i_x]*hbt.d2r) 
             
             # Convert vector along the pixel direction, from J2K into IAU_JUP frame
       
             vec_pix_jup = sp.mxv(mx_j2k_jup, vec_pix_j2k)
     
-            # And calculate the intercept point between this vector, and the plane defined by Jupiter's equator
+            # And calculate the intercept point between this vector, and the plane defined by Jupiter's equator.
+            # Intersect ray and plane. Jup coords.
                 
-            (npts, pt_intersect_jup) = sp.inrypl(pt_jup_sc_jup, vec_pix_jup, plane_jup) # intersect ray and plane. Jup coords.
+            (npts, pt_intersect_jup) = sp.inrypl(pt_jup_sc_jup, vec_pix_jup, plane_jup) 
     
             # Now calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
     
