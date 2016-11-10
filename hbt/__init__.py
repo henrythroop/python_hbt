@@ -84,7 +84,7 @@ def frange(start, end, *args, **kwargs):
     linear = True         # Default is for a linear range
     log    = False
 
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():  # Was 'iteritems' in py3.
         if (key == 'linear'):
             linear = value
         if (key == 'log'):

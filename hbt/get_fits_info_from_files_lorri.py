@@ -154,7 +154,7 @@ def get_fits_info_from_files_lorri(path,
     dist_targ = np.sqrt(dx_targ**2 + dy_targ**2 + dz_targ**2)
 
     phase = np.zeros(num_obs)
-    utc = np.zeros(num_obs, dtype = 'S30')
+    utc = np.zeros(num_obs, dtype = 'U30')
     et = np.zeros(num_obs)
     subsclat = np.zeros(num_obs) # Sub-sc latitude
     subsclon = np.zeros(num_obs) # Sub-sc longitude

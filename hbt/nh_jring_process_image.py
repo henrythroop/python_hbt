@@ -23,10 +23,6 @@ import numpy as np
 import astropy.modeling
 from matplotlib import cm
 
-
-#from   pylab import *  # So I can change plot size.
-                       # Pylab defines the 'plot' command
-
 import pickle # For load/save
 
 import hbt
@@ -49,7 +45,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     
 # Load the arrays with all of the filenames
 
-    file_pickle = 'nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
+    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
     
     lun = open(file_pickle, 'rb')
     t = pickle.load(lun)
@@ -177,6 +173,8 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
+            print("vars = ")
+            print(vars)
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), hbt.frange(vars[1], vars[2])) # "5/122 - 129"
             
         if (np.size(vars) == 4):
