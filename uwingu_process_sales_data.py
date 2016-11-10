@@ -286,7 +286,7 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
     for i,bin in enumerate(bin_jd_years):
         if (bin > 0):
             plt.vlines(bin, 0, np.amax(yval), linestyle='--')
-            plt.text(bin+1, ylim[1]/2, repr(years[i]),rotation=90)
+            plt.text(bin+0.3, ylim[1]*0.85, repr(years[i]),rotation=90)
     
     ylabel = val + ' per ' + chunk
     if (val == 'Revenue'):
