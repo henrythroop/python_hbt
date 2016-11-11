@@ -23,10 +23,6 @@ import numpy as np
 import astropy.modeling
 from matplotlib import cm
 
-
-#from   pylab import *  # So I can change plot size.
-                       # Pylab defines the 'plot' command
-
 import pickle # For load/save
 
 import hbt
@@ -49,7 +45,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     
 # Load the arrays with all of the filenames
 
-    file_pickle = 'nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
+    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
     
     lun = open(file_pickle, 'rb')
     t = pickle.load(lun)
@@ -70,7 +66,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     if (method == 'Previous'):
         file_prev = t_group['Filename'][index_image-1]
 #            print "file =      " + filename
-        print "file_prev = " + file_prev
+        print("file_prev = " + file_prev)
         image_bg = hbt.read_lorri(file_prev, frac_clip = 1.0, bg_method = 'None', autozoom=True)
         image_fg = image_raw
         image = image_fg - image_bg
@@ -133,7 +129,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             frac = float(frac)
             power = int(power)
             
-            print "group={}, num={}, frac={}".format(grp, num, frac)
+            print("group={}, num={}, frac={}".format(grp, num, frac))
 #            print "Group = {}, num{}, Name = {}".format(name_group, num, name)
 
             name_group = groups[grp]
@@ -177,6 +173,8 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
+            print("vars = ")
+            print(vars)
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), hbt.frange(vars[1], vars[2])) # "5/122 - 129"
             
         if (np.size(vars) == 4):
@@ -240,7 +238,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         try:
             plt.imshow(stretch(hbt.remove_sfit(image_stray,5))) # This won't do much since it is already applied
         except UnboundLocalError:
-            print "No stray light to subtract"
+            print("No stray light to subtract")
         
         plt.title('stray_norm - sfit(stray_norm,5), mean=' + hbt.trunc(np.mean(im),3))
 
@@ -264,7 +262,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             im = hbt.remove_sfit(image_raw - image_stray,5)
             plt.imshow(stretch(im))
         except UnboundLocalError:  
-            print "No stray light to subtract"
+            print("No stray light to subtract")
         
         plt.title('sfit(raw-stray,5), med ' + hbt.trunc(np.median(im),3))
         

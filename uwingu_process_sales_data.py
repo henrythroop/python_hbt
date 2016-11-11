@@ -29,20 +29,6 @@ import time
 import pickle # For load/save
 
 
-# Imports for Tk
-
-#import Tkinter
-#import ttk
-#import tkMessageBox
-#from   matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-from astropy.utils.misc import set_locale
-
-# HBT imports
-
-#import hbt
-
-
 # Process Uwingu sales data
 
 # Notes:
@@ -69,6 +55,21 @@ from astropy.utils.misc import set_locale
 #               I'm not sure there is any way to get them for regular craters.
 
 
+from astropy.utils.misc import set_locale
+
+def writefig(file_out):
+    plt.savefig(file_out)
+    print('Wrote: ' + file_out)
+
+#==============================================================================
+# Set figure size
+#==============================================================================
+
+def figsize(size): # Was imsize(), but I think this is better
+    """
+    Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
+    """
+    plt.rc('figure', figsize=(size[0], size[1]))
 
 #==============================================================================
 # Parse a coupon string into its components
@@ -102,20 +103,61 @@ def display_item(t,arr):
 # Plot histogram of a group of craters
 #==============================================================================
 
-def plot_hist_craters(num, bins, title=''):
-    plt.hist(num, bins, facecolor='yellow')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('Dollars')
-    plt.ylabel('Number Sold')
+def plot_hist_craters(t, w, bins, title='', val = 'Number', file = ''):
+
+# Perform the histogram -- though we don't actually use this result
+    
+    price = t[w]['item_actual_paid'] # Price
+
+    (num_out, bins_out) = np.histogram(price, bins)
+
+    (revenue_out, bins_out, indices) = \
+    scipy.stats.binned_statistic(price, 
+                                  t[w]['item_actual_paid'], 'sum', bins)
+
+    width = np.absolute(np.roll(bins_out[0:-1],-1)-bins_out[0:-1])  # Calc bin width
+
+                                    
+    #    plt.bar(num_out, bins_out[0:-1], facecolor='yellow')
+# Plot the histogram, which includes recalculating it
+
+    if (val == 'Number'):
+#        plt.hist(num, bins, facecolor='yellow')
+        plt.bar(bins_out[0:-1], num_out, width=width, facecolor='yellow')
+
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('Crater Price')
+        plt.ylabel('Number Sold')
+
+    if (val == 'Revenue'):
+        plt.bar(bins_out[0:-1], revenue_out, width=width, facecolor='yellow')
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.xlabel('Crater Price [$]')
+        plt.ylabel('Revenue [$]')
+
     plt.title(title)
+        
+# There is a kernel bug here. I think it is a bug in plt.text plotting on log-log plots with coordinate 0.
+    
+    for i in range(np.size(bins_out)-2):
+        xval = bins_out[i] # +1 # kernel death at 0?
+        yval = num_out[i] 
+#        print(repr(xval) + ' ' + repr(yval) + ' ' + "${}: {}".format(xval, yval)) # Causes kernel death
+
+#        plt.text(xval, yval, "${}: {}".format(xval, yval)) # Causes kernel death
+
+    if (file != ''):
+        plt.savefig(file)
+        print("Wrote: " + file)
     plt.show()
 
 #==============================================================================
 # Plot new users (and total users) per month
 #==============================================================================
 
-def plot_monthly_users(t):
+def plot_monthly_users(t, fignum=1, fs=20, file=''):
     
     jd = t['jd']
     jd_min = np.amin(jd)
@@ -148,31 +190,45 @@ def plot_monthly_users(t):
      
     total = np.size(np.unique(t['customer_id']))
     
-    plt.plot(added)
-    plt.xlabel('Month')
-    plt.ylabel('New Users Added Per Month')
-    plt.title('New Active Users, total = ' + repr(total))
-    plt.ylim((0,np.amax(added[1:])))
-    plt.show()
+    if (fignum == 1):
+        plt.plot(added)
+        plt.xlabel('Month', fontsize=fs)
+        plt.ylabel('New Users Added Per Month', fontsize=fs)
+        plt.title('New Active Users, total = {:,g}'.format(total), fontsize=fs)
+        plt.ylim((0,np.amax(added[1:])))
     
-    plt.plot(num_users)
-    plt.xlabel('Month')
-    plt.ylabel('Total Users')
-    plt.title('Active Users, total = ' + repr(total))
-    plt.ylim((np.amin(num_users),np.amax(num_users[1:])))
+    if (fignum == 2):
+        plt.plot(num_users)
+        plt.xlabel('Month', fontsize=fs)
+        plt.ylabel('Total Users', fontsize=fs)
+        plt.title('Active Users, total = {:,g}'.format(total) , fontsize=fs)
+        plt.ylim((np.amin(num_users),np.amax(num_users[1:])))
+
+    if (file != ''):
+        plt.savefig(file)
+        print('Wrote: ' + file)
+
     plt.show()
-    
+        
 #==============================================================================
 # Plot a time series of sales
 #==============================================================================
 
 def plot_v_time(t, mask, val='Number', chunk='Month', title='', 
-                skip_first=False, show_total=True):
+                skip_first=False, show_total=True, file=''):
 
     jd = t['jd']
     jd_min = np.amin(jd)
     jd_max = np.amax(jd)
     jd_range = jd_max - jd_min
+
+    years = np.array([2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017])
+    jd_years = np.zeros(np.size(years))
+    for i,year in enumerate(years):
+        utc = repr(year)+'-01-01 00:00:00'
+        time = astropy.time.Time(utc, format='iso', scale='utc')
+        time.format='jd'
+        jd_years[i] = time.value
     
     times = {'Day':      1, 
              'Week':     7, 
@@ -182,7 +238,7 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
 
     dt = times[chunk]  # Bin with, in days
         
-    num_bins = int(jd_range / dt)  # 23 bins total, or whatever
+    num_bins = int(jd_range / dt)   # 23 bins total, or whatever
     d_bin = jd_range / (num_bins-1) # Width of each bin, in days
     
     bins = np.arange(jd_min, jd_max, d_bin) # Might be an off-by-one issue here
@@ -193,8 +249,6 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
         yval = number
         valstr = ''
         
-#        plt.hist((t[mask]['jd']-jd0)/dt, bins=(bins-np.amin(bins))/dt, facecolor='pink')
-
 # For revenue, we want to count how many are in each JD bin, and then 
 # sum the dollar values in a corresponding bin. We use 
 # binned_statistic() for this. Sort of like IDL's reverse_indices.
@@ -207,20 +261,47 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
         valstr = '$'
         
 # plt.bar() -- makes same plot as histogram
+   
+    # Set the bin width to be a fracton of the plot width.
+    # Weird that I have to do this -- should set this automatically.
+
+# Convert from JD on 1-Jan-<year>, to the appropriate bin number
+    
+    bin_jd_years = (jd_years - jd_min)/d_bin
+    
+    width = (np.amax(bins) - np.amin(bins)) /  np.size(bins)
+
+# Make the plot. Note that plt.bar() plots the x axis as sequential integers (1, 2, 3), regardless.
             
-    plt.bar(bins[0:-1], yval, facecolor='pink')
+    plt.bar(bins[0:-1], yval, facecolor='pink', width=width)
     
     total = np.sum(yval)
-    
+    ylim = (0, np.amax(yval[0:]))
     if (skip_first):
-        plt.ylim((0, np.amax(yval[1:])))
+        ylim = (0, np.amax(yval[1:]))
+        plt.text(bins[0], np.amax(yval[1:]), r'$\uparrow$')
+
+# Plot the year, with a vertical line
+
+    for i,bin in enumerate(bin_jd_years):
+        if (bin > 0):
+            plt.vlines(bin, 0, np.amax(yval), linestyle='--')
+            plt.text(bin+0.3, ylim[1]*0.85, repr(years[i]),rotation=90)
     
-    plt.xlabel(chunk)
-    plt.ylabel(val + ' per ' + chunk)
+    ylabel = val + ' per ' + chunk
+    if (val == 'Revenue'):
+        ylabel += ' [$]'
+    plt.ylim(ylim)
+    plt.xlabel(chunk, fontsize=fs)
+    plt.ylabel(ylabel)
     if (show_total):    
-        plt.title(title + ', total = ' + valstr + repr(int(total)))
+        plt.title("{}, total = {}{:,g}".format(title, valstr, int(total)))
     else:
         plt.title(title)
+        
+    if (file != ''):
+        plt.savefig(file)
+        print('Wrote: ' + file)
     plt.show()
 
 #==============================================================================
@@ -230,8 +311,20 @@ def plot_v_time(t, mask, val='Number', chunk='Month', title='',
 DO_READ_PICKLE = True
 
 PRICE_CERT = 39.95
-    
+  
+fs = 20  # Font size
+figsize((12,8)) # Figure size
+
+# Set default font size for everything
+
+font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 20}
+
+plt.rc('font', **font)
+  
 dir_data = '/Users/throop/Data/Uwingu/SalesCraters'
+dir_out  = dir_data + '/out/' # To save png's in
 #files    = glob.glob(dir_data + '/*orders*.csv')
 file_csv  = 'uwingu-orders-export_all.csv'
 file_pickle = file_csv.replace('.csv', '.pkl')
@@ -412,12 +505,6 @@ print('Wrote: ' + file_pickle)
         
 is_other = (is_vote + is_crater + is_gift_cert + is_cmcfm + is_udse + \
             is_planet + is_udse_gift + is_ppd + is_bm2m) == 0    
-    
-# Make a histogram of craters
-
-# Remove the non-craters
-
-
 
 #==============================================================================
 # Extract a table for just the craters
@@ -453,7 +540,7 @@ plt.show()
 w = np.logical_and((t_crater['item_total'] >= 212), (t_crater['item_total']<213))
 display_item(t_crater, w)
 
-# Makea plot of just items with framed certs
+# Make a plot of just items with framed certs
 
 w = (t_crater['has_framed_cert'] == True)
 display_item(t_crater, w)
@@ -496,24 +583,44 @@ is_good = np.logical_and(t['is_completed'], np.logical_not(t['is_test']))
 # Select all regular craters
 
 w = np.logical_and(is_good, t['is_crater'])
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 'All Craters, N = ' + repr(np.sum(w)))
+plot_hist_craters(t, w, bins_price_crater, title='All Craters, N = {:,g}'.format(np.sum(w)),
+                  val = 'Number', file = dir_out + 'hist_craters_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, title='All Craters, N = {:,g}'.format(np.sum(w)),
+                  val = 'Revenue', file = dir_out + 'hist_craters_revenue.png')
 
 # CMCFM only
 
 w = np.logical_and(is_good, t['is_cmcfm'])
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 'CMCFM, N = ' + repr(np.sum(w)))
+plot_hist_craters(t, w, bins_price_crater, title='CMCFM, N = {:,g}'.format(np.sum(w)),
+                  val = 'Number', file = dir_out + 'hist_cmcfm_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, title='CMCFM, N = {:,g}'.format(np.sum(w)),
+                  val = 'Revenue', file = dir_out + 'hist_cmcfm_revenue.png')
 
 # Ian Harnett only
 
 w = np.logical_and(is_good,
                    t['billing_last_name'] == 'Harnett')
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 'Harnett, N = ' + repr(np.sum(w)))
+plot_hist_craters(t, w, bins_price_crater, 
+                  title='Harnett, N = {:,g}'.format(np.sum(w)), 
+                  val = 'Number', file=dir_out + 'hist_harnett_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, 
+                  title='Harnett, N = {:,g}'.format(np.sum(w)), 
+                  val = 'Revenue', file=dir_out + 'hist_harnett_revenue.png')
 
 # Framed certs only
 
 w = np.logical_and(is_good,
                    t['has_framed_cert'])
-plot_hist_craters(t['item_actual_paid'][w], bins_price_crater, 'Framed Cert, N = ' + repr(np.sum(w)))
+plot_hist_craters(t, w, bins_price_crater, 
+                  title = 'Framed Cert, N = {:,g}'.format(np.sum(w)),
+                  val = 'Number', file = dir_out + 'hist_framed_number.png')
+
+plot_hist_craters(t, w, bins_price_crater, 
+                  title = 'Framed Cert, N = {:,g}'.format(np.sum(w)),
+                  val = 'Revenue', file = dir_out + 'hist_framed_revenue.png')
 
 #==============================================================================
 # Make some plots - TIME SERIES
@@ -531,44 +638,83 @@ w = np.logical_and(is_good, t['is_planet'])
 
 w = np.logical_and(is_good, t['is_cmcfm'])
 #plot_weekly(t[w]['jd'], num_weeks, 'CMCFM')
-plot_v_time(t, w, val='Number', chunk='Month', title = 'CMCFM', skip_first=True)
-plot_v_time(t, w, val='Revenue', chunk='Month', title = 'CMCFM', skip_first=True)
+plot_v_time(t, w, val='Number', chunk='Month', title = 'CMCFM', skip_first=True,
+            file = dir_out + 'plot_cmcfm_month_number.png')
+
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'CMCFM', skip_first=True,
+            file = dir_out + 'plot_cmcfm_month_revenue.png')
 
 w = np.logical_and(is_good, t['is_crater'])
-#plot_weekly(t[w]['jd'], num_weeks, 'Craters')
-plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Craters')
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Craters', skip_first=True,
+            file = dir_out + 'plot_craters_month_revenue.png')
+
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Craters', skip_first=True,
+            file = dir_out + 'plot_craters_month_number.png')
 
 w = np.logical_and(is_good, t['billing_last_name'] == 'Harnett')
 plot_v_time(t, w, val='Number', chunk='Week', title = 'Harnett', skip_first=True)
-plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Harnett', skip_first=True)
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Harnett', skip_first=True,
+            file = dir_out + 'plot_harnett_month_revenue.png')
 
 w = np.logical_and(is_good, t['has_framed_cert'])
-plot_v_time(t, w, val='Number', chunk='Month', title = 'Framed Certs', show_total=True, skip_first=False)
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Framed Certs', show_total=True, skip_first=False,
+            file = dir_out + 'plot_framed_certs_month_number.png')
 
 w = np.logical_and(is_good, t['is_bm2m'])
-plot_v_time(t, w, val='Revenue', chunk='Month', title = 'BM2M', skip_first=False)
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'BM2M', skip_first=False,
+            file = dir_out + 'plot_bm2m_month_revenue.png')
+
 plot_v_time(t, w, val='Number', chunk='Month', title = 'BM2M', skip_first=False)
 
 w = np.logical_and(is_good, t['is_udse'])
-#plot_weekly(t[w]['jd'], num_weeks, 'UDSE')
-plot_v_time(t, w, val='Number', chunk='Month', title = 'UDSE', skip_first=False)
+plot_v_time(t, w, val='Number', chunk='Month', title = 'UDSE', skip_first=False,
+            file = dir_out + 'plot_udse_month_number.png')
 
-w = np.logical_and(is_good, t['is_gift_cert'])
-plot_v_time(t, w, val='Number', chunk='Month', title = 'Gift Cert', skip_first=False)
-plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Gift Cert', skip_first=False)
+w = np.logical_and(is_good, t['is_udse'])
+plot_v_time(t, w, val='Number', chunk='Month', title = 'UDSE', skip_first=False,
+            file = dir_out + 'plot_udse_month_number.png')
 
-#plot_weekly(t[w]['jd'], num_weeks, 'Gift Cert')
+w = np.logical_and(is_good, t['is_planet'])
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Planet Names', skip_first=False,
+            file = dir_out + 'plot_planet_month_revenue.png')
 
-plot_v_time(t, w, val='Number', chunk='Week', title = 'Gift Cert')
-plot_v_time(t, w, val='Number', chunk='Day', title = 'Gift Cert')
+w = np.logical_and(is_good, t['is_vote'])
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Planet Votes', skip_first=False,
+            file = dir_out + 'plot_vote_month_revenue.png')
+
+w = np.logical_and(is_good, 
+                   np.logical_or(t['is_vote'], t['is_planet']))
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Planet Names and Votes', skip_first=False,
+            file = dir_out + 'plot_name_and_vote_month_revenue.png')
+
+
+# Gift certs, excluding Harnett
+
+w = np.logical_and(is_good, 
+                   np.logical_and(t['is_gift_cert'], t['billing_last_name'] != 'Harnett'))
+
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Gift Cert (no Ian)', skip_first=False, 
+            file = dir_out + 'plot_gift_cert_month_number.png')
+
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Gift Cert (no Ian)', skip_first=False)
+
+# Total revenue
+
+w = is_good
+plot_v_time(t, w, val='Revenue', chunk='Month', title = 'Total', skip_first=False,
+            file = dir_out + 'plot_total_revenue.png')
+
+plot_v_time(t, w, val='Number', chunk='Month', title = 'Total', skip_first=False,
+            file = dir_out + 'plot_total_number_month.png')
 
 #==============================================================================
 # Plot new users (and total users) per month
 #==============================================================================
 
-plot_monthly_users(t)
+plot_monthly_users(t, 1, file = dir_out + 'monthly_users.png')
 
-    
+plot_monthly_users(t,2, file = dir_out + 'delta_monthly_users.png')
+
     ### XXX There is some problem here. I am assuming that customer_id=30K
     # implies we have 30K customers, and that is not true. There are a lot
     # of skipped values.
@@ -660,15 +806,18 @@ plt.stackplot((bins[0:-1]-np.amin(bins))/dt, \
                          'yellow', 'salmon', 'lightgrey', 'aqua', 'orchid'],
                labels=
                ['Vote', 'Planet', 'UDSE', 
-                         'Framing', 'BM2M', 'Craters', 'CMCFM', 'GC no Ian'])
+                         'Framing', 'BM2M', 'Craters', 'CMCFM', 'GC (No Ian)'])
  
 plt.xlim((0,(np.amax(bins[0:-1])-np.amin(bins))/dt))
 plt.ylim((0,1))
 plt.legend(framealpha=0.8)
-plt.ylabel('Fraction')
-plt.xlabel('Month')
-plt.title('Revenue stream, Fraction of Total')
+plt.ylabel('Fraction', fontsize=fs)
+plt.xlabel('Month', fontsize=fs)
+plt.title('Revenue Stream, Fraction of Total', fontsize=fs)
+plt.savefig(dir_out + 'revenue_streams.png')
 plt.show()
+
+
 
 #==============================================================================
 # Plot gift certs as fraction of total craters
@@ -688,6 +837,8 @@ plt.ylabel('Percent Framed')
 plt.xlabel('Crater Price [$]')
 plt.xscale('log')
 plt.title('Framing as Percent of Total Crater Sales')
+writefig(dir_out + 'framing_as_percent.png')
+
 plt.show()
 
 #==============================================================================

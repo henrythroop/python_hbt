@@ -13,7 +13,7 @@ import math
 import astropy
 from   astropy.io import fits
 import numpy as np
-import cspice
+import spiceypy as sp
 import wcsaxes
 import hbt
 from   astropy.wcs import WCS
@@ -41,7 +41,7 @@ def nh_create_straylight_median_filename(index_group, index_files, do_fft=False,
     
     if (do_sfit):
         if (np.size(index_files) == 0):
-            print "Error: index_files = []"
+            print("Error: index_files = []")
             return ""
             
         file_base = 'straylight_median_g{:.0f}_n{:.0f}..{:.0f}_sfit{:.0f},{:.0f}'.format(index_group, 

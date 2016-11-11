@@ -2,7 +2,7 @@ def get_fits_info_from_files_lorri(path,
                             file_tm = "/Users/throop/gv/dev/gv_kernels_new_horizons.txt" ):
     "Populate an astropy table with info from the headers of a list of LORRI files."
     import numpy as np
-    import cspice
+    import spiceypy as sp
     import glob
     import astropy
     from astropy.io import fits
@@ -27,7 +27,7 @@ def get_fits_info_from_files_lorri(path,
     d2r = np.pi /180.
     r2d = 1. / d2r
 
-    cspice.furnsh(file_tm)
+    sp.furnsh(file_tm)
 
 # *** If path ends with .fit or .fits, then it is a file not a path. Don't expand it, but read it as a single file.
 
@@ -86,10 +86,10 @@ def get_fits_info_from_files_lorri(path,
     num_obs = np.size(files)
     i_obs = np.arange(num_obs)
     
-    print "Read " + repr(np.size(files)) + " files."
+    print("Read " + repr(np.size(files)) + " files.")
     
     for file in files:
-        print "Reading file " + file
+        print("Reading file " + file)
     
         hdulist = fits.open(file)
         header = hdulist[0].header
@@ -147,14 +147,14 @@ def get_fits_info_from_files_lorri(path,
     sformat    = np.array(fits_sformat)
     rotation   = np.rint(rotation).astype(int)  # Turn rotation into integer. I only want this to be 0, 90, 180, 270... 
     rsolar     = np.array(fits_rsolar)
-    files_short = np.zeros(num_obs, dtype = 'S30')
+    files_short = np.zeros(num_obs, dtype = 'U30')
 
 # Now do some geometric calculations and create new values for a few fields
 
     dist_targ = np.sqrt(dx_targ**2 + dy_targ**2 + dz_targ**2)
 
     phase = np.zeros(num_obs)
-    utc = np.zeros(num_obs, dtype = 'S30')
+    utc = np.zeros(num_obs, dtype = 'U30')
     et = np.zeros(num_obs)
     subsclat = np.zeros(num_obs) # Sub-sc latitude
     subsclon = np.zeros(num_obs) # Sub-sc longitude
@@ -181,20 +181,20 @@ def get_fits_info_from_files_lorri(path,
     
 # Get the ET and UTC, from the JD. These are all times *on s/c*, which is what we want
     
-      et[i] = cspice.utc2et('JD ' + repr(jd[i]))
-      utc[i] = cspice.et2utc(et[i], 'C', 2)
+      et[i] = sp.utc2et('JD ' + repr(jd[i]))
+      utc[i] = sp.et2utc(et[i], 'C', 2)
     
 # Calculate Sun-Jupiter-NH phase angle for each image 
     
-      (st_jup_sc, ltime) = cspice.spkezr('Jupiter', et[i], frame, abcorr, 'New Horizons') #obs, targ
-      (st_sun_jup, ltime) = cspice.spkezr('Sun', et[i], frame, abcorr, 'Jupiter')
-      ang_scat = cspice.vsep(st_sun_jup[0:3], st_jup_sc[0:3])
+      (st_jup_sc, ltime) = sp.spkezr('Jupiter', et[i], frame, abcorr, 'New Horizons') #obs, targ
+      (st_sun_jup, ltime) = sp.spkezr('Sun', et[i], frame, abcorr, 'Jupiter')
+      ang_scat = sp.vsep(st_sun_jup[0:3], st_jup_sc[0:3])
       phase[i] = math.pi - ang_scat
 #      phase[i] = ang_scat
       files_short[i] = files[i].split('/')[-1]
 # Calc sub-sc lon/lat
       
-      (radius,subsclon[i],subsclat[i]) = cspice.reclat(st_jup_sc[0:3])
+      (radius,subsclon[i],subsclat[i]) = sp.reclat(st_jup_sc[0:3])
 
 # Stuff all of these into a Table
 
