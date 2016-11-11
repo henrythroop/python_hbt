@@ -13,7 +13,7 @@ import math
 import astropy
 from   astropy.io import fits
 import numpy as np
-import cspice
+import spiceypy as sp
 import wcsaxes
 import hbt
 from   astropy.wcs import WCS
@@ -40,12 +40,12 @@ def nh_get_straylight_median(index_group, index_files, do_fft=False, do_sfit=Tru
     
     file_pkl = dir_straylight + file_base + '.pkl'
     
-    print "Pickle file = " + file_pkl
+    print("Pickle file = " + file_pkl)
     
     # If file exists, load it and return
     
     if os.path.exists(file_pkl):
-        print 'Reading file: ' + file_pkl
+        print('Reading file: ' + file_pkl)
         lun = open(file_pkl, 'rb')
         arr = pickle.load(lun)
         lun.close() 
@@ -60,7 +60,7 @@ def nh_get_straylight_median(index_group, index_files, do_fft=False, do_sfit=Tru
         lun = open(file_pkl, 'wb')
         pickle.dump(arr, lun)
         lun.close()
-        print 'Wrote file: ' + file_pkl
+        print('Wrote file: ' + file_pkl)
         
         return arr
         

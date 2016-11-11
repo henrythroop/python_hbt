@@ -13,7 +13,7 @@ import math
 import astropy
 from   astropy.io import fits
 import numpy as np
-import cspice
+import spiceypy as sp
 import wcsaxes
 import hbt
 from   astropy.wcs import WCS
@@ -42,7 +42,8 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 #   
 #     This routine returns the array itself, and a recommended base filename. It does not write it to disk.
  
-    file_pickle = 'nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
+
+    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
     
     lun = open(file_pickle, 'rb')
     t = pickle.load(lun)
@@ -71,7 +72,7 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
      
     for i,n in enumerate(index_files):
         file = t_group['Filename'][n] # Look up filename
-        print "Reading: " + file
+        print("Reading: " + file)
         frame = hbt.read_lorri(file,frac_clip = 1)
         if (np.shape(frame)[0] == 256):
             

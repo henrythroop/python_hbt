@@ -39,7 +39,7 @@ def read_alice(file, frac_clip=0.9, polyfit=True, bg_method='None', bg_argument=
         file_list = glob.glob(dir_images + '/*{}*fit'.format(int(file)))
         
         if not file_list:
-            print 'File not found'
+            print('File not found')
             return 0
         
         file = file_list[0]

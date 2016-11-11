@@ -18,7 +18,7 @@
 
 import hbt
 import numpy as np
-import cspice
+import spiceypy as sp
 
 def met2utc(met_in, name_observer = 'NEW HORIZONS'):
 
@@ -26,7 +26,7 @@ def met2utc(met_in, name_observer = 'NEW HORIZONS'):
 #     name_observer = 'New Horizons'
 
   if (name_observer.upper().find('NEW HORIZONS') == -1):
-    print 'MET can be used only for New Horizons'
+    print('MET can be used only for New Horizons')
     return
 
 # Convert input to an array, even if it is not
@@ -49,9 +49,9 @@ def met2utc(met_in, name_observer = 'NEW HORIZONS'):
   utc = np.zeros(ntime, dtype = 'S30')
 
   for i in range(np.size(ntime)):  
-     et[i] = cspice.sct2e(-98, sclk_ticks[i])
-     utc[i] = cspice.et2utc(et[i], 'C', 3)
-#        utc[i] = cspice_et2utc, et_i, 'ISOD', 3, utc_i
+     et[i] = sp.sct2e(-98, sclk_ticks[i])
+     utc[i] = sp.et2utc(et[i], 'C', 3)
+#        utc[i] = sp_et2utc, et_i, 'ISOD', 3, utc_i
   
   if (ntime == 1):
     utc = utc[0]

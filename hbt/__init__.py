@@ -14,7 +14,7 @@ import astropy
 import astropy.modeling
 import skimage.transform as skt  # This 'resize' function is more useful than np's
 import matplotlib as plt
-import cspice
+import spiceypy as sp
 from   astropy.io import fits
 import subprocess
 from   scipy.stats import linregress
@@ -33,6 +33,11 @@ as2r = 1. / r2as       # Arcsec to radians
 
 # Now import additional functions into this module
 # These are a part of this module now, and accessible via hbt.<function>
+# Note that for the import to work, the directory of these files must be on PYTHONPATH.
+# (ie, git/python_hbt/hbt must be on PYTHONPATH). 
+# This seems a little silly, but I think it is true. I must be missing something obvious
+# about how modules work because that doesn't seem right.  
+# It is necessary for both py2 and py3.
 
 from get_fits_info_from_files_lorri import get_fits_info_from_files_lorri
 from read_lorri                     import read_lorri
@@ -79,7 +84,7 @@ def frange(start, end, *args, **kwargs):
     linear = True         # Default is for a linear range
     log    = False
 
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():  # Was 'iteritems' in py3.
         if (key == 'linear'):
             linear = value
         if (key == 'log'):
@@ -105,6 +110,17 @@ def frange(start, end, *args, **kwargs):
         out = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
         return np.array(out)
 
+#==============================================================================
+# Set font size for xlabel, title, legend, etc.
+#==============================================================================
+    
+def set_fontsize(size=15):
+    
+    font = {'family' : 'sans-serif',
+            'weight' : 'normal',
+            'size'   : size}
+
+    plt.rc('font', **font)
         
 ##########
 # Get a single FITS image header
@@ -257,8 +273,8 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         arr = name_bodies
     
     for i,name_body in enumerate(arr):
-      st,ltime = cspice.spkezr(name_body, et, frame, abcorr, name_observer)    
-      radius,ra[i],dec[i] = cspice.recrad(st[0:3])
+      st,ltime = sp.spkezr(name_body, et, frame, abcorr, name_observer)    
+      radius,ra[i],dec[i] = sp.recrad(st[0:3])
     
     if (units == 'pixels'):
         x, y = wcs.wcs_world2pix(ra*r2d, dec*r2d, 0) # Convert to pixels
@@ -306,9 +322,9 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
     ra_ring  = np.zeros(num_pts_ring)
     dec_ring = np.zeros(num_pts_ring)
     
-    rot = cspice.pxform('IAU_' + name_body, frame, et) # Get matrix from arg1 to arg2
+    rot = sp.pxform('IAU_' + name_body, frame, et) # Get matrix from arg1 to arg2
     
-    st,ltime = cspice.spkezr(name_body, et, frame, abcorr, name_observer)
+    st,ltime = sp.spkezr(name_body, et, frame, abcorr, name_observer)
     pos = st[0:3]
 #    vel = st[3:6] # velocity, km/sec, of jupiter
     
@@ -322,9 +338,9 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
 
         rho_planet    = pos                     # Position of planet
         rho_ring      = rho_planet + j2000_xyz  # Vector obs-ring
-#        dist_ring     = cspice.vnorm(rho_ring)*1000 # Convert to km... CHECK UNITS!
+#        dist_ring     = sp.vnorm(rho_ring)*1000 # Convert to km... CHECK UNITS!
         
-        range_out, ra, dec = cspice.recrad(rho_ring) # 'range' is a protected keyword in python!
+        range_out, ra, dec = sp.recrad(rho_ring) # 'range' is a protected keyword in python!
         
         ra_ring[j] = ra     # save RA, Dec as radians
         dec_ring[j] = dec
@@ -383,9 +399,9 @@ def correct_stellab(radec, vel):
 
     radec_abcorr = radec.copy()    
     for i in range(np.shape(radec)[0]):
-        pos_i = cspice.radrec(1., radec[i,0], radec[i,1])
-        pos_i_abcorr = cspice.stelab(pos_i, vel)
-        rang, radec_abcorr[i,0], radec_abcorr[i,1] = cspice.recrad(pos_i_abcorr)
+        pos_i = sp.radrec(1., radec[i,0], radec[i,1])
+        pos_i_abcorr = sp.stelab(pos_i, vel)
+        rang, radec_abcorr[i,0], radec_abcorr[i,1] = sp.recrad(pos_i_abcorr)
 
     return radec_abcorr
     
