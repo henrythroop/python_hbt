@@ -842,6 +842,37 @@ writefig(dir_out + 'framing_as_percent.png')
 plt.show()
 
 #==============================================================================
+# Make a printed table (not a plot) of UDSE sales.
+#==============================================================================
+
+w = np.logical_and(is_udse, is_good)
+
+# Print the full list to the screen to analyze it
+
+t[w]['date','coupon_code', 'order_total'].pprint(max_lines=200)
+
+print("Total UDSE subscriptions = {}".format(np.sum(w)))
+print("-----")
+
+print("Total redeemed coupons: spacefoundation16 = {}".format(
+  np.sum(t[w]['coupon_code'] == 'spacefoundation16')))
+
+print("Total redeemed coupons: virgingalactic16 = {}".format(
+  np.sum(t[w]['coupon_code'] == 'virgingalactic16')))
+
+print("Total redeemed coupons: holiday2015 = {}".format(
+  np.sum(t[w]['coupon_code'] == 'holiday2015')))
+
+print("Total redeemed coupons: uwinguvip = {}".format(
+  np.sum(t[w]['coupon_code'] == 'uwinguvip')))
+
+print("Total purchases for self (full price, no coupon) = {}".format(
+                                np.sum(t[w]['coupon_code'] == '')))
+
+print("Total gift cert sub's redeemed: {}".format(127-19-12-12-5-42))
+
+print
+#==============================================================================
 # Make some more plots
 #==============================================================================
 
