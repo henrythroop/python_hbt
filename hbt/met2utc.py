@@ -46,7 +46,7 @@ def met2utc(met_in, name_observer = 'NEW HORIZONS'):
   sclk_ticks = np.array(met * 5e4)  # Have to include np.array() -- not sure why. I guess a 1x1 np-array is demoted??
   ntime = np.size(met_in)     # Number of elements
   et  = np.zeros(ntime) 
-  utc = np.zeros(ntime, dtype = 'S30')
+  utc = np.zeros(ntime, dtype = 'U30')
 
   for i in range(np.size(ntime)):  
      et[i] = sp.sct2e(-98, sclk_ticks[i])
