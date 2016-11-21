@@ -422,7 +422,7 @@ def image_from_list_points(points, shape, diam_kernel):  # Shape is (num_rows, n
         xi = points[i,1]
         yi = points[i,0]
         if (xi >= 0) & (xi + diam_kernel < dx) & (yi >= 0) & (yi + diam_kernel < dy):
-            arr[yi:yi+diam_kernel, xi:xi+diam_kernel] = kernel
+            arr[yi:yi+diam_kernel, xi:xi+diam_kernel] = kernel # This doesn't handle overlaps well -- can be fixed.
      
     return arr
     
@@ -651,19 +651,30 @@ def is_number(s):
 # Find stars in an image
 ##########
         
-def find_stars(im):
+def find_stars(im, num=-1):
     """Locate stars in an image array, using DAOphot. 
     Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
-    Each star has position [row, column] = [y, x]."""
+    Each star has position [row, column] = [y, x].
+    Optional: 'num' indicates max number of stars to return, sorted by brightness."""
 
     from   astropy.stats import sigma_clipped_stats
     from   photutils import daofind
 
     mean, median, std = sigma_clipped_stats(im, sigma=3.0, iters=5)
-    sources = daofind(im - median, fwhm=3.0, threshold=5.*std)
-    x_phot = sources['xcentroid']
-    y_phot = sources['ycentroid']
+    sources = daofind(im - median, fwhm=5.0, threshold=3.*std)
+    
+    sources.sort('flux')  # Sort in-place
+
+    # If the 'num' value is passed, sort, and return only those brightest ones
+    
+    if (num > 0):  
+        index_start = -num
+    else:
+        index_start = 0
         
+    x_phot = sources['xcentroid'][index_start:]
+    y_phot = sources['ycentroid'][index_start:]
+    
     points_phot = np.transpose((y_phot, x_phot)) # Create an array N x 2
 
     return points_phot
