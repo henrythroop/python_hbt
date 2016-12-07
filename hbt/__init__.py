@@ -145,6 +145,23 @@ def get_image_header(file, single=False):
         return header
 
 ##########
+# Merge FITS image and header info from two files
+##########
+        
+def merge_fits_header(file_image, file_header, file_out):
+    '''
+    Merge the image data ('PRIMARY'.data) from one FITS file, 
+    with the header data ('PRIMARY'.header) from another.
+    '''
+    
+    h_image = fits.open(file_image)
+    h_header = fits.open(file_header)
+    
+    h_image['PRIMARY'].header = h_header['PRIMARY'].header
+    h_image.writeto(file_out)
+    print("Wrote new file to " + file_out)
+    
+##########
 # Write a string to the Mac clipboard
 ##########
 # http://stackoverflow.com/questions/1825692/can-python-send-text-to-the-mac-clipboard
