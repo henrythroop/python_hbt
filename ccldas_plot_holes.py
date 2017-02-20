@@ -22,17 +22,19 @@ Created on Tue Jan  6 21:51:36 2015
 import numpy as np
 import scipy
 import pylab
-import pymorph
+import pymorph  # pip install pymorph. Well, doesn't seem to install on py3.
 import os
 import csv
 import glob
-from hbt import *
-
-from scipy import ndimage as ndd
-from scipy import misc
-from pylab import *  # So I can change plot size using rcParams
+import hbt
 
 import matplotlib.pyplot as plt
+
+from scipy import ndimage as nd
+from scipy import misc
+# from pylab import *  # So I can change plot size using rcParams
+
+# import matplotlib.pyplot as plt
 
 colors = np.array(['green', 'blue', 'orange', 'brown', 'red', 'pink', 'grey'])
 
@@ -60,7 +62,7 @@ for file in files:
 # Read in the CSV file and put store all the data into arrays
 
 for file in files:
-    print file
+    print(file)
     
     f = genfromtxt(file, delimiter=',', skiprows=1, dtype = 'double', invalid_raise=False, usecols=range(4))
     

@@ -22,20 +22,23 @@ def met2utc(met, name_observer):
 
 # Relies on cspice already being up and running
 
+    import numpy as np
+    import cspice as sp
+
     if ('NEW HORIZONS' not in name_observer):
-	error = 'MET can be used only for New Horizons'
-	print error
-	return 0
+        error = 'MET can be used only for New Horizons'
+        print(error)
+        return 0
 
     sclk_ticks = met * 5e4
-    ntime = length(met)  # Vectorized
+    ntime = len(met)  # Vectorized
     et    = np.zeros(ntime) 
     utc   = np.zeros(ntime, dtype="S30")
 
     for i in range(ntime):
-	et[i] = cspice.sct2e(-98, sclk_ticks[i])
+        et[i] = sp.sct2e(-98, sclk_ticks[i])
 
-	utc[i] = cspice.et2uct(et[i], 'ISOC', 3)
+        utc[i] = sp.et2uct(et[i], 'ISOC', 3)
 
     if (ntime == 1): 
       utc = utc[0]

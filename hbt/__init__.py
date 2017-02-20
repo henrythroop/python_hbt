@@ -668,11 +668,16 @@ def is_number(s):
 # Find stars in an image
 ##########
         
-def find_stars(im, num=-1):
+def find_stars(im, num=-1, do_flux=False):
     """Locate stars in an image array, using DAOphot. 
     Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
     Each star has position [row, column] = [y, x].
-    Optional: 'num' indicates max number of stars to return, sorted by brightness."""
+    
+    Optional: 'num' indicates max number of stars to return, sorted by brightness.
+    
+    Optional: if do_flux set, then will return a third column, with fluxes.
+    
+    """
 
     from   astropy.stats import sigma_clipped_stats
     from   photutils import daofind
@@ -691,12 +696,40 @@ def find_stars(im, num=-1):
         
     x_phot = sources['xcentroid'][index_start:]
     y_phot = sources['ycentroid'][index_start:]
+    flux   = sources['flux'][index_start:]
     
-    points_phot = np.transpose((y_phot, x_phot)) # Create an array N x 2
+    if do_flux:
+        points_phot = np.transpose((y_phot, x_phot, flux)) # Create an array N x 3
+    else:     
+        points_phot = np.transpose((y_phot, x_phot)) # Create an array N x 2
 
     return points_phot
 
 
+#==============================================================================
+# Convert from factor, to magnitude
+#==============================================================================
+
+# Duplicate IDL hbtlib fac2mag()
+
+def fac2mag(fac):
+
+    import numpy as np
+
+    return np.log( 1/(1.*fac))/np.log(100**0.2)    
+
+#==============================================================================
+# Convert from magnitude, factor
+#==============================================================================
+
+# Duplicate IDL hbtlib mag2fac()
+
+def mag2fac(mag): 
+
+    import numpy as np
+    
+    return np.exp(-mag * np.log(100.**0.2))
+   
 #==============================================================================
 # Do a simple cosmic ray rejection
 #==============================================================================
