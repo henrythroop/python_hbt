@@ -169,16 +169,19 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             image_stray = hbt.nh_get_straylight_median(index_group, [int(vars[0])])  # "122" -- assume current group
             
         if (np.size(vars) == 2):
-            image_stray = hbt.nh_get_straylight_median(index_group, hbt.frange(int(vars[0]), int(vars[1])))  # "122-129" 
+            image_stray = hbt.nh_get_straylight_median(index_group, 
+                                                      hbt.frange(int(vars[0]), int(vars[1])).astype('int'))  # "122-129" 
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
             print("vars = ")
             print(vars)
-            image_stray = hbt.nh_get_straylight_median(int(vars[0]), hbt.frange(vars[1], vars[2])) # "5/122 - 129"
+            image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
+                                                      hbt.frange(vars[1], vars[2]).astype('int')) # "5/122 - 129"
             
         if (np.size(vars) == 4):
-            image_stray = hbt.nh_get_straylight_median(int(vars[0]), hbt.frange(vars[1], vars[3])) # "6/122 - 6/129"
+            image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
+                                                      hbt.frange(vars[1], vars[3]).astype('int')) # "6/122 - 6/129"
 
 # Subtract stray light from original, and then remove an sfit(5) from that
 

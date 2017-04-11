@@ -42,7 +42,6 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 #   
 #     This routine returns the array itself, and a recommended base filename. It does not write it to disk.
  
-
     file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
     
     lun = open(file_pickle, 'rb')

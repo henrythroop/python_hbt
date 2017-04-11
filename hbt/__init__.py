@@ -19,6 +19,7 @@ from   astropy.io import fits
 import subprocess
 from   scipy.stats import linregress
 import hbt
+import warnings
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -593,14 +594,15 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
 # Define the fitting routine
 
     fit_p = astropy.modeling.fitting.LevMarLSQFitter()
-        
-#    with warnings.catch_warnings():
-# Ignore model linearity warning from the fitter
-#        warnings.simplefilter('ignore')
+
+# astropy insists on warning me to use a linear filtter if my coeffs are linear. This is stupid. Turn off that warning.
+
+    with warnings.catch_warnings():        
+        warnings.simplefilter('ignore')
 
 # Do the fit itself
         
-    poly = fit_p(p_init, x_small, y_small, arr_small)
+        poly = fit_p(p_init, x_small, y_small, arr_small)
 
 # Take the returned polynomial, and apply it to our x and y axes to get the final surface fit
 
