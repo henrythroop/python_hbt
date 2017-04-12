@@ -102,21 +102,24 @@ if (DO_PLOT_ALL_Q):
         plt.plot(r, n, label='n(r), q={}'.format(q_i))
         plt.plot(r, ngtr)
 
+lw = 2  # linewidth
+
 plt.rc('font', size=25)
 hbt.figsize((12,8))
-color_df99 = 'green'
-color_hbt = 'purple'
+color_df99 = 'red'
+color_hbt = 'green'
 
 #plt.plot(data_hbt['Diameter'], data_hbt['Number'], label = 'Throop et al 2015', color=color_hbt)
-plt.plot(data_df99['Diameter']/2, data_df99['Number'], label = 'Durda & Flynn 1999', color=color_df99)
+plt.plot(data_df99['Diameter']/2, data_df99['Number'], label = 'Durda & Flynn 1999', 
+         color=color_df99, linewidth=lw)
 plt.errorbar(data_hbt['Diameter']/2, data_hbt['Number'], yerr=data_hbt['Error'], label = 'Throop et al 2015', 
-             color = color_hbt)
+             color = color_hbt, linewidth=lw)
 
 n_q2 = r**(-2)
 n_q15 = r**(-1.5)
 n_q4 = r**(-4)
-plt.plot(r, n_q15*2, color=color_hbt, linestyle='--', alpha = 0.2)
-plt.plot(r, n_q4*1000, color=color_df99, linestyle='--', alpha = 0.2)
+plt.plot(r, n_q15*2, color=color_hbt, linestyle='--', alpha = 0.2, linewidth=lw)
+plt.plot(r, n_q4*1000, color=color_df99, linestyle='--', alpha = 0.2, linewidth=lw)
         
 #plt.plot(r, np.cumsum(n))
 
@@ -126,10 +129,10 @@ plt.ylabel('N > r')
 plt.xlabel('Particle radius r [$\mu$m]')
 plt.xlim((0.05, 50))
 plt.ylim((5e-5, 200))
-plt.legend()
-plt.text(5, 2, 'q=4')
+plt.legend(loc = 'lower left')
+plt.text(5, 2, 'q$_{ej}$=4')
 #plt.text(0.04, 10, 'q=1.5')
-plt.text(20, 0.04, 'q=1.5')
+plt.text(17, 0.04, 'q$_{ej}$=1.5')
 
 
 file_out = dir_home + 'ccldas_df99.png'
