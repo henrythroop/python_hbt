@@ -12,6 +12,7 @@ import os
 import glob
 from subprocess import call  # Best way to call a function from python
 from subprocess import check_output # Call, and return the output
+import sys  # For getting sys.argv
 
 # 
 # 
@@ -21,6 +22,62 @@ dir_originals = 'originals'
 dir_show      = '/Users/throop/photos/Trips/Test'
 dir_originals = os.path.join(dir, 'originals', dir_show)
 
+#==============================================================================
+# Read the captions.txt file
+#==============================================================================
+def get_captions_from_file(file):
+    """ 
+    Return an array with all the captions in a captions.txt file, one per entry
+    """     
+    lun = open(file, 'r') # 'r' = read
+    captions_raw = lun.readlines()
+    lun.close()
+    captions = []
+    for i in range(int(len(captions_raw)/2)):
+        captions.append(captions_raw[i*2])
+    return captions
+
+    
+#==============================================================================
+# Write all captions to the output file
+#==============================================================================
+
+def write_captions_to_file(file, captions):
+
+    lun = open(os.path.join(dir, file_captions), 'w')
+    for caption in captions:
+        lun.write(caption + "\n")  
+    #    lun.writeline("\n")
+    lun.close()
+    print("Wrote: " + file_captions)
+
+#==============================================================================
+# Read all the captions from JPEG files
+#==============================================================================
+
+def get_captions_from_images(files):
+ 
+    """
+    Return captions for all the files listed by name.
+    """
+    captions_new = []
+    
+    for file in files:
+                # Read the output, and then convert from bytes into string
+        caption = check_output(['exiftool', '-Description', file]).decode("utf-8")
+        caption = caption[34:]  # Remove first few bytes from it
+        
+        captions_new.append(caption)
+    
+    captions = captions_new
+
+    return captions
+
+# Process commandline arguments
+
+if (len(sys.argv) > 1):
+    index_image = sys.argv[1]
+    
 # With no arguments, take all of the files in the 'originals' dir, and one-by-one process them.
 # Except if originals doesn't exist, then use the current directory.
 
@@ -37,35 +94,10 @@ images = [glob.glob(dir + "/*.jpg"),
 images = [item for sublist in images for item in sublist]
 
 # Read the existing captions file
-# It is 2 * N lines long -- with newlines separating each entry
 
-#lun = open(os.path.join(dir, file_captions), 'r') # 'r' = read
-#captions = lun.readlines()
-#lun.close()
+captions = get_captions_from_file(os.path.join(dir, file_captions))
 
-# Read all the captions from JPEG files
-
-captions_new = []
-
-for image in images:
-            # Read the output, and then convert from byte into string
-    caption = check_output(['exiftool', '-Description', image]).decode("utf-8")
-    caption = caption[34:]  # Remove first few bytes from it
-    
-    captions_new.append(caption)
-
-captions = captions_new
-
-# Write all captions to the output file
-
-lun = open(os.path.join(dir, file_captions), 'w')
-for caption in captions:
-    lun.write(caption)  # Damn. Gives error of 'must be str, not bytes'
-    lun.writeline("\n")
-lun.close()
-print("Wrote: " + file_captions)
-
-
+# If 
 # .extend(glob.glob("*.JPG")).extend(glob.glob("*.jpeg")).extend(glob.glob("*.JPEG"))
     
 # With multiple arguments:
