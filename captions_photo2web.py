@@ -19,8 +19,10 @@ import sys  # For getting sys.argv
 
 file_captions = 'captions.txt'
 dir_originals = 'originals'
-dir_show      = '/Users/throop/photos/Trips/Test'
-dir_originals = os.path.join(dir, 'originals', dir_show)
+dir_show      = os.path.curdir
+dir_originals = os.path.join(dir_show, 'originals')
+
+print("Path = {}".format(dir_originals))
 
 #==============================================================================
 # Read the captions.txt file
@@ -66,12 +68,16 @@ def get_captions_from_images(files):
                 # Read the output, and then convert from bytes into string
         caption = check_output(['exiftool', '-Description', file]).decode("utf-8")
         caption = caption[34:]  # Remove first few bytes from it
-        
+        print(".", end='')
         captions_new.append(caption)
     
     captions = captions_new
 
     return captions
+
+#==============================================================================
+# MAIN CODE
+#==============================================================================
 
 # Process commandline arguments
 
@@ -81,21 +87,54 @@ if (len(sys.argv) > 1):
 # With no arguments, take all of the files in the 'originals' dir, and one-by-one process them.
 # Except if originals doesn't exist, then use the current directory.
 
-if (os.path.isfile(dir_originals)):
+if (os.path.exists(dir_originals)):
     dir = dir_originals
 else:
     dir = dir_show
 
-images = [glob.glob(dir + "/*.jpg"), 
-          glob.glob(dir + "/*.jpeg"),
-          glob.glob(dir + "/*.JPG"),
-          glob.glob(dir + "/*.JPEG")]
+images = [glob.glob(os.path.join(dir, "*.jpg")), 
+          glob.glob(os.path.join(dir, "*.jpeg")),
+          glob.glob(os.path.join(dir, "*.JPG")),
+          glob.glob(os.path.join(dir, "*.JPEG"))]
 
 images = [item for sublist in images for item in sublist]
 
-# Read the existing captions file
+print("Found {} images in {} ".format(len(images), dir))
 
-captions = get_captions_from_file(os.path.join(dir, file_captions))
+# Sort them. They all have a simple prefix (001_, 002_,) so this should be simple
+
+images.sort()
+
+path_file_captions = os.path.join(dir, file_captions)
+
+if (len(sys.argv) > 1):
+    index_image = int(sys.argv[1])
+        
+    # Read the existing captions file
+
+    captions = get_captions_from_file(path_file_captions)
+    
+    # Extract the caption from one file
+
+    s = get_captions_from_images([images[index_image]]) # WRap it into a list
+    
+    captions[index_image] = s[0]  # De-list it
+
+    print("Extracting caption #{}".format(index_image))
+    
+    (path_file_captions, captions)
+
+else:
+
+    captions = get_captions_from_images(images)
+    
+    print("Read {} captions.".format(len(captions)))
+
+# Write the file out
+    
+write_captions_to_file(path_file_captions, captions)
+
+print("Wrote: {}".format(path_file_captions))
 
 # If 
 # .extend(glob.glob("*.JPG")).extend(glob.glob("*.jpeg")).extend(glob.glob("*.JPEG"))
