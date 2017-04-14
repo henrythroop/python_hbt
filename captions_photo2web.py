@@ -6,23 +6,28 @@ Created on Thu Apr 13 08:47:27 2017
 @author: throop
 """
 
-# Process photo2web captions files 
+# Process photo2web captions files
+# Usage: 
+#   captions_photo2web [number]
+#
+# With [number], extract that image number, with the first image being 1.
+# With no argument, extracts all images in the 'originals' directory.
+# This python routine replaces the perl script from c. 2008, and adds functionality
+# to extract an individual caption.
+#
+# Format of the captions.txt file is that it has 2 x N lines, for N entries, separated by \n.
+#
+# HBT 13-Apr-2017
 
 import os
 import glob
-from subprocess import call  # Best way to call a function from python
-from subprocess import check_output # Call, and return the output
+from   subprocess import check_output # Call, and return the output
 import sys  # For getting sys.argv
-
-# 
-# 
 
 file_captions = 'captions.txt'
 dir_originals = 'originals'
-dir_show      = os.path.curdir
-dir_originals = os.path.join(dir_show, 'originals')
-
-print("Path = {}".format(dir_originals))
+dir_show      = os.path.curdir  # Directory that has the show.html file -- basically, root of the slideshow
+dir_originals = os.path.join(dir_show, 'originals')  # 'original' subdir -- basically, directory of all the images
 
 #==============================================================================
 # Read the captions.txt file
@@ -38,7 +43,6 @@ def get_captions_from_file(file):
     for i in range(int(len(captions_raw)/2)):
         captions.append(captions_raw[i*2])
     return captions
-
     
 #==============================================================================
 # Write all captions to the output file
@@ -46,12 +50,12 @@ def get_captions_from_file(file):
 
 def write_captions_to_file(file, captions):
 
-    lun = open(os.path.join(dir, file_captions), 'w')
+    lun = open(file_captions, 'w')
     for caption in captions:
         lun.write(caption + "\n")  
     #    lun.writeline("\n")
     lun.close()
-    print("Wrote: " + file_captions)
+#    print("Wrote: " + file_captions)
 
 #==============================================================================
 # Read all the captions from JPEG files
@@ -68,13 +72,31 @@ def get_captions_from_images(files):
                 # Read the output, and then convert from bytes into string
         caption = check_output(['exiftool', '-Description', file]).decode("utf-8")
         caption = caption[34:]  # Remove first few bytes from it
-        print(".", end='')
+        print(".", end='')      # Print a diagnostic to screen
+        
+        if (caption.strip() == ''):   # If there is no caption, use the filename itself
+            caption = file.split('/')[-1] + "\n"
+#            print("Using file = " + caption)
+            
         captions_new.append(caption)
+#        print("Appended " + caption)
     
     captions = captions_new
 
     return captions
 
+#==============================================================================
+# Print all captions to the screen
+#==============================================================================
+
+def print_captions(captions):
+    """
+    Diagnostic routine to print to screen, numbered
+    """
+    
+    for i,caption in enumerate(captions):
+        print("{}. {}".format(i, caption))
+        
 #==============================================================================
 # MAIN CODE
 #==============================================================================
@@ -101,11 +123,13 @@ images = [item for sublist in images for item in sublist]
 
 print("Found {} images in {} ".format(len(images), dir))
 
-# Sort them. They all have a simple prefix (001_, 002_,) so this should be simple
+# Sort all the images alphabetically. They all have a simple name convention (001_, 002_,) so this is easy.
 
 images.sort()
 
-path_file_captions = os.path.join(dir, file_captions)
+path_file_captions = os.path.join(dir_show, file_captions)
+
+# If an image number was passed, read only that caption, and plug it back into the captions.txt file
 
 if (len(sys.argv) > 1):
     index_image = int(sys.argv[1])
@@ -114,35 +138,31 @@ if (len(sys.argv) > 1):
 
     captions = get_captions_from_file(path_file_captions)
     
-    # Extract the caption from one file
-
-    s = get_captions_from_images([images[index_image]]) # WRap it into a list
+#    print_captions(captions)
     
-    captions[index_image] = s[0]  # De-list it
+    # Extract the caption from one file
+    
+    # Careful of indices here: To the human, the initial image is #1, but to python, it is #0.
+
+    s = get_captions_from_images([images[index_image-1]]) # Wrap it into a list
+    
+    captions[index_image-1] = s[0]  # Result is returned as a one-item list. Extract it as a string.
 
     print("Extracting caption #{}".format(index_image))
+    print(s[0])
     
-    (path_file_captions, captions)
-
+# Otherwise, read all the captions, one per image.
+ 
 else:
-
+    
     captions = get_captions_from_images(images)
     
     print("Read {} captions.".format(len(captions)))
 
 # Write the file out
+
+#print_captions(captions)
     
 write_captions_to_file(path_file_captions, captions)
 
 print("Wrote: {}".format(path_file_captions))
-
-# If 
-# .extend(glob.glob("*.JPG")).extend(glob.glob("*.jpeg")).extend(glob.glob("*.JPEG"))
-    
-# With multiple arguments:
-#   Read the captions.txt
-#   Read the list of files
-#   Process the appropriate one (or more)
-#   Write out the file
-   
-# First see if we have a 
