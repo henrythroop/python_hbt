@@ -55,7 +55,6 @@ def write_captions_to_file(file, captions):
         lun.write(caption + "\n")  
     #    lun.writeline("\n")
     lun.close()
-#    print("Wrote: " + file_captions)
 
 #==============================================================================
 # Read all the captions from JPEG files
