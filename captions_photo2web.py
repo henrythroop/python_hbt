@@ -71,7 +71,7 @@ def get_captions_from_images(files):
                 # Read the output, and then convert from bytes into string
         caption = check_output(['exiftool', '-Description', file]).decode("utf-8")
         caption = caption[34:]  # Remove first few bytes from it
-        print(".", end='')      # Print a diagnostic to screen
+        sys.stdout.write('.')      # Print progress bar to screen
         
         if (caption.strip() == ''):   # If there is no caption, use the filename itself
             caption = file.split('/')[-1] + "\n"
@@ -79,6 +79,8 @@ def get_captions_from_images(files):
             
         captions_new.append(caption)
 #        print("Appended " + caption)
+    
+    print()  # Terminate the progress bar
     
     captions = captions_new
 
