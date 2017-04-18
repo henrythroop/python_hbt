@@ -45,7 +45,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     
 # Load the arrays with all of the filenames
 
-    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
+    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to get filenames, etc.
     
     lun = open(file_pickle, 'rb')
     t = pickle.load(lun)
@@ -170,7 +170,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             
         if (np.size(vars) == 2):
             image_stray = hbt.nh_get_straylight_median(index_group, 
-                                                      hbt.frange(int(vars[0]), int(vars[1])).astype('int'))  # "122-129" 
+                                                      hbt.frange(int(vars[0]), int(vars[1])).astype('int'))  # "122-129"
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
