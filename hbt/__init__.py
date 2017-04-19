@@ -538,7 +538,8 @@ def longest_common_substring(S,T):
                 elif c == longest:
                     lcs_set.add(S[i-c+1:i+1])
 
-    return lcs_set.pop() # Original function returned lcs_set itself. I don't know why -- I just want to extract one element.
+    return lcs_set.pop() # Original function returned lcs_set itself. I don't know why -- 
+                         # I just want to extract one element.
 
 #==============================================================================
 # POLYFIT
@@ -743,11 +744,14 @@ def decosmic(im, sigma=3):
 # NB: I should offer to return a mask. And I should offer to replace with something other than the median.
 # Logic here is roughly based on https://python4astronomers.github.io/core/numpy_scipy.html
 
+# The bottleneck for this function is the medfilt, which applies a median filter to a given area
+# given a kernel width. However, I found that medfilt2d() is 4x as fast as medfilt(): 0.3 vs. 1.3 sec 
+# for LORRI 1024x1024.
     import scipy.signal
         
     med = np.nanmedian(im)
     std = np.nanstd(im)
-    im_sm = scipy.signal.medfilt(im, 5)  # Smooth the image
+    im_sm = scipy.signal.medfilt2d(im, 5)  # Smooth the image.
     is_bad = (im - im_sm) > (std*sigma)  # Flag pixels which drop in value a lot when smoothed
     im_fix = im.copy()                   # Create output array
     im_fix[is_bad] = med                 # Replace pixels
