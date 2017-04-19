@@ -50,6 +50,7 @@ from nh_create_straylight_median_filename import nh_create_straylight_median_fil
 from nh_jring_process_image         import nh_jring_process_image
 from create_backplane               import create_backplane
 from calc_offset_points             import calc_offset_points
+#from navigate_image_stellar         import navigate_image_stellar
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
@@ -241,6 +242,18 @@ def is_array(arg):
     import numpy as np
 
     return isinstance(arg, (tuple, collections.Sequence, np.ndarray)) and not isinstance(arg, (str, unicode))
+
+def sizex(arr):
+    """
+    Return x size of an array
+    """
+    return(arr.shape[0])
+
+def sizey(arr):
+    """
+    Return y size of an array. No error handling.
+    """
+    return(arr.shape[1])
 
 def get_range_user(maxrange = 10000):
 
