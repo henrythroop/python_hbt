@@ -39,7 +39,6 @@ import hbt
 # The image returned is a science image, with flux (ie, I/F) preserved.
 # No clipping or scaling has been done.
 
-                                                                                                                                           
 def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     """Return image with stray light removed. I/F is preserved and no clipping is done."""
     
@@ -89,7 +88,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     if (method == 'Polynomial'):
         
         power = vars
-        image = image_raw - hbt.sfit(image_raw, power) # Look up the exponenent and apply it 
+        image = image_raw - hbt.sfit(image_raw, power) # Look up the exponenent and apply it
         image_processed = image
                                             
     if (method == 'Grp Num Frac Pow'):  # Specify to subtract a specified group#/image#, mult factor, and sfit power.
@@ -204,7 +203,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     
     if (DO_DIAGNOSTIC):
 
-        stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile.                   
+        stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile
 
         plt.rcParams['figure.figsize'] = 16,6
 
