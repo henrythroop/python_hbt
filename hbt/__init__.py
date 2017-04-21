@@ -20,6 +20,7 @@ import subprocess
 from   scipy.stats import linregress
 import hbt
 import warnings
+import importlib  # So I can do importlib.reload(module)
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -436,25 +437,45 @@ def correct_stellab(radec, vel):
 
     return radec_abcorr
     
-def image_from_list_points(points, shape, diam_kernel):  # Shape is (num_rows, num_cols)
+def image_from_list_points(points, shape, diam_kernel, do_binary=False):  # Shape is (num_rows, num_cols)
                                                 
     """
     Given an ordered list of xy points, and an output size, creates an image.
     Useful for creating synthetic star fields. Each point is [row, column] = [y, x]
+    
+    do_binary: If set, output a boolean mask, rather than a floating point image
     """
     
-    kernel = hbt.dist_center(diam_kernel, invert=True, normalize=True)
+    # Get the kernel function. Properly mask it so it is a boolean circle.
+
+    if (do_binary): # Create a masked kernel if requested    
+        kernel = hbt.dist_center(diam_kernel)
+        kernel = (kernel < diam_kernel / 2)
+
+    else:
+        kernel = hbt.dist_center(diam_kernel, invert=True, normalize=True)
+
+    # Set up the output array
+    
     arr = np.zeros(shape)
     dx = shape[1]
     dy = shape[0]
+
     x = points[:,1]
     y = points[:,0]
+
+    # Loop over every point
+    
     for i in range(len(x)):
+
         xi = points[i,1]
         yi = points[i,0]
+
         if (xi >= 0) & (xi + diam_kernel < dx) & (yi >= 0) & (yi + diam_kernel < dy):
-            arr[yi:yi+diam_kernel, xi:xi+diam_kernel] = kernel # This doesn't handle overlaps well -- can be fixed.
-     
+            arr[yi:yi+diam_kernel, xi:xi+diam_kernel] = \
+              np.maximum(arr[yi:yi+diam_kernel, xi:xi+diam_kernel], kernel)
+              # If we overlap, don't add pixel value -- just take the max of the pair
+              
     return arr
     
 def set_plot_defaults(cmap='Greys'):
@@ -492,6 +513,8 @@ def dist_center(diam, circle=False, centered=True, invert=False, normalize=False
     """
     Returns an array of dimensions diam x diam, with each cell being the distance from the center cell.
     Works best if diam is an odd integer.
+    Similar to IDL's dist(), although this function applies the shift(shift(dist())).
+    If normalize is passed, 
     """
     
     xx, yy = np.mgrid[:diam, :diam]
@@ -684,7 +707,7 @@ def is_number(s):
 # Find stars in an image
 ##########
         
-def find_stars(im, num=-1, do_flux=False):
+def find_stars(im, num=-1, do_flux=False, sigma=3.0, iters=5, fwhm=5.0, threshold = 9):
     """Locate stars in an image array, using DAOphot. 
     Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
     Each star has position [row, column] = [y, x].
@@ -698,8 +721,8 @@ def find_stars(im, num=-1, do_flux=False):
     from   astropy.stats import sigma_clipped_stats
     from   photutils import daofind
 
-    mean, median, std = sigma_clipped_stats(im, sigma=3.0, iters=5)
-    sources = daofind(im - median, fwhm=5.0, threshold=3.*std)
+    mean, median, std = sigma_clipped_stats(im, sigma=sigma, iters=iters)
+    sources = daofind(im - median, fwhm=fwhm, threshold=threshold)
     
     sources.sort('flux')  # Sort in-place
 

@@ -10,8 +10,8 @@ Created on Fri Sep  9 15:52:17 2016
 # Calc offset between two sets of points. Generates an image for each one, and then calcs relative image shift.
 ##########
 
-def calc_offset_points(points_1, points_2, shape, diam_kernel = 5, labels=['', ''], 
-                                do_plot_before=False, do_plot_after=False):
+def calc_offset_points(points_1, points_2, shape, diam_kernel = 9, labels=['', ''], 
+                                do_binary = True, do_plot_before=False, do_plot_after=False, do_plot_raw=False):
     """
     points_1, points_2: 
     """
@@ -34,22 +34,31 @@ def calc_offset_points(points_1, points_2, shape, diam_kernel = 5, labels=['', '
 #    diam_kernel = 5 # Set the value of the fake stellar image to plot
                     # diam_kernel = 5 is best for LORRI. 11 is too big, and we get the wrong answer. Very sensitive.
 
-    image_1 = hbt.image_from_list_points(points_1, shape, diam_kernel)
-    image_2 = hbt.image_from_list_points(points_2, shape, diam_kernel)
+    diam_kernel = 9
+    
+    image_1 = hbt.image_from_list_points(points_1, shape, diam_kernel, do_binary=do_binary)
+    image_2 = hbt.image_from_list_points(points_2, shape, diam_kernel, do_binary=do_binary)
  
+#    (dy,dx) = get_image_translation(image_1, image_2)
+    
+    # Get the shift, using 
     (dy,dx) = ird.translation(image_1, image_2)['tvec'] # Return shift, with t0 = (dy, dx). 
                                                         # ** API changed ~ Sep-16, Anaconda 4.2?
 
-    DO_PLOT_INPUT_FRAMES = False  # Plot the raw frames generated to calculate the shift
+#    DO_PLOT_INPUT_FRAMES = False  
     
-    if (DO_PLOT_INPUT_FRAMES):
+    if (do_plot_raw): # Plot the raw frames generated to calculate the shift
         plt.imshow(image_1)
-        plt.title('Image 1 = ' + labels[0])
+        plt.title('Image 1 = ' + labels[0] + ', diam_kernel = {}'.format(diam_kernel))
         plt.show()
         
         plt.imshow(image_2)
         plt.title('Image 2 = ' + labels[1])
         plt.show()
+        
+        plt.imshow(image_1 + image_2)
+        plt.title('Image 1+2 = ' + labels[1])
+        plt.show()        
     
     print("dx={}, dy={}".format(dx,dy))
     
