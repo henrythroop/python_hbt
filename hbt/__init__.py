@@ -51,7 +51,7 @@ from nh_create_straylight_median_filename import nh_create_straylight_median_fil
 from nh_jring_process_image         import nh_jring_process_image
 from create_backplane               import create_backplane
 from calc_offset_points             import calc_offset_points
-#from navigate_image_stellar         import navigate_image_stellar
+from navigate_image_stellar         import navigate_image_stellar
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
@@ -794,3 +794,33 @@ def decosmic(im, sigma=3):
     
     return im_fix
     
+#==============================================================================
+# Function to get the translation between two sets of points
+# This is my brute-force shift-and-add image translation searcher.
+# It works perfectly, but is super slow.
+# Usually ird.translation() is better.
+#==============================================================================
+
+def get_translation_images_bruteforce(im_a, im_b):
+    """
+    Return the shift (dy, dx) between a pair of images. Slow.
+    """        
+    shift_max = 50 # Shift halfwidth
+    
+    range_dy = np.arange(-shift_max, shift_max+1)  # Actually goes from -N .. +(N-1)
+    range_dx = np.arange(-shift_max, shift_max+1)
+        
+    sum = np.zeros((hbt.sizex(range_dx), hbt.sizex(range_dy))) # Create the output array. 
+                                         # Each element here is the sum of (dist from star N to closest shifted star)
+    
+    for j,dx in enumerate(range_dx):
+        for k,dy in enumerate(range_dy):
+            sum[j,k] = np.sum(np.logical_and( im_a, np.roll(np.roll(im_b,dx,0),dy,1)) )
+        print("j = {}, dx = {}".format(j, dx))
+        
+    pos = np.where(sum == np.amax(sum)) # Assumes a single valued minimum
+    
+    dy_out = pos[1][0] - shift_max
+    dx_out = pos[0][0] - shift_max
+        
+    return (np.array((dy_out, dx_out)), sum)
