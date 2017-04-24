@@ -50,7 +50,7 @@ from   scipy.stats import linregress
 import wcsaxes
 import time
 from   scipy.interpolate import griddata
-import cv2
+#import cv2
 
 import re # Regexp
 import pickle # For load/save
