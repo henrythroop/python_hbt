@@ -13,6 +13,8 @@ between a set of stars in a catalog, and a set of (partially matching) stars fro
 photometry. Then, give an offset between these (e.g., shrink 3%, and shift by 13 pixels).
 
 I ended up not using this, but keeping it around since it might be useful in the future.
+It didn't work out for J-ring stellar navigation because it it too general: I want just translation,
+and this will provide translation + rotation + scaling.
 
 Requires cv2 = Computer Vision. 'pip install opencv-python'
  
@@ -25,11 +27,11 @@ HBT 21-Apr-2017
 import cv2  # computer vision library
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.neighbors import NearestNeighbors
-#from scipy.optimize import leastsq
-from scipy.optimize import fmin_bfgs
-from scipy.optimize import minimize
-from scipy.optimize import approx_fprime
+from   sklearn.neighbors import NearestNeighbors
+#from  scipy.optimize import leastsq
+from   scipy.optimize import fmin_bfgs
+from   scipy.optimize import minimize
+from   scipy.optimize import approx_fprime
 
 def res(p,src,dst):
     T = np.matrix([[np.cos(p[2]),-np.sin(p[2]),p[0]],

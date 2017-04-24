@@ -254,60 +254,69 @@ def navigate_image_stellar(im, wcs_in, name_catalog='GSC', DO_PLOT=True):
 # It is returned in order (y,x) because that is what imreg_dft uses, even though it is a bit weird.
  
     # Use the ICP / CV2 method to do this, which is better than my own custom method
-    
-#    (popt, mat) = icp(np.transpose(points_stars_phot), np.transpose(points_stars_cat))
-    (popt, mat) = icp(np.transpose(points_stars_cat),  np.transpose(points_stars_phot))
 
-    dy_opnav_cv2 = mat[1,2] # swapping
-    dx_opnav_cv2 = -mat[0,2]
-    
-    dx_opnav = dx_opnav_cv2
-    dy_opnav = dy_opnav_cv2
-    
-#    (dy_opnav, dx_opnav) = hbt.calc_offset_points(points_stars_phot, points_stars_cat, np.shape(im),
-#        diam_kernel=9, labels = ['DAO', 'GSC Catalog'], do_plot_before=True, do_plot_after=True, 
-#        do_plot_raw = True, do_binary = True)
+    DO_ICP = False
+    if (DO_ICP):    
+        (popt, mat) = icp(np.transpose(points_stars_phot), np.transpose(points_stars_cat))
+        (popt, mat) = icp(np.transpose(points_stars_cat),  np.transpose(points_stars_phot))
 
-    dy = dy_opnav
-    dx = dx_opnav
-
-#    points_stars_cat_xform = cv2.transform( np.array([points_stars_cat.astype(np.float32) ]), np.array(mat[0:2]))
-    points_stars_cat_xform = cv2.transform( np.array([points_stars_cat.astype(np.float32) ]), np.array(mat))
+        dy_opnav_cv2 = mat[1,2] # swapping
+        dx_opnav_cv2 = -mat[0,2]
+        
+        dx_opnav = dx_opnav_cv2
+        dy_opnav = dy_opnav_cv2
+ 
+    DO_HBT_OLD = False
+    if (DO_HBT_OLD):
+        (dy_opnav, dx_opnav) = hbt.calc_offset_points(points_stars_phot, points_stars_cat, np.shape(im),
+            diam_kernel=9, labels = ['DAO', 'GSC Catalog'], do_plot_before=True, do_plot_after=True, 
+            do_plot_raw = True, do_binary = True)
     
-    print("CV2: dx = {}, dy = {}".format(dx_opnav_cv2, dy_opnav_cv2))
+        dy = dy_opnav
+        dx = dx_opnav
 
+        points_stars_cat_xform = cv2.transform( np.array([points_stars_cat.astype(np.float32) ]), np.array(mat[0:2]))
+        points_stars_cat_xform = cv2.transform( np.array([points_stars_cat.astype(np.float32) ]), np.array(mat))
+    
+        print("CV2: dx = {}, dy = {}".format(dx_opnav_cv2, dy_opnav_cv2))
+    
 # Try new algorithms
 
-    ((dx_opnav_2, dy_opnav_2), mat_2) =  get_translation_points(points_stars_cat, points_stars_phot)
-    ((dx_opnav_2_r, dy_opnav_2_r), mat_2_r) =  get_translation_points(points_stars_phot, points_stars_cat)
-
+    DO_HBT_NEW_POINTS = False
+    if (DO_HBT_NEW_POINTS):
+        ((dx_opnav_2,   dy_opnav_2),   mat_2)   =  get_translation_points(points_stars_cat,  points_stars_phot)
+        ((dx_opnav_2_r, dy_opnav_2_r), mat_2_r) =  get_translation_points(points_stars_phot, points_stars_cat)
+    
     diam_kernel = 9
     do_binary = True
-    
+
     image_cat  = image_from_list_points(points_stars_cat,  shape, diam_kernel, do_binary=do_binary)
     image_phot = image_from_list_points(points_stars_phot, shape, diam_kernel, do_binary=do_binary)
     
-    im_a = image_cat
-    im_b = image_phot
-    
-#    ((dx_opnav_3, dy_opnav_3), mat_3)       = get_translation_images(image_cat, image_phot)
-#    ((dx_opnav_3_r, dy_opnav_3_r), mat_3_r) = get_translation_images(image_phot, image_cat)
+    DO_HBT_NEW_IMAGE = False
+    if (DO_HBT_NEW_IMAGE):
 
-    (dy_opnav_4, dx_opnav_4) = ird.translation(image_cat, image_phot)['tvec']
-            
-    dy_opnav = -dy_opnav_4
-    dx_opnav = -dx_opnav_4
-    
-    print("Opnav_2: Points")
-    print("Opnav_2:   dx={}, dy={}".format(dx_opnav_2,   dy_opnav_2))
-    print("Opnav_2_r: dx={}, dy={}".format(dx_opnav_2_r, dy_opnav_2_r))
-    
-    print("Opnav_3: Images")
-    print("Opnav_3:   dx={}, dy={}".format(dx_opnav_3,   dy_opnav_3))
-#    print("Opnav_3_r: dx={}, dy={}".format(dx_opnav_3_r, dy_opnav_3_r))
+        im_a = image_cat
+        im_b = image_phot
+        ((dx_opnav_3, dy_opnav_3), mat_3)       = get_translation_images(image_cat, image_phot)
+        ((dx_opnav_3_r, dy_opnav_3_r), mat_3_r) = get_translation_images(image_phot, image_cat)
 
-    print("Opnav_4: Images, FFT")
-    print("Opnav_4:   dx={:.2f}, dy={:.2f}".format(dx_opnav_4,   dy_opnav_4))
+    DO_IRD = True
+    if (DO_IRD):     
+        (dy_opnav_4, dx_opnav_4) = ird.translation(image_cat, image_phot)['tvec']         
+        dy_opnav = -dy_opnav_4
+        dx_opnav = -dx_opnav_4
+    
+#    print("Opnav_2: Points")
+#    print("Opnav_2:   dx={}, dy={}".format(dx_opnav_2,   dy_opnav_2))
+#    print("Opnav_2_r: dx={}, dy={}".format(dx_opnav_2_r, dy_opnav_2_r))
+#    
+#    print("Opnav_3: Images")
+#    print("Opnav_3:   dx={}, dy={}".format(dx_opnav_3,   dy_opnav_3))
+##    print("Opnav_3_r: dx={}, dy={}".format(dx_opnav_3_r, dy_opnav_3_r))
+#
+#    print("Opnav_4: Images, FFT")
+#    print("Opnav_4:   dx={:.2f}, dy={:.2f}".format(dx_opnav_4,   dy_opnav_4))
     
     # Conclusion: Method 3 (get_translation_images) works better than Method 2
     
@@ -350,6 +359,12 @@ def navigate_image_stellar(im, wcs_in, name_catalog='GSC', DO_PLOT=True):
 # Return results and exit
 #==============================================================================
 
+# Results are returned in terms of pixel offset.
+# I want to return a new modified WCS instead.
+# I guess I should then write this as a new _nav.fits or _starnav.fits file.
+# That will mean doubling my filesize, but I do want to keep these with the FITS, and I don't want
+# to modify the originals. So that's probably the thing to do.
+# 
     return(dx_opnav, dy_opnav)    
 
 #==============================================================================
@@ -381,6 +396,7 @@ def TESTING():
 
 #==============================================================================
 # Function to get the translation between two sets of points
+# This routine just didn't work that well. Requires too much hand-tuning for individual cases.
 #==============================================================================
 
 def get_translation_points(a, b): # a, b have shape (N, 2).
@@ -413,7 +429,9 @@ def get_translation_points(a, b): # a, b have shape (N, 2).
                 a_i_shift_y = a_i_shift[0]
                 dist_i = np.sqrt((a_i_shift_x - b_x)**2 + (a_i_shift_y - b_y)**2) # dist btwn a_i and all b's
                 
-                if (np.amin(dist_i) < shift_max/2):
+                if (np.amin(dist_i) < shift_max/2): # Do some logic to try to include fit quality only for the 
+                                                    # relatively close fits. I don't think this helped -- results
+                                                    # are better without this logic.
                     sum_i += np.amin(dist_i)
                     num_valid += 1
             if (num_valid > 0):
@@ -432,6 +450,8 @@ def get_translation_points(a, b): # a, b have shape (N, 2).
 
 #==============================================================================
 # Function to get the translation between two sets of points
+# This is my brute-force shift-and-add image translation searcher.
+# It works perfectly, but is super slow.
 #==============================================================================
 
 def get_translation_images(im_a, im_b):
