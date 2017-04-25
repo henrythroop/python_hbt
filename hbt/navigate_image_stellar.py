@@ -88,7 +88,7 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
     NUM_STARS_CAT  = 50  # How many stars to use from star catalog
 
     DO_GSC1     = False
-    DO_GSC2     = True
+    DO_GSC12     = True
     DO_USNOA2   = False
     
 #==============================================================================
@@ -132,8 +132,9 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
         dec_stars = np.array(stars.array['DEJ2000'])*hbt.d2r # Convert to radians
     #            table_stars = Table(stars.array.data)
     
-    if (DO_GSC2):
-        name_cat = u'Guide Star Catalog v2 1'
+    if (DO_GSC12):
+#        name_cat = u'The HST Guide Star Catalog, Version 1.2 (Lasker+ 1996) 1'
+        name_cat = u'Guide Star Catalog v2 1' # This is accessible from gobi, not tomato
             
         with data.conf.set_temp('remote_timeout', 30): # This is the very strange syntax to set a timeout delay.
                                                        # The default is 3 seconds, and that times out often.
@@ -233,12 +234,6 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
     
     image_cat  = hbt.image_from_list_points(points_stars_cat,  shape, diam_kernel, do_binary=do_binary)
     image_phot = hbt.image_from_list_points(points_stars_phot, shape, diam_kernel, do_binary=do_binary)
-    
-    if (method == 'bruteforce'):  # Very slow method
-
-        ((dx, dy), mat)       = hbt.get_translation_images_bruteforce(image_cat, image_phot)
-        dx_opnav = -dx
-        dy_opnav = -dy
 
     if (method == 'fft'):         # Very fast method
 
@@ -254,7 +249,13 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
         (dy, dx) = ird.translation(image_cat, image_phot, constraints=constraints)['tvec']         
         dy_opnav = -dy
         dx_opnav = -dx
-    
+
+    if (method == 'bruteforce'):  # Very slow method
+
+        ((dx, dy), mat)       = hbt.get_translation_images_bruteforce(image_cat, image_phot)
+        dx_opnav = -dx
+        dy_opnav = -dy
+        
 #==============================================================================
 # Make a plot, showing DAO positions + catalog positions
 #==============================================================================
@@ -321,14 +322,15 @@ def TESTING():
     import matplotlib.pyplot as plt
 
     dir =  '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/' 
+    method_opnav = 'fft'
+
     file_in = dir + 'lor_0034765323_0x630_sci_1.fit' # This one is faint -- hard to see much. But algo works -both.
 #    file_in = dir + 'lor_0034602123_0x630_sci_1.fit'  # Algo works. Both g_t_i and fft.
-#    file_in = dir + 'lor_0034613523_0x630_sci_1.fit'  # Fails fft. Works g_t_i.
-    
+#    file_in = dir + 'lor_0034613523_0x630_sci_1.fit'  # Fails fft. Works g_t_i.  
 #    file_in = dir + 'lor_0034676528_0x630_sci_1.fit' # Good test case, very simple, good stars. g_t_i works great.
 #    file_in = dir + 'lor_0034676528_0x630_sci_1_starnav.fit' # Post-navigation
-
 #    file_in = dir + 'lor_0034676528_0x630_sci_1_starnav_starnav.fit' # Post-navigation
+    file_in = dir + 'lor_0034604523_0x630_sci_1.fit' # shoudl be easy but it fails
 
     im = hbt.read_lorri(file_in) # Read the image, and process it a bit I think
     
@@ -339,9 +341,13 @@ def TESTING():
         w_orig  = WCS(file_in)           # Look up the WCS coordinates for this frame
         w       = WCS(file_in)           # Get a copy of it, which we'll change
     
+    wcs_in = w  # Just for testing, leave this for cut+paste
+    method = method_opnav # Leave for testing
+    
     plt.set_cmap('Greys_r')
     hbt.figsize((10,10))
     
+
     crval_orig = w_orig.wcs.crval
     
 # Do the navigation call
@@ -349,9 +355,26 @@ def TESTING():
 #    method_opnav = 'bruteforce'
 #    (w, (dy_pix, dx_pix)) = navigate_image_stellar(im, w, method = method_opnav)
     
-    method_opnav = 'fft'
     (w, (dy_pix, dx_pix)) = navigate_image_stellar(im, w, method = method_opnav,
                              title = file_in.split('/')[-1])
+    
+#    (dx_pix, dy_pix) = (round(dx_pix*10)/10, round(dy_pix*10)/10)  # Truncate them
+
+    crval = w.wcs.crval
+
+
+    dir =  '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/' 
+    
+    plt.set_cmap('Greys_r')            
+    hbt.figsize((10,10))
+    do_plot = True
+    
+    im = hbt.read_lorri(file) # Read the image, and process it a bit I think
+    
+    hdulist = fits.open(file) 
+    header  = hdulist['PRIMARY'].header
+    mode    = header['SFORMAT']     
+    hdulist.close()  
     
 #    (dx_pix, dy_pix) = (round(dx_pix*10)/10, round(dy_pix*10)/10)  # Truncate them
 

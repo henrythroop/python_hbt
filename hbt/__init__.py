@@ -468,8 +468,8 @@ def image_from_list_points(points, shape, diam_kernel, do_binary=False):  # Shap
     
     for i in range(len(x)):
 
-        xi = points[i,1]
-        yi = points[i,0]
+        xi = int(round(points[i,1]))
+        yi = int(round(points[i,0]))
 
         if (xi >= 0) & (xi + diam_kernel < dx) & (yi >= 0) & (yi + diam_kernel < dy):
             arr[yi:yi+diam_kernel, xi:xi+diam_kernel] = \
