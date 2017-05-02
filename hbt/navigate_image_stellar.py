@@ -127,7 +127,7 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
     
     if (DO_GSC1):
         name_cat = u'The HST Guide Star Catalog, Version 1.1 (Lasker+ 1992) 1' # works, but 1' errors; investigating
-        stars = conesearch.conesearch(center_deg, radius_search_deg, cache=False, catalog_db = name_cat)
+        stars = conesearch.conesearch(center_deg, radius_search_deg, cache=True, catalog_db = name_cat)
         ra_stars  = np.array(stars.array['RAJ2000'])*hbt.d2r # Convert to radians
         dec_stars = np.array(stars.array['DEJ2000'])*hbt.d2r # Convert to radians
     #            table_stars = Table(stars.array.data)
@@ -194,8 +194,8 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
 # Make a plot showing the DAO stars on the image
 #==============================================================================
 
-    color_dao = 'red'
-    color_cat = 'lightgreen'
+    color_phot = 'red'            # Color for stars found photometrically
+    color_cat  = 'lightgreen'     # Color for stars in catalog
     
     DO_PLOT_DAO = False   # Plot an intermediate result?
     
@@ -263,7 +263,7 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
     do_plot = True
     if (do_plot):
         
-        hbt.figsize((10,10))
+#        hbt.figsize((10,10))
         
         plt.imshow(stretch(im))
         
@@ -279,7 +279,7 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
                  
         plt.plot(x_stars_phot, y_stars_phot, 
                  marker='o', ls='None', 
-                 color='none', markersize=10, mew=1, mec=color_dao, alpha = 1, label = 'DAOfind Stars')               
+                 color='none', markersize=10, mew=1, mec=color_phot, alpha = 1, label = 'DAOfind Stars')               
         
         plt.title('After navigation, with dx = {:.1f}, dy = {:.1f}, {}'.format(dx_opnav, dy_opnav, title))
         plt.legend()  # Draw legend. Might be irrel since remove() might keep it; not sure.
@@ -324,6 +324,10 @@ def TESTING():
     dir =  '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/' 
     method_opnav = 'fft'
 
+    plt.set_cmap('Greys_r')            
+#    hbt.figsize((10,10))
+    do_plot = True
+    
     file_in = dir + 'lor_0034765323_0x630_sci_1.fit' # This one is faint -- hard to see much. But algo works -both.
 #    file_in = dir + 'lor_0034602123_0x630_sci_1.fit'  # Algo works. Both g_t_i and fft.
 #    file_in = dir + 'lor_0034613523_0x630_sci_1.fit'  # Fails fft. Works g_t_i.  
@@ -345,39 +349,24 @@ def TESTING():
     method = method_opnav # Leave for testing
     
     plt.set_cmap('Greys_r')
-    hbt.figsize((10,10))
+#    hbt.figsize((10,10))
     
-
     crval_orig = w_orig.wcs.crval
     
 # Do the navigation call
     
-#    method_opnav = 'bruteforce'
-#    (w, (dy_pix, dx_pix)) = navigate_image_stellar(im, w, method = method_opnav)
-    
     (w, (dy_pix, dx_pix)) = navigate_image_stellar(im, w, method = method_opnav,
                              title = file_in.split('/')[-1])
     
-#    (dx_pix, dy_pix) = (round(dx_pix*10)/10, round(dy_pix*10)/10)  # Truncate them
-
     crval = w.wcs.crval
-
-
-    dir =  '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/' 
     
-    plt.set_cmap('Greys_r')            
-    hbt.figsize((10,10))
-    do_plot = True
-    
-    im = hbt.read_lorri(file) # Read the image, and process it a bit I think
-    
+# Now read the FITS header, so we can rewrite a revised version
+        
     hdulist = fits.open(file) 
     header  = hdulist['PRIMARY'].header
     mode    = header['SFORMAT']     
     hdulist.close()  
     
-#    (dx_pix, dy_pix) = (round(dx_pix*10)/10, round(dy_pix*10)/10)  # Truncate them
-
     crval = w.wcs.crval
 
     print("Center was at RA {}, Dec {}".format(crval_orig[0], crval_orig[1]))

@@ -41,7 +41,8 @@ def calc_offset_points(points_1, points_2, shape, diam_kernel = 9, labels=['', '
  
 #    (dy,dx) = get_image_translation(image_1, image_2)
     
-    # Get the shift, using 
+    # Get the shift, using FFT method
+    
     (dy,dx) = ird.translation(image_1, image_2)['tvec'] # Return shift, with t0 = (dy, dx). 
                                                         # ** API changed ~ Sep-16, Anaconda 4.2?
 

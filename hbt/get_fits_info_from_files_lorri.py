@@ -1,5 +1,5 @@
 def get_fits_info_from_files_lorri(path,
-                            file_tm = "/Users/throop/gv/dev/gv_kernels_new_horizons.txt" ):
+                            file_tm = "/Users/throop/gv/dev/gv_kernels_new_horizons.txt", pattern=''):
     "Populate an astropy table with info from the headers of a list of LORRI files."
     import numpy as np
     import spiceypy as sp
@@ -43,8 +43,9 @@ def get_fits_info_from_files_lorri(path,
     
     
     # Get the full list of files
+    # List only the files that match an (optional) user-supplied pattern, such as '_opnav'
     
-        file_list = glob.glob(dir_data + '/*fit')
+        file_list = glob.glob(dir_data + '/*' + pattern + '.fit')
         files = np.array(file_list)
         indices = np.argsort(file_list)
         files = files[indices]
@@ -147,7 +148,7 @@ def get_fits_info_from_files_lorri(path,
     sformat    = np.array(fits_sformat)
     rotation   = np.rint(rotation).astype(int)  # Turn rotation into integer. I only want this to be 0, 90, 180, 270... 
     rsolar     = np.array(fits_rsolar)
-    files_short = np.zeros(num_obs, dtype = 'U30')
+    files_short = np.zeros(num_obs, dtype = 'U60')
 
 # Now do some geometric calculations and create new values for a few fields
 
