@@ -286,12 +286,16 @@ def mm(arr):
     return (np.min(arr), np.max(arr))
     
 def get_pos_bodies(et, name_bodies, units='radec', wcs=False, 
-                     frame='J2000', abcorr='LT+S', name_observer='New Horizons'):
+                     frame='J2000', abcorr='LT+S', name_observer='New Horizons', dt=0):
     
     """
     Get an array of points for a list of bodies, seen from an observer at the given ET.
     Result is in RA / Dec radians. If units='pixels', then it is in x y pixels, based on the supplied wcs.
     name_bodies may be scalar or vector.
+    
+    units = 'pixels', 'degrees', 'radians', etc.
+    
+    dt: An offset in time, applied not to ET, but to time-of-flight uncertainty in s/c location.
     """
 
     num_bodies = np.size(name_bodies) # Return 1 if scalar, 2 if pair, etc; len() gets confused on strings.
@@ -305,16 +309,34 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         arr = name_bodies
     
     for i,name_body in enumerate(arr):
-      st,ltime = sp.spkezr(name_body, et, frame, abcorr, name_observer)    
-      radius,ra[i],dec[i] = sp.recrad(st[0:3])
+
+# If no time-of-flight offset supplied, use a simple calculation
+        
+        if (dt == 0):             
+            st, ltime = sp.spkezr(name_body, et, frame, abcorr, name_observer)
+
+# If time-of-flight offset supplied, then we need to do a more detailed calculation.
+# This below is OK, but it ignores aberration entirely (ie, not even LT)
+
+        else:    
+            st_sun_obs,ltime  = sp.spkezr(name_observer, et+dt, frame, 'none', 'Sun')  
+            st_sun_targ,ltime = sp.spkezr(name_body,     et,    frame, 'none', 'Sun')      
+            st = -st_sun_obs + st_sun_targ
+      
+        radius,ra[i],dec[i] = sp.recrad(st[0:3])
+
+    if (units == 'radians') or (units == 'rad'):
+        return ra, dec
     
+    if (units == 'degrees') or (units == 'deg'):
+        return ra*hbt.r2d, dec*hbt.r2d
+        
     if (units == 'pixels'):
         x, y = wcs.wcs_world2pix(ra*r2d, dec*r2d, 0) # Convert to pixels
-        
         return x, y
 
     else:    
-      return ra, dec # Return in radians
+        return ra, dec # Return in radians
       
 
 ##########
@@ -336,6 +358,10 @@ def normalize_images(arr1, arr2):
     arr1_norm = arr1 * m + b
 
     return (arr1_norm, (m,b))
+
+#==============================================================================
+# Calculate position of ring points
+#==============================================================================
       
 def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='radec', wcs=False, 
                     frame='J2000', abcorr='LT+S', name_observer='New Horizons'):
@@ -379,7 +405,7 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
    
     if (units == 'pixels'):
         x_ring, y_ring    = wcs.wcs_world2pix(ra_ring*r2d, dec_ring*r2d, 0) # Convert to pixels
-        return xring, yring
+        return x_ring, y_ring
               
     return ra_ring, dec_ring
     

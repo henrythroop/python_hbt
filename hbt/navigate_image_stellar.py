@@ -7,7 +7,7 @@ Created on Wed Apr 19 16:15:18 2017
 """
 
 """
-Library routine to navigate an image based on stars.
+Library function to navigate an image based on stars.
   o Use DAOPhot to locate stars in the image
   o Use a star catalog to look up stars that should be in the image
   o Calculate the offset between these.
@@ -212,8 +212,8 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
                  label = 'Cat stars') # plot() uses x, y        
 
         plt.title(title)
-        plt.ylim((1024,0))
-        plt.xlim((0,1024))
+        plt.ylim((hbt.sizey(im)),0)
+        plt.xlim((0,hbt.sizex(im)))
         plt.legend(loc = 'upper left')
         plt.show()
 
@@ -237,10 +237,17 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
 
     if (method == 'fft'):         # Very fast method
 
-        # Set up a constraint for the fit.
+        # Set up a constraint for the fit. It should be different for 1x1 and 4x4.
+        # For 1x1, it works well to be 100 pixels.
 
-        constraint_tx    = (0,100) # Mean and stdev. i.e., returned value will be within stdev of mean.
-        constraint_ty    = (0,100) 
+        if (hbt.sizex(im) == 1024):    # For LORRI 1x1
+            constraint_tx    = (0,100) # Mean and stdev. i.e., returned value will be within stdev of mean.
+            constraint_ty    = (0,100) 
+            
+        if (hbt.sizex(im) == 256):   # For LORRI 4x4 
+            constraint_tx    = (0,25) # Mean and stdev. i.e., returned value will be within stdev of mean.
+            constraint_ty    = (0,25)  
+            
         constraint_angle = 0    # With one value, it is a fixed constraint.
         
         constraints = {'tx' : constraint_tx, 'ty' : constraint_ty, 'angle' : constraint_angle}
