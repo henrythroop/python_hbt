@@ -192,6 +192,11 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         
         image_processed = image = image_raw
 
+# Remove a small bias offset between odd and even rows. 
+# This might be better done before the sfit(), but in reality probably doesn't make a difference.
+
+    image_processed = hbt.lorri_destripe(image_processed)
+    
 # If requested: plot the image, and the background that I remove. 
 # Plot to Python console, not the GUI.
 
