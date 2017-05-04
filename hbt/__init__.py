@@ -736,7 +736,8 @@ def is_number(s):
 ##########
         
 def find_stars(im, num=-1, do_flux=False, sigma=3.0, iters=5, fwhm=5.0, threshold = 9):
-    """Locate stars in an image array, using DAOphot. 
+    """
+    Locate stars in an image array, using DAOphot. 
     Returns N x 2 array with xy positions (ie, column, row). No magnitudes.
     Each star has position [row, column] = [y, x].
     
@@ -747,14 +748,14 @@ def find_stars(im, num=-1, do_flux=False, sigma=3.0, iters=5, fwhm=5.0, threshol
     """
 
     from   astropy.stats import sigma_clipped_stats
-    from   photutils import daofind
+#    from   photutils import daofind # Deprecated
 
     mean, median, std = sigma_clipped_stats(im, sigma=sigma, iters=iters)
     
     find_func = photutils.DAOStarFinder(threshold, fwhm)
     sources = find_func(im - median)
     
-#    sources = daofind(im - median, fwhm=fwhm, threshold=threshold)
+#    sources = daofind(im - median, fwhm=fwhm, threshold=threshold) # Deprecated
     
     sources.sort('flux')  # Sort in-place
 
@@ -856,3 +857,36 @@ def get_translation_images_bruteforce(im_a, im_b):
     dx_out = pos[0][0] - shift_max
         
     return (np.array((dy_out, dx_out)), sum)
+
+#==============================================================================
+# Function to remove some vertical striping from LORRI images.
+#==============================================================================
+
+def lorri_destripe(im):
+    '''
+    This function removes a vertical banding from some LORRI images.
+    Banding is caused by a bias offset between odd and even colums.
+    '''
+    
+    colmean      = np.mean(im, 0)    
+    colmean_even = colmean[0::2]
+    colmean_odd  = colmean[1::2]
+    
+# Calculate the bias, as a single scalar value to be subtracted from each even column
+    
+    bias_even    = np.mean(colmean_even - colmean_odd)
+
+# Create a 2D array to be subtracted
+# This is lengthier than it should be. I can probably do something like 
+#     arr[0::2] -= bias
+# but that is for rows and not columns, and I couldn't figure out the proper syntax!
+
+    im_out         = im.copy()
+    arr_bias       = np.zeros(np.shape(im))
+    arr_bias[0::2] = bias_even
+    arr_bias       = np.transpose(arr_bias)
+        
+    im_out -= arr_bias
+          
+    return(im_out)
+     
