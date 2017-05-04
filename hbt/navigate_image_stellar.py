@@ -134,15 +134,16 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
     
     if (DO_GSC12):
 #        name_cat = u'The HST Guide Star Catalog, Version 1.2 (Lasker+ 1996) 1'
-        name_cat = u'Guide Star Catalog v2 1' # This is accessible from gobi, not tomato
+        name_cat = u'Guide Star Catalog v2 1'                                       # Works from gobi, not tomato
+        url_cat = 'http://gsss.stsci.edu/webservices/vo/ConeSearch.aspx?CAT=GSC23&' # Works always
             
         with data.conf.set_temp('remote_timeout', 30): # This is the very strange syntax to set a timeout delay.
                                                        # The default is 3 seconds, and that times out often.
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")                                                          
-                stars = conesearch.conesearch(wcs_in.wcs.crval, radius_search_deg, cache=True, catalog_db = name_cat)
+                stars = conesearch.conesearch(wcs_in.wcs.crval, radius_search_deg, cache=True, catalog_db = url_cat)
     
-        ra_stars  = np.array(stars.array['ra'])*hbt.d2r # Convert to radians
+        ra_stars  = np.array(stars.array['ra'])*hbt.d2r  # Convert to radians
         dec_stars = np.array(stars.array['dec'])*hbt.d2r # Convert to radians
     
         mag       = np.array(stars.array['Mag'])
