@@ -21,6 +21,8 @@ from   scipy.stats import linregress
 import hbt
 import warnings
 import importlib  # So I can do importlib.reload(module)
+from   photutils import DAOStarFinder
+import photutils
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -748,7 +750,11 @@ def find_stars(im, num=-1, do_flux=False, sigma=3.0, iters=5, fwhm=5.0, threshol
     from   photutils import daofind
 
     mean, median, std = sigma_clipped_stats(im, sigma=sigma, iters=iters)
-    sources = daofind(im - median, fwhm=fwhm, threshold=threshold)
+    
+    find_func = photutils.DAOStarFinder(threshold, fwhm)
+    sources = find_func(im - median)
+    
+#    sources = daofind(im - median, fwhm=fwhm, threshold=threshold)
     
     sources.sort('flux')  # Sort in-place
 
