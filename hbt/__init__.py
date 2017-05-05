@@ -537,7 +537,7 @@ def commonOverlapNaive(text1, text2):
     x -= 1  
   return x 
 
-def dist_center(diam, circle=False, centered=True, invert=False, normalize=False):
+def dist_center(diam, centered=True, invert=False, normalize=False):
     """
     Returns an array of dimensions diam x diam, with each cell being the distance from the center cell.
     Works best if diam is an odd integer.
