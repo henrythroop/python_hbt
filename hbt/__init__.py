@@ -374,13 +374,10 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
     """
     
 # Now calculate the ring points...
-
-#    radii_ring = np.array([1220000., 129000.])  # Inner and outer radius to plot
-    num_pts_ring = 100
     
-    ring_lon = np.linspace(0, 2. * np.pi, num_pts_ring)
-    ra_ring  = np.zeros(num_pts_ring)
-    dec_ring = np.zeros(num_pts_ring)
+    ring_lon = np.linspace(0, 2. * np.pi, num_pts)
+    ra_ring  = np.zeros(num_pts)
+    dec_ring = np.zeros(num_pts)
     
     rot = sp.pxform('IAU_' + name_body, frame, et) # Get matrix from arg1 to arg2
     
@@ -388,7 +385,7 @@ def get_pos_ring(et, num_pts=100, radius = 122000, name_body='Jupiter', units='r
     pos = st[0:3]
 #    vel = st[3:6] # velocity, km/sec, of jupiter
     
-    for j in range(num_pts_ring):
+    for j in range(num_pts):
         xyz = np.zeros(3)
         xyz = np.array((radius * np.cos(ring_lon[j]), radius * np.sin(ring_lon[j]), 0.))
         
@@ -816,6 +813,7 @@ def decosmic(im, sigma=3):
 # The bottleneck for this function is the medfilt, which applies a median filter to a given area
 # given a kernel width. However, I found that medfilt2d() is 4x as fast as medfilt(): 0.3 vs. 1.3 sec 
 # for LORRI 1024x1024.
+
     import scipy.signal
         
     med = np.nanmedian(im)
