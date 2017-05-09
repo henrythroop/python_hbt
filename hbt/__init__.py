@@ -815,13 +815,34 @@ def decosmic(im, sigma=3):
 # for LORRI 1024x1024.
 
     import scipy.signal
+    import math
         
-    med = np.nanmedian(im)
+    WASNAN = -999999
+    
+    med = np.nanmedian(im)               # Take median, ignoring NaN values
     std = np.nanstd(im)
-    im_sm = scipy.signal.medfilt2d(im, 5)  # Smooth the image.
+    im_sm = scipy.signal.medfilt2d(im, 5)  # Smooth the image. Properly handles NaN.
+
+# We need to remove any values which are NaN in either the original input, or the smoothed version of that.
+
+    indices_nan_im    = np.isnan(im)       # Posit 
+    indices_nan_im_sm = np.isnan(im_sm)
+
+# Convert the NaNs to something else, to let the math work
+    
+    im[indices_nan_im]       = WASNAN 
+    im_sm[indices_nan_im_sm] = WASNAN
+
+# Do the math. There is not an easy NaN-compatible version of '>' which I found.
+    
     is_bad = (im - im_sm) > (std*sigma)  # Flag pixels which drop in value a lot when smoothed
     im_fix = im.copy()                   # Create output array
     im_fix[is_bad] = med                 # Replace pixels
+
+# Any pixels that were NaN before, turn them back into NaN
+
+    im_fix[indices_nan_im]    = math.nan
+    im_fix[indices_nan_im_sm] = math.nan
     
     return im_fix
     
