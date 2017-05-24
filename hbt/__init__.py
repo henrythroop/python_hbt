@@ -885,6 +885,7 @@ def lorri_destripe(im):
     '''
     This function removes a vertical banding from some LORRI images.
     Banding is caused by a bias offset between odd and even colums.
+    This is known as 'jail bars' by Hal Weaver.
     '''
     
     colmean      = np.mean(im, 0)    
