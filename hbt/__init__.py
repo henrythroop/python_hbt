@@ -165,7 +165,40 @@ def merge_fits_header(file_image, file_header, file_out):
     h_image['PRIMARY'].header = h_header['PRIMARY'].header
     h_image.writeto(file_out)
     print("Wrote new file to " + file_out)
+
+##########
+# Create a power-law distribution
+##########
+
+def powerdist(r, mass, q, rho, DO_NORMALIZE = False):
+
+    """
+    Assumes radius in r, and creates # in range [r .. r+dr] = c r^-q dr
+    bins are expected to be logarithmic.
+    /DO_NORMALIZE: every bin has at least one particle
+    in it.  the upper size cutoff may be off by 
+    a few bins, but mass is conserved.
+    """
     
+    import math
+ 
+    ratio = r[1]/r[0]
+
+    dr = r * (ratio-1)    # width of bins
+    n = r**(-q) * dr
+    mout = 4/3 * math.pi * r**3 * n * rho
+    n = n * mass / np.sum(mout)
+                         # normalize mass
+   
+    if DO_NORMALIZE:
+        lastbin = (np.where (n < 1))(0)
+        if (lastbin != -1):
+            n[lastbin:] = 0
+            mout = 4/3. * math.pi * r**3 * n * rho
+            n = n * mass / np.sum(mout)
+     
+    return n
+
 ##########
 # Write a string to the Mac clipboard
 ##########
