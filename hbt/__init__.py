@@ -167,6 +167,25 @@ def merge_fits_header(file_image, file_header, file_out):
     print("Wrote new file to " + file_out)
 
 ##########
+# Convert from increment to cumulative
+##########
+
+def incr2cum(arr, DO_REVERSE=False):
+
+    '''
+    Convert from incremental to cumulative.
+    Works for 1D array only
+    
+    This does the same as np.cumsum, but it allows for the DO_REVERSE flag, which that function doesn't.
+    
+    '''
+    
+    if DO_REVERSE:
+        return (np.cumsum(arr[::-1]))[::-1]
+    else:
+        return np.cumsum(arr)
+    
+##########
 # Create a power-law distribution
 ##########
 
