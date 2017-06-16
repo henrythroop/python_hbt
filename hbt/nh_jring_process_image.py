@@ -11,7 +11,6 @@ import glob
 import math       # We use this to get pi. Documentation says math is 'always available' 
                   # but apparently it still must be imported.
 
-import os.path
 
 import astropy
 from   astropy.io import fits
@@ -21,8 +20,8 @@ import astropy.visualization
 import matplotlib.pyplot as plt # pyplot
 import numpy as np
 import astropy.modeling
-from matplotlib import cm
 import scipy.ndimage
+import re
 
 import pickle # For load/save
 
@@ -156,6 +155,34 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 #   o Display it.    
 
         str = vars
+
+        # Remove and parse any rotation angle -- written as "6/1-10 r90"
+                
+        angle_rotate_deg = 0
+        
+        match = re.search('r([0-9]+)', str)
+        if match:
+            angle_rotate_deg = int(match.group(0).replace('r', ''))
+            str = str.replace(match.group(0), '')
+            
+            if (np.abs(angle_rotate_deg)) <= 10:      # Allow value to be passed as (1,2,3) or (90, 180, 270)
+                angle_rotate_deg *= 90
+
+        # Parse and remove any stray multiplication factor -- written as "6/1-10 r90 *3"
+        
+        factor_stray = 1
+        
+        match = re.search('\*([0-9.]+)', str) # Match   *3   *0.4   etc  [where '*' is literal, not wildcard]
+        if match:
+            factor_stray = float(match.group(0).replace('*', ''))
+            str = str.replace(match.group(0), '')
+                           
+            print("Scaling stray by factor {}".format(factor_stray))
+        
+        str = str.strip() # Remove any trailing spaces left around
+        
+        # Now parse the rest of the string
+        
         str2 = str.replace('-', ' ').replace('/', ' ')
 
         vars = np.array(str2.split(), dtype=int)  # With no arguments, split() breaks at any set of >0 whitespace chars.
@@ -197,13 +224,22 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 
         if (dx_stray > dx_im):
             image_stray = scipy.ndimage.zoom(image_stray, ratio) / (ratio**2)   # Shrink the stray image
-            
+        
+# Rotate the image
+
+        image_stray = np.rot90(image_stray, angle_rotate_deg/90)  # np.rot90() takes 1, 2, 3, 4 = 90, 180, 270, 360.
+        
 # Subtract stray light from original, and then remove an sfit(5) from that
 
         print("Raw:   {}, median = {}".format(np.shape(image_raw), np.median(image_raw)))
         print("Stray: {}, median = {}".format(np.shape(image_stray), np.median(image_stray)))
         
-        image_processed = image_raw - image_stray   # Ideally we could do a fit here, to scale for dfft exptimes.   
+# Normalize the stray, before removing it
+
+        (image_stray_norm, (m,b)) = hbt.normalize_images(image_stray,  image_raw)
+        image_stray = image_stray_norm
+        
+        image_processed = image_raw - factor_stray * image_stray_norm   # Ideally we could do a fit here, to scale for dfft exptimes.   
         
         image_processed = hbt.remove_sfit(image_processed,5)
                         
