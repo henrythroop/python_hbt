@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt # pyplot
 import numpy as np
 import astropy.modeling
 from matplotlib import cm
+import scipy.ndimage
 
 import pickle # For load/save
 
@@ -66,7 +67,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         file_prev = t_group['Filename'][index_image-1]
 #            print "file =      " + filename
         print("file_prev = " + file_prev)
-        image_bg = hbt.read_lorri(file_prev, frac_clip = 1.0, bg_method = 'None', autozoom=True)
+        image_bg = hbt.read_lorri(file_prev, frac_clip = 1.0, bg_method = 'None')
         image_fg = image_raw
         image = image_fg - image_bg
         image_processed = image
@@ -182,9 +183,27 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
                                                       hbt.frange(vars[1], vars[3]).astype('int')) # "6/122 - 6/129"
 
+
+# Adjust the stray image to be same size as original. 
+# Sometimes we'll have a 4x4 we want to use as stray model for 1x1 image -- this allows that.
+# When we resize it, also adjust the flux (e.g., by factor of 16).
+
+        dx_stray = hbt.sizex(image_stray)
+        dx_im    = hbt.sizex(image_raw)
+        ratio    = dx_im / dx_stray
+        
+        if (dx_stray < dx_im):
+            image_stray = scipy.ndimage.zoom(image_stray, ratio) / (ratio**2)    # Enlarge the stray image
+
+        if (dx_stray > dx_im):
+            image_stray = scipy.ndimage.zoom(image_stray, ratio) / (ratio**2)   # Shrink the stray image
+            
 # Subtract stray light from original, and then remove an sfit(5) from that
 
-        image_processed = image_raw - image_stray    
+        print("Raw:   {}, median = {}".format(np.shape(image_raw), np.median(image_raw)))
+        print("Stray: {}, median = {}".format(np.shape(image_stray), np.median(image_stray)))
+        
+        image_processed = image_raw - image_stray   # Ideally we could do a fit here, to scale for dfft exptimes.   
         
         image_processed = hbt.remove_sfit(image_processed,5)
                         
@@ -276,3 +295,18 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         plt.show()
 
     return image_processed
+
+def junk():
+    
+    method = 'String'
+    vars = '1-6'
+    index_group = 6
+    index_image = 8
+
+    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0035079398_0x633_sci_1_opnav.fit'
+
+    image_raw = hbt.read_lorri(file)
+      
+    out = hbt.nh_jring_process_image(image_raw, method, vars, index_group, index_image)
+    
+

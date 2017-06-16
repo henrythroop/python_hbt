@@ -59,13 +59,21 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     t_group = t[groupmask]	
     
     # Create the output arrays
-    # For now I am assuming 1X1... I'll have to rewrite this if I use 4X4's very much.
    
     num_files = np.size(index_files)
     
-    frame_arr      = np.zeros((num_files, 1024, 1024))
-    frame_sfit_arr = np.zeros((num_files, 1024, 1024))
-    frame_ffit_arr = np.zeros((num_files, 1024, 1024))
+    header = hbt.get_image_header(t_group['Filename'][index_files[0]])
+    
+    # Get dimensions of first frame in the series
+    
+    dx_0 = header['NAXIS1']
+    dy_0 = header['NAXIS2']
+    
+    print("For image 0, dx={}".format(dx_0))
+    
+    frame_arr      = np.zeros((num_files, dx_0, dy_0))
+    frame_sfit_arr = np.zeros((num_files, dx_0, dy_0))
+    frame_ffit_arr = np.zeros((num_files, dx_0, dy_0))
     
     # Read frames in to make a median
      
@@ -73,14 +81,25 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
         file = t_group['Filename'][n] # Look up filename
         print("Reading: " + file)
         frame = hbt.read_lorri(file,frac_clip = 1)
-        if (np.shape(frame)[0] == 256):
+        if (hbt.sizex(frame) != dx_0):
+            print("For image {}, dx={}, dy={}".format(i, hbt.sizex(frame), hbt.sizey(frame)))
+
+            print("Error: mixed sizes in this straylight series. Aborting.")
+#            raise ValueError('MultipleSizes')
             
-    # Resize the image to 1024x1024, if it is a 4x4 frame. 
-    # scipy.misc.imresize should do this, and has various interpolation schemes, but truncates to integer (?!)
-    # because it is designed for images. So instead, use scipy.ndimage.zoom, which uses cubic spline.
-        
-            frame2 = scipy.ndimage.zoom(frame, 4)
-            frame = frame2
+            if (np.shape(frame)[0] == 256):
+#            
+#    # Resize the image to 1024x1024, if it is a 4x4 frame. 
+#    # scipy.misc.imresize should do this, and has various interpolation schemes, but truncates to integer (?!)
+#    # because it is designed for images. So instead, use scipy.ndimage.zoom, which uses cubic spline.
+#        
+                frame2 = scipy.ndimage.zoom(frame, 4)
+                frame = frame2
+                
+            if (np.shape(frame)[0] == 1024):
+                frame2 = scipy.ndimage.zoom(frame, 0.25)
+                frame = frame2
+                
         frame_arr[i,:,:] = frame	
         
         frame_sfit_arr[i,:,:] = frame - hbt.sfit(frame, power1)
@@ -103,4 +122,3 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     
     if (do_sfit):
         return (frame_sfit_med, file_base)
-        
