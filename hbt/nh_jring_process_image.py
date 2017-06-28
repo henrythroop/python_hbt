@@ -146,10 +146,10 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     
     if (method == 'String'):
 
-# Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" or "6/123 - 129"
+# Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" or "6/123 - 129" or "6/123-129 r1 *0.5"
 # As of 8-July-2016, this is the one I will generally use for most purposes.
 # 'String' does this:
-#   o Subtract the bg image made by combining the named frames
+#   o Subtract the bg image made by combining the named frames. Rotate and scale backgroiund frame as requested.
 #   o Subtract a 5th order polynomial
 #   o Filter out the extreme highs and lows
 #   o Display it.    
@@ -168,6 +168,9 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             if (np.abs(angle_rotate_deg)) <= 10:      # Allow value to be passed as (1,2,3) or (90, 180, 270)
                 angle_rotate_deg *= 90
 
+        # Determine how much the bg frame should be scaled, to match the data frame. This is just a multiplicative
+        # factor that very crudely accomodates for differences in phase angle, exptime, etc.
+        
         # Parse and remove any stray multiplication factor -- written as "6/1-10 r90 *3"
         
         factor_stray = 1
@@ -234,12 +237,17 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         print("Raw:   {}, median = {}".format(np.shape(image_raw), np.median(image_raw)))
         print("Stray: {}, median = {}".format(np.shape(image_stray), np.median(image_stray)))
         
-# Normalize the stray, before removing it
+# Scale the stray light image to the data image using linear regression ('normalize'), before removing it.
+# Any additional multiplicative factor is on top of this.
 
-        (image_stray_norm, (m,b)) = hbt.normalize_images(image_stray,  image_raw)
+        (image_stray_norm, (m,b)) = hbt.normalize_images(image_stray, image_raw)
         image_stray = image_stray_norm
         
-        image_processed = image_raw - factor_stray * image_stray_norm   # Ideally we could do a fit here, to scale for dfft exptimes.   
+# Subract the multipled scaled image from the data image
+        
+        image_processed = image_raw - factor_stray * image_stray_norm     
+
+# And then remove a polynomial from the result.
         
         image_processed = hbt.remove_sfit(image_processed,5)
                         
@@ -247,7 +255,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         
         image_processed = image = image_raw
 
-# Remove a small bias offset between odd and even rows. 
+# Remove a small bias offset between odd and even rows ('jailbars')
 # This might be better done before the sfit(), but in reality probably doesn't make a difference.
 
     image_processed = hbt.lorri_destripe(image_processed)
