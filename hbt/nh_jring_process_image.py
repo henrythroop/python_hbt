@@ -180,8 +180,6 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
             factor_stray = float(match.group(0).replace('*', ''))
             str = str.replace(match.group(0), '')
                            
-            print("Scaling stray by factor {}".format(factor_stray))
-        
         str = str.strip() # Remove any trailing spaces left around
         
         # Now parse the rest of the string
@@ -204,8 +202,6 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
-            print("vars = ")
-            print(vars)
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
                                                       hbt.frange(vars[1], vars[2]).astype('int')) # "5/122 - 129"
             
@@ -234,14 +230,16 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         
 # Subtract stray light from original, and then remove an sfit(5) from that
 
-        print("Raw:   {}, median = {}".format(np.shape(image_raw), np.median(image_raw)))
-        print("Stray: {}, median = {}".format(np.shape(image_stray), np.median(image_stray)))
+#        print("Raw:   {}, median = {}".format(np.shape(image_raw), np.median(image_raw)))
+#        print("Stray: {}, median = {}".format(np.shape(image_stray), np.median(image_stray)))
         
 # Scale the stray light image to the data image using linear regression ('normalize'), before removing it.
 # Any additional multiplicative factor is on top of this.
 
         (image_stray_norm, (m,b)) = hbt.normalize_images(image_stray, image_raw)
         image_stray = image_stray_norm
+        
+        print("** Normalized stray image with factor m={}, offset b={}".format(m,b))
         
 # Subract the multipled scaled image from the data image
         
