@@ -17,7 +17,6 @@ import matplotlib as plt
 import spiceypy as sp
 from   astropy.io import fits
 import subprocess
-from   scipy.stats import linregress
 import hbt
 import warnings
 import importlib  # So I can do importlib.reload(module)
@@ -397,20 +396,67 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
 # Normalize two images using linear regression
 ##########
 
-def normalize_images(arr1, arr2):
+def normalize_images(arr1, arr2, DO_HISTOGRAM=False):
     """Performs linear regression on two images to try to match them.
      Returns fit parameter r: for best fit, use arr2 * r[0] + r[1]
      Goal is to set arr1 to the level of arr2"""
+   
+    import matplotlib.pyplot as plt
+    from   scipy.stats import linregress
     
 #       arr1_filter = hbt.remove_brightest(arr1, frac) # Rem
 #       arr2_filter = hbt.remove_brightest(arr2, frac)
     r = linregress(arr1.flatten(), arr2.flatten())
-    
+
+    stretch_percent = 90    
+    stretch = astropy.visualization.PercentileInterval(stretch_percent) # PI(90) scales to 5th..95th %ile.     
+
     m = r[0] # Multiplier = slope
     b = r[1] # Offset = intercept
 
     arr1_norm = arr1 * m + b
+    plt.imshow(stretch(arr1))
+    plt.title('Arr1 = Stray')
+    plt.show()
+    
+    plt.imshow(stretch(arr1_norm))
+    plt.title('Arr1_norm = Stray Norm')
+    plt.show()
+    
+    plt.imshow(stretch(arr2))
+    plt.title('Arr2 = Data')
+    plt.show()
+    
 
+
+    DO_HISTOGRAM = True
+    
+    if (DO_HISTOGRAM):
+        
+        nbins = 20
+        
+        range1 = (np.amin(arr1), np.amax(arr1))
+        (h1, bins1) = np.histogram(arr1, range=range1, bins = nbins)
+        
+        range2 = (np.amin(arr2), np.amax(arr2))
+        (h2, bins2) = np.histogram(arr1, range=range2, bins=nbins)
+
+        range1_norm = (np.amin(arr1_norm), np.amax(arr1_norm))
+        (h1_norm, bins1_norm) = np.histogram(arr1_norm, range=range1_norm, bins=nbins)
+        
+        plt.plot(bins1[0:-1], h1, label = 'Arr1', color = 'blue')
+        plt.plot(bins1_norm[0:-1], h1_norm, label = 'Arr1_norm', color = 'lightblue')
+        plt.plot(bins2[0:-1], h2, label = 'Arr2', color = 'red')
+        
+        print("Arr1:      Range = {}".format(range1))
+        print("Arr1_norm: Range = {}".format(range1_norm))
+        print("Arr2:      Range = {}".format(range2))
+
+        plt.legend()
+        plt.yscale('log')
+        
+        plt.show()
+        
     return (arr1_norm, (m,b))
 
 #==============================================================================

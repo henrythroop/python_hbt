@@ -25,20 +25,25 @@ import scipy.misc
 import os
 import hbt
 
-def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=True, power1=5, power2=5):
+def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=True, power=5):
     
     """
     This takes a set of related observations, and creates a median image of all of them,
     in a form useful for straylight removal.
     For now this routine is hard-coded to NH J-ring, but it could be generalized later.
+    
+    This routine actually does the calculation. 
+    
+    For a user, should call NH_GET_STRAYLIGHT_MEDIAN, rather than the current function, which will avoid having
+    to deal with filenames.
+    
     """
 
-#     o group:   What set of observations, grouped by 'Desc' field. Integer.
-#     o files:   Int array list of the files 
-#     o do_fft:  Flag. For the final step, do we use an FFT or sfit?
-#     o do_sfit: Flag.
-#     o power1:  Exponent for sfit, to be applied to each frame (step 1)
-#     o power2:  Exponent for sfit, to be applied to each frame (step 2)
+#     o index_group:   What set of observations, grouped by 'Desc' field. Integer.
+#     o index_files:   Numpy array list of the files. Cannot be a scalar.
+#     o do_fft:        Flag. For the final step, do we use an FFT? [NOT IMPLEMENTED]
+#     o do_sfit:       Flag. Do we use an sfit (ie, polynomial fit)?
+#     o power:         Exponent for sfit, to be applied at end and subtracted
 #   
 #     This routine returns the array itself, and a recommended base filename. It does not write it to disk.
  
@@ -51,9 +56,6 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     # Process the group names. Some of this is duplicated logic -- depends on how we want to use it.
 
     groups = astropy.table.unique(t, keys=(['Desc']))['Desc']
-    
-#    groupname = 'Jupiter ring - search for embedded moons'
-#    groupnum = np.where(groupname == groups)[0][0]
         
     groupmask = (t['Desc'] == groups[index_group])
     t_group = t[groupmask]	
@@ -102,11 +104,13 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
                 
         frame_arr[i,:,:] = frame	
         
-        frame_sfit_arr[i,:,:] = frame - hbt.sfit(frame, power1)
-        frame_ffit_arr[i,:,:] = frame - hbt.ffit(frame)
+#        frame_sfit_arr[i,:,:] = frame - hbt.sfit(frame, power)  # Calculate the sfit to each individual frame
+#        frame_ffit_arr[i,:,:] = frame - hbt.ffit(frame)
     
-    frame_sfit_med = np.median(frame_sfit_arr, axis=0) # Take median using sfit images
-    frame_ffit_med = np.median(frame_ffit_arr, axis=0) # Take median using fft  images
+    frame_med      = np.median(frame_arr, axis=0)  
+    frame_med_sfit = hbt.remove_sfit(frame_med, degree=power) # Take median using sfit images
+    
+#    frame_ffit_med = np.median(frame_ffit_arr, axis=0) # Take median using fft  images
     
     # Do a very small removal of hot pixels. Between 0.99 and 0.999 seems to be fine. Make as small 
     # as possible, but something is often necessary
@@ -115,10 +119,14 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 #    frame_ffit_med = hbt.remove_brightest(frame_sfit_med, 0.999)
 #    
     file_base = hbt.nh_create_straylight_median_filename(index_group, index_files, do_fft=do_fft, do_sfit=do_sfit, 
-                                                     power1=power1, power2=power2)
+                                                     power=power)
                                                      
-    if (do_fft):   
-        return (frame_ffit_med, file_base)
+    if (do_fft): 
+        raise ValueError('Sorry, do_ffit not implemented')
+        return -1
     
     if (do_sfit):
-        return (frame_sfit_med, file_base)
+        return (frame_med_sfit, file_base)
+    
+    else:
+        return (frame_med, file_base)    

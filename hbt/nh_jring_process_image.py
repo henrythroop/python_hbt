@@ -39,8 +39,30 @@ import hbt
 # The image returned is a science image, with flux (ie, I/F) preserved.
 # No clipping or scaling has been done.
 
-def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
-    """Return image with stray light removed. I/F is preserved and no clipping is done."""
+def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=-1):
+    """Return image with stray light removed. I/F is preserved and no clipping is done.
+    
+    image_raw: NumPy array with the data image.
+
+    method:    Method of background subtraction:
+                  'Next', 'Prev', 'Polynomial', 'String', 'None', 'Grp Num Frac Pow', etc.
+               In general 'String' is the most flexible, and recommended.
+               It can be things like "5/0-10 r3 *2'
+                  - Make a median of Group 5, Images 0-10
+                  - Rotate them all by 270 degrees
+                  - Scale it to the data image
+                  - Multiply by background image by 2
+                  - Subtract data - background
+                  - Remove a 5th degree polynomail from the result [always done, regardless]
+                  - Return final result
+
+    vars:     The argument to the 'method'. Can be an exponent, a file number, a string, etc -- arbitrary, as needed. 
+             
+    index_group: Index of current image. Not used except for Next/Prev.
+
+    index_image: Index of current group. Not used except for Next/Prev.
+             
+    """
     
 # Load the arrays with all of the filenames
 
@@ -53,14 +75,10 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     # Process the group names. Some of this is duplicated logic -- depends on how we want to use it.
 
     groups = astropy.table.unique(t, keys=(['Desc']))['Desc']
-    
-#    groupname = 'Jupiter ring - search for embedded moons'
-#    groupnum = np.where(groupname == groups)[0][0]
-        
-    groupmask = (t['Desc'] == groups[index_group])
-    t_group = t[groupmask]	
 
-    frac, poly = 0, 0
+    if (index_group != -1):  # Only do this if we actually passed a group in
+        groupmask = (t['Desc'] == groups[index_group])
+        t_group = t[groupmask]	
     
     if (method == 'Previous'):
         file_prev = t_group['Filename'][index_image-1]
@@ -146,14 +164,18 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
     
     if (method == 'String'):
 
+#==============================================================================
 # Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" or "6/123 - 129" or "6/123-129 r1 *0.5"
+#==============================================================================
+
+####
 # As of 8-July-2016, this is the one I will generally use for most purposes.
 # 'String' does this:
 #   o Subtract the bg image made by combining the named frames. Rotate and scale backgroiund frame as requested.
 #   o Subtract a 5th order polynomial
 #   o Filter out the extreme highs and lows
 #   o Display it.    
-
+####
         str = vars
 
         # Remove and parse any rotation angle -- written as "6/1-10 r90"
@@ -189,25 +211,31 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         vars = np.array(str2.split(), dtype=int)  # With no arguments, split() breaks at any set of >0 whitespace chars.
         
         if (np.size(vars) == 0):
-            image = image_raw
+            image           = image_raw
             image_processed = image
             return
-            
+        
+        do_sfit = False
+        
         if (np.size(vars) == 1):
-            image_stray = hbt.nh_get_straylight_median(index_group, [int(vars[0])])  # "122" -- assume current group
+            image_stray = hbt.nh_get_straylight_median(index_group, [int(vars[0])],
+                                                      do_sfit = do_sfit )  # "122" -- assume current group
             
         if (np.size(vars) == 2):
             image_stray = hbt.nh_get_straylight_median(index_group, 
-                                                      hbt.frange(int(vars[0]), int(vars[1])).astype('int'))  # "122-129"
+                                                      hbt.frange(int(vars[0]), int(vars[1])).astype('int'),
+                                                      do_sfit=do_sfit)  # "122-129"
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
-                                                      hbt.frange(vars[1], vars[2]).astype('int')) # "5/122 - 129"
+                                                      hbt.frange(vars[1], vars[2]).astype('int'), 
+                                                      do_sfit=do_sfit) # "5/122 - 129"
             
         if (np.size(vars) == 4):
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
-                                                      hbt.frange(vars[1], vars[3]).astype('int')) # "6/122 - 6/129"
+                                                      hbt.frange(vars[1], vars[3]).astype('int'), 
+                                                      do_sfit=do_sfit) # "6/122 - 6/129"
 
 
 # Adjust the stray image to be same size as original. 
@@ -241,13 +269,15 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
         
         print("** Normalized stray image with factor m={}, offset b={}".format(m,b))
         
-# Subract the multipled scaled image from the data image
+# Subract the final background image from the data image
         
         image_processed = image_raw - factor_stray * image_stray_norm     
 
 # And then remove a polynomial from the result.
         
-        image_processed = hbt.remove_sfit(image_processed,5)
+        power = 5
+        
+        image_processed = hbt.remove_sfit(image_processed, power)
                         
     if (method == 'None'):
         
@@ -341,14 +371,32 @@ def nh_jring_process_image(image_raw, method, vars, index_group, index_image):
 def junk():
     
     method = 'String'
-    vars = '1-6'
-    index_group = 6
-    index_image = 8
+    vars = '7/2-10'
+    index_group = 7
+    index_image = 2  # This is used only when using Prev / Next. Otherwise it is ignored.
 
-    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0035079398_0x633_sci_1_opnav.fit'
+    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0034676524_0x630_sci_1_opnav.fit'
 
+    do_sfit = False
+    
+    stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile
+
+    test = \
+      nh_create_straylight_median_filename(index_group, index_image, do_fft=False, do_sfit=do_sfit, power=5)
+        
     image_raw = hbt.read_lorri(file)
       
     out = hbt.nh_jring_process_image(image_raw, method, vars, index_group, index_image)
-    
 
+###
+    method = 'String'
+    index_group = 5
+    index_image = 2
+    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0034676524_0x630_sci_1_opnav.fit'
+    image_raw = hbt.read_lorri(file)
+    
+    vars = '5/0-5 r3 *0.1'
+    out = nh_jring_process_image(image_raw, method, vars)
+    plt.imshow(stretch(out))
+    plt.show()
+    
