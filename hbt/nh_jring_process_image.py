@@ -166,6 +166,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 
 #==============================================================================
 # Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" or "6/123 - 129" or "6/123-129 r1 *0.5"
+#                  or "".          
 #==============================================================================
 
 ####
@@ -206,14 +207,19 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         # Now parse the rest of the string
         
-        str2 = str.replace('-', ' ').replace('/', ' ')
+        str2 = str.replace('-', ' ').replace('/', ' ').replace('None', '')
 
         vars = np.array(str2.split(), dtype=int)  # With no arguments, split() breaks at any set of >0 whitespace chars.
+        
+        # Empty string - no arguments
+        # This is kind of an extreme case -- e.g., no polynomial subtraction -- so we don't use it much.
         
         if (np.size(vars) == 0):
             image           = image_raw
             image_processed = image
-            return
+            image_stray     = 0 * image
+            
+            return image_processed # We want to skip any fitting of the stray, subraction of it, etc. -- so return now.
         
         do_sfit = False
         
