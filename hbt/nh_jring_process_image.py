@@ -267,7 +267,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         (image_stray_norm, (m,b)) = hbt.normalize_images(image_stray, image_raw)
         image_stray = image_stray_norm
         
-        print("** Normalized stray image with factor m={}, offset b={}".format(m,b))
+#        print("** Normalized stray image with factor m={}, offset b={}".format(m,b))
         
 # Subract the final background image from the data image
         
