@@ -46,7 +46,12 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 #     o power:         Exponent for sfit, to be applied at end and subtracted
 #   
 #     This routine returns the array itself, and a recommended base filename. It does not write it to disk.
- 
+
+    DO_DEBUG = True
+    
+    if DO_DEBUG:
+        print("nh_create_straylight_median: {}/{}-{}".format(index_group, index_files[0], index_files[-1]))
+        
     file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
     
     lun = open(file_pickle, 'rb')
@@ -91,9 +96,9 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
             
             if (np.shape(frame)[0] == 256):
 #            
-#    # Resize the image to 1024x1024, if it is a 4x4 frame. 
-#    # scipy.misc.imresize should do this, and has various interpolation schemes, but truncates to integer (?!)
-#    # because it is designed for images. So instead, use scipy.ndimage.zoom, which uses cubic spline.
+#    Resize the image to 1024x1024, if it is a 4x4 frame. 
+#    scipy.misc.imresize should do this, and has various interpolation schemes, but truncates to integer (?!)
+#    because it is designed for images. So instead, use scipy.ndimage.zoom, which uses cubic spline.
 #        
                 frame2 = scipy.ndimage.zoom(frame, 4)
                 frame = frame2

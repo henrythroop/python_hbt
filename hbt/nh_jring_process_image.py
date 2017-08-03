@@ -179,7 +179,9 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 ####
         str = vars
 
-        # Remove and parse any rotation angle -- written as "6/1-10 r90"
+# =============================================================================
+#          Remove and parse any rotation angle -- written as "6/1-10 r90"
+# =============================================================================
                 
         angle_rotate_deg = 0
         
@@ -194,9 +196,11 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         # Determine how much the bg frame should be scaled, to match the data frame. This is just a multiplicative
         # factor that very crudely accomodates for differences in phase angle, exptime, etc.
         
-        # Parse and remove any stray multiplication factor -- written as "6/1-10 r90 *3"
+# =============================================================================
+#          Parse and remove any stray multiplication factor -- written as "6/1-10 r90 *3"
+# =============================================================================
         
-        factor_stray = 1
+        factor_stray = 1    # Define the default multiplicative factor
         
         match = re.search('\*([0-9.]+)', str) # Match   *3   *0.4   etc  [where '*' is literal, not wildcard]
         if match:
@@ -204,8 +208,25 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
             str = str.replace(match.group(0), '')
                            
         str = str.strip() # Remove any trailing spaces left around
+
+# =============================================================================
+#          Parse and remove any polynomial exponent -- written as 'p5'
+#          This is the polynomial removed *after* subtracting Image - Stray
+# =============================================================================
         
-        # Now parse the rest of the string
+        poly_final_default = 0              # Define the default polynomial to subtract.
+                                            # I could do 5, or I could do 0.
+                                            
+        poly_final         = poly_final_default 
+        
+        match = re.search('p([0-9]+)', str)
+        if match:
+            poly_final = int(match.group(0).replace('p', ''))
+            str = str.replace(match.group(0), '')
+            
+# =============================================================================
+#          Now parse the rest of the string
+# =============================================================================
         
         str2 = str.replace('-', ' ').replace('/', ' ').replace('None', '')
 
@@ -221,27 +242,27 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
             
             return image_processed # We want to skip any fitting of the stray, subraction of it, etc. -- so return now.
         
-        do_sfit = False
+        do_sfit_median = False  # Flag: When constructing the straylight median file, do we subtract polynomial, or not?
         
         if (np.size(vars) == 1):
             image_stray = hbt.nh_get_straylight_median(index_group, [int(vars[0])],
-                                                      do_sfit = do_sfit )  # "122" -- assume current group
+                                                      do_sfit=do_sfit_median )  # "122" -- assume current group
             
         if (np.size(vars) == 2):
             image_stray = hbt.nh_get_straylight_median(index_group, 
                                                       hbt.frange(int(vars[0]), int(vars[1])).astype('int'),
-                                                      do_sfit=do_sfit)  # "122-129"
+                                                      do_sfit=do_sfit_median)  # "122-129"
                                                                                         # -- assume current group
  
         if (np.size(vars) == 3):
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
                                                       hbt.frange(vars[1], vars[2]).astype('int'), 
-                                                      do_sfit=do_sfit) # "5/122 - 129"
+                                                      do_sfit=do_sfit_median) # "5/122 - 129"
             
         if (np.size(vars) == 4):
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
                                                       hbt.frange(vars[1], vars[3]).astype('int'), 
-                                                      do_sfit=do_sfit) # "6/122 - 6/129"
+                                                      do_sfit=do_sfit_median) # "6/122 - 6/129"
 
 
 # Adjust the stray image to be same size as original. 
@@ -262,28 +283,13 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 
         image_stray = np.rot90(image_stray, angle_rotate_deg/90)  # np.rot90() takes 1, 2, 3, 4 = 90, 180, 270, 360.
         
-# Subtract stray light from original, and then remove an sfit(5) from that
-
-#        print("Raw:   {}, median = {}".format(np.shape(image_raw), np.median(image_raw)))
-#        print("Stray: {}, median = {}".format(np.shape(image_stray), np.median(image_stray)))
-        
-# Scale the stray light image to the data image using linear regression ('normalize'), before removing it.
-# Any additional multiplicative factor is on top of this.
-
-        (image_stray_norm, (m,b)) = hbt.normalize_images(image_stray, image_raw)
-        image_stray = image_stray_norm
-        
-#        print("** Normalized stray image with factor m={}, offset b={}".format(m,b))
-        
 # Subract the final background image from the data image
         
-        image_processed = image_raw - factor_stray * image_stray_norm     
+        image_processed = image_raw - factor_stray * image_stray    
 
-# And then remove a polynomial from the result.
+# Remove a polynomial from the result.
         
-        power = 5
-        
-        image_processed = hbt.remove_sfit(image_processed, power)
+        image_processed = hbt.remove_sfit(image_processed, poly_final)
                         
     if (method == 'None'):
         
