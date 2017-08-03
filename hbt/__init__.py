@@ -415,21 +415,23 @@ def normalize_images(arr1, arr2, DO_HISTOGRAM=False):
     b = r[1] # Offset = intercept
 
     arr1_norm = arr1 * m + b
-    plt.imshow(stretch(arr1))
-    plt.title('Arr1 = Stray')
-    plt.show()
-    
-    plt.imshow(stretch(arr1_norm))
-    plt.title('Arr1_norm = Stray Norm')
-    plt.show()
-    
-    plt.imshow(stretch(arr2))
-    plt.title('Arr2 = Data')
-    plt.show()
-    
 
-
-    DO_HISTOGRAM = True
+    DO_DIAGNOSTIC = False
+    
+    if DO_DIAGNOSTIC:
+        plt.imshow(stretch(arr1))
+        plt.title('Arr1 = Stray')
+        plt.show()
+        
+        plt.imshow(stretch(arr1_norm))
+        plt.title('Arr1_norm = Stray Norm')
+        plt.show()
+        
+        plt.imshow(stretch(arr2))
+        plt.title('Arr2 = Data')
+        plt.show()
+    
+    DO_HISTOGRAM = False
     
     if (DO_HISTOGRAM):
         
