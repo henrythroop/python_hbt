@@ -542,11 +542,19 @@ def reprfix(arr):
 
     return out
      
-def figsize(size): # Was imsize(), but I think this is better
+def figsize(size=None): # Was imsize(), but I think this is better
     """
     Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
     """
-    plt.rc('figure', figsize=(size[0], size[1]))
+    
+    size_default = (10,6)   # If empty argument, then reset back to default
+    
+    if (size==None):
+        size_out = size_default
+    else:
+        size_out = (size[0], size[1])
+        
+    plt.rc('figure', figsize=size_out)
     
 def correct_stellab(radec, vel):
     """
