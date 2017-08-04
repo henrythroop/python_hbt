@@ -47,7 +47,7 @@ from   astropy import units as u           # Units library
 from   astropy.coordinates import SkyCoord # To define coordinates to use in star search
 from   scipy.stats import mode
 from   scipy.stats import linregress
-import wcsaxes
+from   astropy.visualization import wcsaxes
 import time
 from   scipy.interpolate import griddata
 #import cv2

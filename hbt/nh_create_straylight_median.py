@@ -14,7 +14,7 @@ import astropy
 from   astropy.io import fits
 import numpy as np
 import spiceypy as sp
-import wcsaxes
+from   astropy.visualization import wcsaxes
 import hbt
 from   astropy.wcs import WCS
 import matplotlib.pyplot as plt
