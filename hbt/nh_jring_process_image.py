@@ -165,7 +165,8 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     if (method == 'String'):
 
 #==============================================================================
-# Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" or "6/123 - 129" or "6/123-129 r1 *0.5"
+# Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" 
+#        or "6/123 - 129" or "6/123-129 r1 *0.5 p4"
 #                  or "".          
 #==============================================================================
 
@@ -200,7 +201,9 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 #          Parse and remove any stray multiplication factor -- written as "6/1-10 r90 *3"
 # =============================================================================
         
-        factor_stray = 1    # Define the default multiplicative factor
+        factor_stray_default    = 1    # Define the default multiplicative factor
+        
+        factor_stray            = factor_stray_default
         
         match = re.search('\*([0-9.]+)', str) # Match   *3   *0.4   etc  [where '*' is literal, not wildcard]
         if match:
