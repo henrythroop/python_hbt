@@ -10,7 +10,7 @@ import astropy
 from   astropy.io import fits
 import numpy as np
 import spiceypy as sp
-import wcsaxes
+from   astropy.visualization import wcsaxes
 import hbt
 from   astropy.wcs import WCS
 
@@ -49,7 +49,9 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     "Backplanes include navigation info for every pixel, including RA, Dec, Eq Lon, Phase, etc."
 
     fov_lorri = 0.3 * hbt.d2r
-    
+   
+    abcorr = 'LT+S'
+
     DO_SATELLITES = False  # Flag: Do we create an additional backplane for each of Jupiter's small sats?
     
     DO_TEST = False
@@ -125,8 +127,8 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     
     # Get vec from Jup to NH, in Jupiter frame (or whatever named frame is passed in)
                    
-    (st_jup_sc_jup, lt) = sp.spkezr(name_observer, et, frame,         'LT', name_target)
-    (st_jup_sc_j2k, lt) = sp.spkezr(name_observer, et, 'J2000',       'LT', name_target)     
+    (st_jup_sc_jup, lt) = sp.spkezr(name_observer, et, frame,         abcorr, name_target)
+    (st_jup_sc_j2k, lt) = sp.spkezr(name_observer, et, 'J2000',       abcorr, name_target)     
     
     vec_jup_sc_jup = st_jup_sc_jup[0:3]
     vec_jup_sc_j2k = st_jup_sc_j2k[0:3]
@@ -138,7 +140,7 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
     # Get vector from Jupiter to Sun
     # spkezr(target ... observer)
 
-    (st_jup_sun_jup, lt) = sp.spkezr('Sun', et, frame, 'LT', name_target) # From Jup to Sun, in Jup frame
+    (st_jup_sun_jup, lt) = sp.spkezr('Sun', et, frame, abcorr, name_target) # From Jup to Sun, in Jup frame
     vec_jup_sun_jup = st_jup_sun_jup[0:3]
     
     # NB: at 2007-055T07:50:03.368, sub-obs lat = -6, d = 6.9 million km = 95 rj.
@@ -154,10 +156,10 @@ def create_backplane(file, frame = 'IAU_JUPITER', name_target='Jupiter', name_ob
 
 # Now compute position for Adrastea, Metis, Thebe
 
-    vec_metis_j2k,lt     = sp.spkezr('Metis',    et, 'J2000', 'LT', 'New Horizons')
-    vec_adrastea_j2k,lt  = sp.spkezr('Adrastea', et, 'J2000', 'LT', 'New Horizons')
-    vec_thebe_j2k,lt     = sp.spkezr('Thebe',    et, 'J2000', 'LT', 'New Horizons')
-    vec_amalthea_j2k,lt  = sp.spkezr('Amalthea', et, 'J2000', 'LT', 'New Horizons')
+    vec_metis_j2k,lt     = sp.spkezr('Metis',    et, 'J2000', abcorr, 'New Horizons')
+    vec_adrastea_j2k,lt  = sp.spkezr('Adrastea', et, 'J2000', abcorr, 'New Horizons')
+    vec_thebe_j2k,lt     = sp.spkezr('Thebe',    et, 'J2000', abcorr, 'New Horizons')
+    vec_amalthea_j2k,lt  = sp.spkezr('Amalthea', et, 'J2000', abcorr, 'New Horizons')
     
     vec_metis_j2k        = np.array(vec_metis_j2k[0:3])
     vec_thebe_j2k        = np.array(vec_thebe_j2k[0:3])
