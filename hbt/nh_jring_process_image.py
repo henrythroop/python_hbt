@@ -51,9 +51,9 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
                   - Make a median of Group 5, Images 0-10
                   - Rotate them all by 270 degrees
                   - Scale it to the data image
-                  - Multiply by background image by 2
+                  - Multiply background image by 2
                   - Subtract data - background
-                  - Remove a 5th degree polynomail from the result [always done, regardless]
+                  - Remove a 5th degree polynomial from the result [always done, regardless]
                   - Return final result
 
     vars:     The argument to the 'method'. Can be an exponent, a file number, a string, etc -- arbitrary, as needed. 
@@ -384,6 +384,8 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     return image_processed
 
 def junk():
+    
+    import hbt
     
     method = 'String'
     vars = '7/2-10'
