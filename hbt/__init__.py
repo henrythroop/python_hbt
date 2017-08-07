@@ -743,6 +743,8 @@ def remove_polyfit(arr, **kwargs):
 #==============================================================================
     
 def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input array before doing the fit.
+                                     # This binning is OK for FITS files, but should have better error checking!
+                                     
     """
     Fit polynomial to a 2D array, aka surface. Like IDL sfit.
     """
@@ -752,13 +754,15 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     shape_small = (np.size(arr,0)/binning, np.size(arr,1)/binning)
     shape_big   = np.shape(arr)
 
+    mode        = 'constant' # How to handle edges, in the case of non-integer leftovers. 'constant' or 'reflect'
+    
 # Create x and y arrays, which we need to pass to the fitting routine
 
     x_big, y_big = np.mgrid[:shape_big[0], :shape_big[1]]
-    x_small = skt.resize(x_big, shape_small, order=1, preserve_range=True)
-    y_small = skt.resize(y_big, shape_small, order=1, preserve_range=True)
+    x_small = skt.resize(x_big, shape_small, order=1, preserve_range=True, mode=mode)
+    y_small = skt.resize(y_big, shape_small, order=1, preserve_range=True, mode=mode)
     
-    arr_small = skt.resize(arr, shape_small, order=1, preserve_range=True)
+    arr_small = skt.resize(arr, shape_small, order=1, preserve_range=True, mode=mode)
     p_init = astropy.modeling.models.Polynomial2D(degree=int(degree))
 
 # Define the fitting routine
