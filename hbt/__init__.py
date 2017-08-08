@@ -103,16 +103,21 @@ def frange(start, end, *args, **kwargs):
     
     if (log == False):
         
-        out = np.linspace(start, end, num) # Documentation says linspace() is better than arange()
-#        step = (end - start)/((num-1) * 1.)
-#        out = np.arange(start, end+step, step) 
-#        out = np.array(range(num))/(num - 1.) * (end-start) + start
+        arr = np.linspace(start, end, num) # Documentation says linspace() is better than arange()
+        
+        # If the input arguments are ints, then make sure output array is int also.
+        # This is necessary, because unlike IDL, accessing numpy arrays with float indices does not work!
+        
+        d = np.sum(np.abs(arr - arr.astype(int))) # Do a test to see if values are equivalent to an int.
+        
+        if (d == 0):
+            arr = arr.astype(int)
 
-        return out
+        return arr
         
     if (log):
-        out = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
-        return np.array(out)
+        arr = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
+        return np.array(arr)
 
 #==============================================================================
 # Set font size for xlabel, title, legend, etc.
