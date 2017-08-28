@@ -341,7 +341,7 @@ def mm(arr):
     """
     Return the min and max of an array, in a tuple.
     """
-    return (np.min(arr), np.max(arr))
+    return (np.nanmin(arr), np.nanmax(arr))
     
 def get_pos_bodies(et, name_bodies, units='radec', wcs=False, 
                      frame='J2000', abcorr='LT+S', name_observer='New Horizons', dt=0):
