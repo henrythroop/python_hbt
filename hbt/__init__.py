@@ -749,6 +749,8 @@ def remove_polyfit(arr, **kwargs):
     
 def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input array before doing the fit.
                                      # This binning is OK for FITS files, but should have better error checking!
+
+    import skimage.transform as skt  # This 'resize' function is more useful than np's
                                      
     """
     Fit polynomial to a 2D array, aka surface. Like IDL sfit.
@@ -767,7 +769,7 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     x_small = skt.resize(x_big, shape_small, order=1, preserve_range=True, mode=mode)
     y_small = skt.resize(y_big, shape_small, order=1, preserve_range=True, mode=mode)
     
-    arr_small = skt.resize(arr, shape_small, order=1, preserve_range=True, mode=mode)
+    arr_small = skt.resize(arr, shape_small, order=1, preserve_range=True, mode=mode) # Properly preserves NaN
     p_init = astropy.modeling.models.Polynomial2D(degree=int(degree))
 
 # Define the fitting routine
@@ -779,9 +781,14 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     with warnings.catch_warnings():        
         warnings.simplefilter('ignore')
 
+# Extract all of the non-NaN pixels. This is because fit_p will just return zeros if the array 
+# has NaN's in it.
+        
+        is_good = (np.isnan(arr_small) == False)
+
 # Do the fit itself
         
-        poly = fit_p(p_init, x_small, y_small, arr_small)
+        poly = fit_p(p_init, x_small[is_good], y_small[is_good], arr_small[is_good])
 
 # Take the returned polynomial, and apply it to our x and y axes to get the final surface fit
 
