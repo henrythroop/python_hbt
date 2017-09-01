@@ -66,12 +66,16 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     
 # Load the arrays with all of the filenames
 
-    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to get filenames, etc.
+    dir_out = '/Users/throop/Data/NH_Jring/out/'
+
+    file_pickle = dir_out + 'nh_jring_read_params_571.pkl' # Filename to get filenames, etc.
     
     lun = open(file_pickle, 'rb')
     t = pickle.load(lun)
     lun.close()
 
+    dir_mask = dir_out.replace('out','masks')   # Directory where the mask files are
+    
     # Process the group names. Some of this is duplicated logic -- depends on how we want to use it.
 
     groups = astropy.table.unique(t, keys=(['Desc']))['Desc']
@@ -181,7 +185,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         str = vars
 
 # =============================================================================
-#          Remove and parse any rotation angle -- written as "6/1-10 r90"
+#          Parse any rotation angle -- written as "6/1-10 r90" -- and remove from the string
 # =============================================================================
                 
         angle_rotate_deg = 0
@@ -198,7 +202,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         # factor that very crudely accomodates for differences in phase angle, exptime, etc.
         
 # =============================================================================
-#          Parse and remove any stray multiplication factor -- written as "6/1-10 r90 *3"
+#          Parse any stray multiplication factor -- written as "6/1-10 r90 *3" -- and remove from the string
 # =============================================================================
         
         factor_stray_default    = 1    # Define the default multiplicative factor
@@ -213,7 +217,23 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         str = str.strip() # Remove any trailing spaces left around
 
 # =============================================================================
-#          Parse and remove any polynomial exponent -- written as 'p5'
+#          Parse any mask file -- written as "mask_7_0" -- and remove from the string
+# =============================================================================
+        
+        file_mask = None
+        
+        match = re.search('(mask[0-9._]+)', str)
+        
+        if match:
+            file_mask = dir_mask + match + '.png'
+            
+            str = str.replace(match.group(0), '')
+                           
+        str = str.strip() # Remove any trailing spaces left around
+
+
+# =============================================================================
+#          Parse any polynomial exponent -- written as 'p5'
 #          This is the polynomial removed *after* subtracting Image - Stray
 # =============================================================================
         
@@ -281,6 +301,22 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 
         if (dx_stray > dx_im):
             image_stray = scipy.ndimage.zoom(image_stray, ratio) / (ratio**2)   # Shrink the stray image
+
+# =============================================================================
+# Now that we have parsed the string, do the image processing
+# =============================================================================
+
+# Load the mask file, if it exists. Otherwise, make a blank mask of 1's.
+        
+        if file_mask:
+            mask = imread(file_mask)
+            mask = (mask > np.mean(mask))    # Force it to be a binary image.
+            
+        else:
+            mask = np.ones(np.shape(image))
+
+        image_masked = image.copy()
+        image_masked[mask == 0] = math.nan
         
 # Rotate the image
 
@@ -290,9 +326,11 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         image_processed = image_raw - factor_stray * image_stray    
 
-# Remove a polynomial from the result.
+# Remove a polynomial from the result. This is where the mask comes into play
         
-        image_processed = hbt.remove_sfit(image_processed, poly_final)
+        sfit_masked = hbt.sfit(image_masked, poly_final)
+        
+        image_processed = image_processed - sfit_masked
                         
     if (method == 'None'):
         
