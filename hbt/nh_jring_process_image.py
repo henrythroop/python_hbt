@@ -22,6 +22,8 @@ import numpy as np
 import astropy.modeling
 import scipy.ndimage
 import re
+from skimage.io import imread, imsave   # For PNG reading
+
 
 import pickle # For load/save
 
@@ -47,13 +49,14 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     method:    Method of background subtraction:
                   'Next', 'Prev', 'Polynomial', 'String', 'None', 'Grp Num Frac Pow', etc.
                In general 'String' is the most flexible, and recommended.
-               It can be things like "5/0-10 r3 *2'
+               It can be things like "5/0-10 r3 *2 mask_7_10'
                   - Make a median of Group 5, Images 0-10
                   - Rotate them all by 270 degrees
                   - Scale it to the data image
                   - Multiply background image by 2
                   - Subtract data - background
                   - Remove a 5th degree polynomial from the result [always done, regardless]
+                  - Load the mask file mask_7_10 and incorporate via a tuple
                   - Return final result
 
     vars:     The argument to the 'method'. Can be an exponent, a file number, a string, etc -- arbitrary, as needed. 
@@ -219,18 +222,24 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # =============================================================================
 #          Parse any mask file -- written as "mask_7_0" -- and remove from the string
 # =============================================================================
+# 
+# This mask is a fixed pattern, read from a file, for stray light etc.
+# It is *not* for stars or satellites, which are calculated separately.
+#         
+# True = good pixel. False = bad.
         
         file_mask = None
-        
+                
         match = re.search('(mask[0-9._]+)', str)
         
+        print("Str = {}, dir_mask = {}".format(str, dir_mask))
+        
         if match:
-            file_mask = dir_mask + match + '.png'
-            
-            str = str.replace(match.group(0), '')
-                           
-        str = str.strip() # Remove any trailing spaces left around
-
+ 
+            file_mask = dir_mask + match.group(0) + '.png'
+            mask = imread(file_mask) > 128  # Mask PNG file is 0 .. 255.
+            str = str.replace(match.group(0), '').strip()  # Remove the mask file from the string
+            print ("Now str = {}".format(str))
 
 # =============================================================================
 #          Parse any polynomial exponent -- written as 'p5'
@@ -306,17 +315,19 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # Now that we have parsed the string, do the image processing
 # =============================================================================
 
-# Load the mask file, if it exists. Otherwise, make a blank mask of 1's.
+# Load the mask file, if it exists. Otherwise, make a blank mask of True.
         
         if file_mask:
             mask = imread(file_mask)
-            mask = (mask > np.mean(mask))    # Force it to be a binary image.
+            mask = (mask > 128)               # Force it to be a boolean image.
             
         else:
-            mask = np.ones(np.shape(image))
-
-        image_masked = image.copy()
-        image_masked[mask == 0] = math.nan
+            mask = np.ones(np.shape(image_raw),dtype=bool)
+            
+# Apply the mask, and convert any False pixels to NaN in prep for the sfit
+            
+        image_masked                = image_raw.copy()
+        image_masked[mask == False] = math.nan
         
 # Rotate the image
 
@@ -419,7 +430,12 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         plt.show()
 
-    return image_processed
+# Now return the array. If we have a mask, then we return it too.
+        
+    if (file_mask): # If we loaded a mask
+        return (image_processed, mask)
+    else:
+        return image_processed
 
 def junk():
     
