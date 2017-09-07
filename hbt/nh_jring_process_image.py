@@ -40,6 +40,12 @@ import hbt
 #
 # The image returned is a science image, with flux (ie, I/F) preserved.
 # No clipping or scaling has been done.
+# 
+# If a mask is specified (e.g., 'mask_7_0' in the passed-in string), then the result is returned as a tuple:
+#
+#   (image, mask) = nh_jring_process_image([...])     # 'mask' is a boolean array
+#
+# Otherwise, the result is just a regular array 
 
 def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=-1):
     """Return image with stray light removed. I/F is preserved and no clipping is done.
@@ -168,35 +174,46 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
             image = image - hbt.sfit(image, power)
             
         image_processed = image
-    
-    if (method == 'String'):
+
+# =============================================================================
+# Do method 'None' (trivial)
+# =============================================================================
+                  
+    if (method == 'None'):
+        
+        image_processed = image = image_raw
 
 #==============================================================================
+# Do method 'String'. Complicated, but most useful.
+#
 # Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" 
 #        or "6/123 - 129" or "6/123-129 r1 *0.5 p4"
 #                  or "".          
 #==============================================================================
-
-####
-# As of 8-July-2016, this is the one I will generally use for most purposes.
+####        
+# As of 8-July-2017, this is the one I will generally use for most purposes.
+#        
 # 'String' does this:
-#   o Subtract the bg image made by combining the named frames. Rotate and scale backgroiund frame as requested.
-#   o Subtract a 5th order polynomial
-#   o Filter out the extreme highs and lows
-#   o Display it.    
+#   o Subtract the bg image made by combining the named frames, and rotating and scaling as requested (optional)
+#   o Apply a mask file (optional)
+#   o Subtract a polynomial (optional)   
+#        
 ####
+        
+    if (method == 'String'):
+
         str = vars
 
 # =============================================================================
-#          Parse any rotation angle -- written as "6/1-10 r90" -- and remove from the string
+#          Parse any rotation angle -- written as "r90" -- and remove from the string
 # =============================================================================
                 
         angle_rotate_deg = 0
         
-        match = re.search('r([0-9]+)', str)
+        match = re.search('(r[0-9]+)', str)
         if match:
-            angle_rotate_deg = int(match.group(0).replace('r', ''))
-            str = str.replace(match.group(0), '')
+            angle_rotate_deg = int(match.group(0).replace('r', ''))   # Extract the rotation angle
+            str = str.replace(match.group(0), '')                     # Remove the whole phrase from string 
             
             if (np.abs(angle_rotate_deg)) <= 10:      # Allow value to be passed as (1,2,3) or (90, 180, 270)
                 angle_rotate_deg *= 90
@@ -205,19 +222,18 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         # factor that very crudely accomodates for differences in phase angle, exptime, etc.
         
 # =============================================================================
-#          Parse any stray multiplication factor -- written as "6/1-10 r90 *3" -- and remove from the string
+#          Parse any stray multiplication factor -- written as "*3" -- and remove from the string
+#          Multiplicative factor is used to scale the stray light image to be removed, up and down (e.g., up by 3x)
 # =============================================================================
         
         factor_stray_default    = 1    # Define the default multiplicative factor
         
         factor_stray            = factor_stray_default
         
-        match = re.search('\*([0-9.]+)', str) # Match   *3   *0.4   etc  [where '*' is literal, not wildcard]
+        match = re.search('(\*[0-9.]+)', str) # Match   *3   *0.4   etc  [where '*' is literal, not wildcard]
         if match:
-            factor_stray = float(match.group(0).replace('*', ''))
-            str = str.replace(match.group(0), '')
-                           
-        str = str.strip() # Remove any trailing spaces left around
+            factor_stray = float(match.group(0).replace('*', ''))  # Extract the multiplicative factor
+            str = str.replace(match.group(0), '').strip()          # Remove phrase from the string                       
 
 # =============================================================================
 #          Parse any mask file -- written as "mask_7_0" -- and remove from the string
@@ -234,67 +250,74 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         print("Str = {}, dir_mask = {}".format(str, dir_mask))
         
-        if match:
- 
-            file_mask = dir_mask + match.group(0) + '.png'
-            mask = imread(file_mask) > 128  # Mask PNG file is 0 .. 255.
-            str = str.replace(match.group(0), '').strip()  # Remove the mask file from the string
-            print ("Now str = {}".format(str))
+        if match: 
+            file_mask = dir_mask + match.group(0) + '.png'    # Create the filename
 
+
+            
+            str = str.replace(match.group(0), '').strip()     # Remove the phrase from the string
+    
 # =============================================================================
 #          Parse any polynomial exponent -- written as 'p5'
 #          This is the polynomial removed *after* subtracting Image - Stray
 # =============================================================================
         
-        poly_final_default = 0              # Define the default polynomial to subtract.
+        poly_after_default = 0              # Define the default polynomial to subtract.
                                             # I could do 5, or I could do 0.
                                             
-        poly_final         = poly_final_default 
+        poly_after         = poly_after_default 
         
-        match = re.search('p([0-9]+)', str)
+        match = re.search('(p[0-9]+)', str)
         if match:
-            poly_final = int(match.group(0).replace('p', ''))
-            str = str.replace(match.group(0), '')
+            poly_after = int(match.group(0).replace('p', ''))  # Extract the polynomal exponent
+            str = str.replace(match.group(0), '').strip()      # Remove the phrase from the string
             
 # =============================================================================
 #          Now parse the rest of the string
 # =============================================================================
-        
-        str2 = str.replace('-', ' ').replace('/', ' ').replace('None', '')
+
+# The only part that is left is 0, 1, or 2 integers, which specify the stray light file to extract
+# They must be in the form "7/12-15", or "7/12" or "12"
+            
+        str2 = str.replace('-', ' ').replace('/', ' ').replace('None', '') # Get rid of any punctuation
 
         vars = np.array(str2.split(), dtype=int)  # With no arguments, split() breaks at any set of >0 whitespace chars.
-        
-        # Empty string - no arguments
-        # This is kind of an extreme case -- e.g., no polynomial subtraction -- so we don't use it much.
-        
-        if (np.size(vars) == 0):
+
+# =============================================================================
+# Now load the appropriate stray light image, based on the number of arguments passed
+# =============================================================================
+
+        do_sfit_stray = False  # Flag: When constructing the straylight median file, do we subtract polynomial, or not?
+                               #
+                               # Usually we want False. ie, want to do:
+                               #  out = remove_sfit(raw - stray)
+                               #      not
+                               #  out = remove_sfit(raw) - remove_sfit(stray)
+                               
+        if (np.size(vars) == 0):             #  "<no arguments>"
             image           = image_raw
             image_processed = image
             image_stray     = 0 * image
-            
-            return image_processed # We want to skip any fitting of the stray, subraction of it, etc. -- so return now.
-        
-        do_sfit_median = False  # Flag: When constructing the straylight median file, do we subtract polynomial, or not?
-        
-        if (np.size(vars) == 1):
+                    
+        if (np.size(vars) == 1):             #  "12" -- image number
             image_stray = hbt.nh_get_straylight_median(index_group, [int(vars[0])],
-                                                      do_sfit=do_sfit_median )  # "122" -- assume current group
+                                                      do_sfit=do_sfit_stray)  # "122" -- assume current group
             
-        if (np.size(vars) == 2):
+        if (np.size(vars) == 2):             #  "7-12" -- image range
             image_stray = hbt.nh_get_straylight_median(index_group, 
                                                       hbt.frange(int(vars[0]), int(vars[1])).astype('int'),
-                                                      do_sfit=do_sfit_median)  # "122-129"
+                                                      do_sfit=do_sfit_stray)  # "122-129"
                                                                                         # -- assume current group
  
-        if (np.size(vars) == 3):
+        if (np.size(vars) == 3):             #  "7/12-20" -- group, plus image range
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
                                                       hbt.frange(vars[1], vars[2]).astype('int'), 
-                                                      do_sfit=do_sfit_median) # "5/122 - 129"
+                                                      do_sfit=do_sfit_stray) # "5/122 - 129"
             
-        if (np.size(vars) == 4):
+        if (np.size(vars) == 4):             #  "7/12 - 7/20"  (very wordy -- don't use this)
             image_stray = hbt.nh_get_straylight_median(int(vars[0]), 
                                                       hbt.frange(vars[1], vars[3]).astype('int'), 
-                                                      do_sfit=do_sfit_median) # "6/122 - 6/129"
+                                                      do_sfit=do_sfit_stray) # "6/122 - 6/129"
 
 
 # Adjust the stray image to be same size as original. 
@@ -311,25 +334,26 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         if (dx_stray > dx_im):
             image_stray = scipy.ndimage.zoom(image_stray, ratio) / (ratio**2)   # Shrink the stray image
 
-# =============================================================================
+#=============================================================================
 # Now that we have parsed the string, do the image processing
-# =============================================================================
+#=============================================================================
 
 # Load the mask file, if it exists. Otherwise, make a blank mask of True.
         
         if file_mask:
-            mask = imread(file_mask)
-            mask = (mask > 128)               # Force it to be a boolean image.
+
+            try:
+                mask = imread(file_mask) > 128                # Read file. Mask PNG file is 0-255. Convert to boolean.
+        
+                print("Reading mask file {}".format(file_mask))
+                
+            except IOError:                                   # If mask file is missing
+                print("Stray light mask file {} not found".format(file_mask))
             
         else:
             mask = np.ones(np.shape(image_raw),dtype=bool)
             
-# Apply the mask, and convert any False pixels to NaN in prep for the sfit
-            
-        image_masked                = image_raw.copy()
-        image_masked[mask == False] = math.nan
-        
-# Rotate the image
+# Rotate the stray light image
 
         image_stray = np.rot90(image_stray, angle_rotate_deg/90)  # np.rot90() takes 1, 2, 3, 4 = 90, 180, 270, 360.
         
@@ -337,15 +361,28 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         image_processed = image_raw - factor_stray * image_stray    
 
-# Remove a polynomial from the result. This is where the mask comes into play
+        print("Removing bg. factor = {}, angle = {}".format(factor_stray, angle_rotate_deg))
         
-        sfit_masked = hbt.sfit(image_masked, poly_final)
+# Apply the mask: convert any False pixels to NaN in prep for the sfit
+            
+        image_masked                = image_processed.copy()
+        image_masked[mask == False] = math.nan
+        
+        frac_good = np.sum(mask) / len(mask)
+        
+        print("Applying mask, fraction good = {}".format(frac_good))
+        
+# Remove a polynomial from the result. This is where the mask comes into play.
+        
+        sfit_masked = hbt.sfit(image_masked, poly_after)
         
         image_processed = image_processed - sfit_masked
-                        
-    if (method == 'None'):
+
+        print("Removing sfit {}".format(poly_after))
         
-        image_processed = image = image_raw
+# =============================================================================
+# END OF CASE STATEMENT FOR METHODS
+# =============================================================================
 
 # Remove a small bias offset between odd and even rows ('jailbars')
 # This might be better done before the sfit(), but in reality probably doesn't make a difference.
@@ -430,7 +467,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         plt.show()
 
-# Now return the array. If we have a mask, then we return it too.
+# Now return the array. If we have a mask, then we return it too, as a tuple
         
     if (file_mask): # If we loaded a mask
         return (image_processed, mask)
