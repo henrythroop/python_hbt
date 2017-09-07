@@ -83,6 +83,10 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     t = pickle.load(lun)
     lun.close()
 
+    # Initialize variables
+    
+    DO_MASK = False  # We set this based on whether a mask is passed in or not
+
     dir_mask = dir_out.replace('out','masks')   # Directory where the mask files are
     
     # Process the group names. Some of this is duplicated logic -- depends on how we want to use it.
@@ -187,8 +191,10 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # Do method 'String'. Complicated, but most useful.
 #
 # Parse a string like "6/112-6/129", or "129", or "6/114", or "124-129" 
-#        or "6/123 - 129" or "6/123-129 r1 *0.5 p4"
-#                  or "".          
+#        or "6/123 - 129" or "6/123-129 r1 *0.5 p4 mask_7_12"
+#                  or "".
+#
+# Except for the group and image number, the order of thse does not matter.        
 #==============================================================================
 ####        
 # As of 8-July-2017, this is the one I will generally use for most purposes.
@@ -252,8 +258,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         if match: 
             file_mask = dir_mask + match.group(0) + '.png'    # Create the filename
-
-
+            DO_MASK = True
             
             str = str.replace(match.group(0), '').strip()     # Remove the phrase from the string
     
@@ -368,7 +373,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         image_masked                = image_processed.copy()
         image_masked[mask == False] = math.nan
         
-        frac_good = np.sum(mask) / len(mask)
+        frac_good = np.sum(mask) / (np.prod(np.shape(mask)))
         
         print("Applying mask, fraction good = {}".format(frac_good))
         
@@ -469,7 +474,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 
 # Now return the array. If we have a mask, then we return it too, as a tuple
         
-    if (file_mask): # If we loaded a mask
+    if (DO_MASK): # If we loaded a mask
         return (image_processed, mask)
     else:
         return image_processed
