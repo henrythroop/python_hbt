@@ -252,7 +252,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         file_mask = None
                 
-        match = re.search('(mask[0-9._]+)', str)
+        match = re.search('(mask[0-9._\-]+)', str)
         
         print("Str = {}, dir_mask = {}".format(str, dir_mask))
         
@@ -352,6 +352,9 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
                 print("Reading mask file {}".format(file_mask))
                 
+                if (len(np.shape(mask)) > 2):                 # If Photoshop saved multiple planes, then just take first
+                    mask = mask[:,:,0]
+                    
             except IOError:                                   # If mask file is missing
                 print("Stray light mask file {} not found".format(file_mask))
             
@@ -479,14 +482,18 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     else:
         return image_processed
 
+# =============================================================================
+# Now do some q&d testing
+# =============================================================================
+
 def junk():
     
     import hbt
     
     method = 'String'
-    vars = '7/2-10'
+    vars = '64-66 p10 *1.5 mask_7_61-63'
     index_group = 7
-    index_image = 2  # This is used only when using Prev / Next. Otherwise it is ignored.
+    index_image = 61 # This is used only when using Prev / Next. Otherwise it is ignored.
 
     file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0034676524_0x630_sci_1_opnav.fit'
 
@@ -501,6 +508,8 @@ def junk():
       
     out = hbt.nh_jring_process_image(image_raw, method, vars, index_group, index_image)
 
+    (im, ma) = out
+    
 ###
     method = 'String'
     index_group = 5
