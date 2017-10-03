@@ -655,8 +655,13 @@ def dist_center(diam, centered=True, invert=False, normalize=False):
     If normalize is passed, 
     """
     
+    # Create the grid
+    
     xx, yy = np.mgrid[:diam, :diam]
     
+         # What is this syntax all about? That is weird.
+         # A: mgrid is a generator. np.meshgrid is the normal function version.
+                                       
     if (centered):
         dist = np.sqrt((xx - (diam-1)/2.) ** 2 + (yy - (diam-1)/2.) ** 2)
     else: 
@@ -974,7 +979,7 @@ def decosmic(im, sigma=3):
 # Function to get the translation between two sets of points
 # This is my brute-force shift-and-add image translation searcher.
 # It works perfectly, but is super slow.
-# Usually ird.translation() is better.
+# Usually ird.translation() is better. [NB: Need to normalize images properly before ird.translation()!]
 #==============================================================================
 
 def get_translation_images_bruteforce(im_a, im_b):
