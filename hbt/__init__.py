@@ -13,7 +13,8 @@ import numpy as np
 import astropy
 import astropy.modeling
 import skimage.transform as skt  # This 'resize' function is more useful than np's
-import matplotlib as plt
+import matplotlib.pyplot as plt
+import matplotlib                # We need this to access 'rc'
 import spiceypy as sp
 from   astropy.io import fits
 import subprocess
@@ -129,7 +130,7 @@ def set_fontsize(size=15):
             'weight' : 'normal',
             'size'   : size}
 
-    plt.rc('font', **font)
+    matplotlib.rc('font', **font)
         
 ##########
 # Get a single FITS image header
@@ -559,7 +560,7 @@ def figsize(size=None): # Was imsize(), but I think this is better
     else:
         size_out = (size[0], size[1])
         
-    plt.rc('figure', figsize=size_out)
+    matplotlib.rc('figure', figsize=size_out)
     
 def correct_stellab(radec, vel):
     """
@@ -620,8 +621,8 @@ def set_plot_defaults(cmap='Greys'):
     """ 
     Set default values for matplotlib
     """
-    plt.rc('image', interpolation='None')       # Turn of interpolation for imshow
-    plt.rc('image', cmap=cmap)               # Default color table for imshow
+    matplotlib.rc('image', interpolation='None')       # Turn of interpolation for imshow
+    matplotlib.rc('image', cmap=cmap)               # Default color table for imshow
     
 def wheremin( arr ):
    """
@@ -752,13 +753,28 @@ def remove_polyfit(arr, **kwargs):
 # SFIT
 #==============================================================================
     
-def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input array before doing the fit.
-                                     # This binning is OK for FITS files, but should have better error checking!
-
+def sfit(arr, degree=3, binning=16, mask=None): 
+    
     import skimage.transform as skt  # This 'resize' function is more useful than np's
                                      
     """
-    Fit polynomial to a 2D array, aka surface. Like IDL sfit.
+    Fit polynomial to a 2D array, aka surface. Like IDL sfit. For efficiency, we downsample the input aray before
+    doing the fit.
+    
+    XXX Error handling here is not very good. This 16x16 binning is OK for FITS files, 
+    but will fail on many other cases.
+    
+    Parameters
+    ----
+    degree=3 : 
+        Power of the polynomial fit
+    
+    binning = 16: 
+        Spatial binning (e.g., 16 means downsample by 16x16)
+    
+    mask = <mask>:
+        Optional boolean mask (of same size as array). Only use the pixels that are weighted True.
+        
     """
 
 # For info on resizing, see http://stackoverflow.com/questions/29958670/how-to-use-matlabs-imresize-in-python
@@ -777,11 +793,17 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
     arr_small = skt.resize(arr, shape_small, order=1, preserve_range=True, mode=mode) # Properly preserves NaN
     p_init = astropy.modeling.models.Polynomial2D(degree=int(degree))
 
+# If we were passed a mask, then shrink that as well.
+    
+    if not(mask is None):
+        mask_float = mask.astype(float) # Convert from boolean to float
+        mask_small = skt.resize(mask_float, shape_small, order=1, preserve_range=True, mode=mode)
+        
 # Define the fitting routine
 
     fit_p = astropy.modeling.fitting.LevMarLSQFitter()
 
-# astropy insists on warning me to use a linear filtter if my coeffs are linear. This is stupid. Turn off that warning.
+# astropy insists on warning me to use a linear filter if my coeffs are linear. This is stupid. Turn off that warning.
 
     with warnings.catch_warnings():        
         warnings.simplefilter('ignore')
@@ -790,6 +812,9 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
 # has NaN's in it.
         
         is_good = (np.isnan(arr_small) == False)
+        
+        if not(mask is None):
+            is_good = np.logical_and(is_good, mask_small)
 
 # Do the fit itself
         
@@ -805,12 +830,12 @@ def sfit(arr, degree=3, binning=16): # For efficiency, we downsample the input a
 # REMOVE_SFIT
 ##########
 
-def remove_sfit(arr, degree=3):
+def remove_sfit(arr, **kwargs):
     """
     Return an array with a polynomial fit removed. Same as sfit, but better for inline usage.
     """
     
-    return arr - hbt.sfit(arr, degree=degree)
+    return arr - hbt.sfit(arr, **kwargs)
     
 def butter2d_lp(shape, f, n, pxd=1):
     """Designs an n-th order lowpass 2D Butterworth filter with cutoff
