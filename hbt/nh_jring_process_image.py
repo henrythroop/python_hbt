@@ -48,28 +48,40 @@ import hbt
 # Otherwise, the result is just a regular array 
 
 def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=-1):
-    """Return image with stray light removed. I/F is preserved and no clipping is done.
     
-    image_raw: NumPy array with the data image.
+    """
+    Return image with stray light removed. Flux is preserved and no clipping is done.
 
-    method:    Method of background subtraction:
-                  'Next', 'Prev', 'Polynomial', 'String', 'None', 'Grp Num Frac Pow', etc.
-               In general 'String' is the most flexible, and recommended.
-               It can be things like "5/0-10 r3 *2 mask_7_10'
-                  - Make a median of Group 5, Images 0-10
-                  - Rotate them all by 270 degrees
-                  - Scale it to the data image
-                  - Multiply background image by 2
-                  - Subtract data - background
-                  - Remove a 5th degree polynomial from the result [always done, regardless]
-                  - Load the mask file mask_7_10 and incorporate via a tuple
-                  - Return final result
+    Parameters
+    -----
+    
+    image_raw: 
+        NumPy array with the data image.
 
-    vars:     The argument to the 'method'. Can be an exponent, a file number, a string, etc -- arbitrary, as needed. 
+    method:    
+        Method of background subtraction, which can be 'Next', 'Prev', 'Polynomial', 'String', 'None', 
+        'Grp Num Frac Pow', etc.
+        
+        In general 'String' is the most flexible, and recommended.
+        It can be things like "5/0-10 r3 *2 mask_7_10':
+            
+        - Make a median of Group 5, Images 0-10
+        - Rotate them all by 270 degrees
+        - Scale it to the data image
+        - Multiply background image by 2
+        - Subtract data - background
+        - Remove a 5th degree polynomial from the result [always done, regardless]
+        - Load the mask file mask_7_10 and incorporate via a tuple
+        - Return final result
+
+    vars:
+        The argument to the 'method'. Can be an exponent, a file number, a string, etc -- arbitrary, as needed. 
              
-    index_group: Index of current image. Not used except for Next/Prev.
+    index_group:
+        Index of current image. Not used except for Next/Prev.
 
-    index_image: Index of current group. Not used except for Next/Prev.
+    index_image:
+        Index of current group. Not used except for Next/Prev.
              
     """
     
@@ -202,7 +214,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # 'String' does this:
 #   o Subtract the bg image made by combining the named frames, and rotating and scaling as requested (optional)
 #   o Apply a mask file (optional)
-#   o Subtract a polynomial (optional)   
+#   o Subtract a polynomial (optional). ** As of 17-Nov-2017, sfit is applied only to masked pixels, not full image.
 #        
 ####
         
@@ -252,7 +264,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         file_mask = None
                 
-        match = re.search('(mask[0-9._\-]+)', str)
+        match = re.search('(mask[0-9a-z._\-]+)', str)
         
         print("Str = {}, dir_mask = {}".format(str, dir_mask))
         
@@ -369,7 +381,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
         image_processed = image_raw - factor_stray * image_stray    
 
-        print("Removing bg. factor = {}, angle = {}".format(factor_stray, angle_rotate_deg))
+#        print("Removing bg. factor = {}, angle = {}".format(factor_stray, angle_rotate_deg))
         
 # Apply the mask: convert any False pixels to NaN in prep for the sfit
             
