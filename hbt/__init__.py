@@ -23,6 +23,9 @@ import warnings
 import importlib  # So I can do importlib.reload(module)
 from   photutils import DAOStarFinder
 import photutils
+from   astropy import units as u           # Units library
+
+from   scipy.optimize import curve_fit
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -54,6 +57,8 @@ from nh_jring_process_image         import nh_jring_process_image
 from create_backplane               import create_backplane
 from calc_offset_points             import calc_offset_points
 from navigate_image_stellar         import navigate_image_stellar
+from scatter_mie_ensemble           import scatter_mie_ensemble
+from scatter_lambert                import scatter_lambert
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
@@ -194,14 +199,34 @@ def incr2cum(arr, DO_REVERSE=False):
 # Create a power-law distribution
 ##########
 
-def powerdist(r, mass, q, rho, DO_NORMALIZE = False):
+def powerdist(r, q, rho=None, mass=None):
 
     """
-    Assumes radius in r, and creates # in range [r .. r+dr] = c r^-q dr
-    bins are expected to be logarithmic.
-    /DO_NORMALIZE: every bin has at least one particle
-    in it.  the upper size cutoff may be off by 
-    a few bins, but mass is conserved.
+    Creates a power-law size distribution, given an input radius array.
+    
+    If both rho and mass are passed, then the output is normalized properly.
+    Otherwise, the vertical scaling is arbitrary.
+    
+    Any bins with < 1 particle are removed before normalizing.
+    
+    Parameters
+    -------
+    
+    r:
+        Radius. NP array. Can have units.
+    q:
+        Power law exponent. Usually positive.
+    mass:
+        Optional. Total mass. Only used if normalizing.
+    rho:
+        Optional. Density. Only used if normalizing.
+        
+    Returned values
+    -----
+    
+    n:
+        The n(r) power law size distribution.
+        
     """
     
     import math
@@ -210,11 +235,16 @@ def powerdist(r, mass, q, rho, DO_NORMALIZE = False):
 
     dr = r * (ratio-1)    # width of bins
     n = r**(-q) * dr
-    mout = 4/3 * math.pi * r**3 * n * rho
-    n = n * mass / np.sum(mout)
-                         # normalize mass
-   
+
+    # Check if both optional flags exist. If so, then do the normalization.
+    
+    DO_NORMALIZE = rho and mass
+    
     if DO_NORMALIZE:
+        mout = 4/3 * math.pi * r**3 * n * rho
+        n = n * mass / np.sum(mout)
+                         # normalize mass
+
         lastbin = (np.where (n < 1))(0)
         if (lastbin != -1):
             n[lastbin:] = 0
@@ -223,15 +253,78 @@ def powerdist(r, mass, q, rho, DO_NORMALIZE = False):
      
     return n
 
+def powerdist_broken(r, r_break, q_1, q_2):
+
+    """
+    Create a broken power law distribution (i.e., a two-component power law, with a knee).
+    
+    Maybe in the future this will have mass, allow normalizing, etc. But not now.
+    
+    Parameters
+    ----
+    r:
+        Radius. NP array. Can have units.
+    r_break:
+        Position of the knee.
+    q_1:
+        Power law exponent for the smaller grains.
+    q_2:
+        Power law exponent for the larger grains.
+    
+    Returned values
+    ----
+
+    n:
+        The n(r) power law size distribution.
+        
+    """
+    
+    # I want this to work whether the input array has units, or not!
+ 
+    ratio = r[1]/r[0]
+    dr = r * (ratio-1)    # width of bins
+
+    n_1 = (r**(-q_1) * dr).value
+    n_2 = (r**(-q_2) * dr).value
+    
+    if (r_break < np.amin(r)):
+        n = n_1
+        return(n)
+
+    if (r_break > np.amax(r)):
+        n = n_2
+        return(n)
+        
+    bin_break = np.where(r > r_break)[0][0]
+    n_2 *= n_1[bin_break] / n_2[bin_break]
+        
+    n = n_1.copy()
+    n[bin_break:] = n_2[bin_break:]
+    
+    DO_PLOT = False
+
+    # Plot the result. Bug: this only gets called if the first if's don't execute. How should I rewrite this to
+    # be flat (not deeply nested, with else's) but still execute to the end? 
+    
+    if (DO_PLOT):
+        plt.plot(r,n)
+        plt.yscale('log')
+        plt.xscale('log')
+        plt.show()
+    
+    return(n)    
+    
 ##########
 # Write a string to the Mac clipboard
 ##########
-# http://stackoverflow.com/questions/1825692/can-python-send-text-to-the-mac-clipboard
+
 
 def write_to_clipboard(str):
     """
     Write an arbitrary string to the Mac clipboard.
     """
+
+    # http://stackoverflow.com/questions/1825692/can-python-send-text-to-the-mac-clipboard
     
     process = subprocess.Popen(
         'pbcopy', env={'LANG': 'en_US.UTF-8'}, stdin=subprocess.PIPE)
@@ -1063,4 +1156,44 @@ def lorri_destripe(im):
     im_out -= arr_bias
           
     return(im_out)
-     
+
+# =============================================================================
+# Function to do linear fit, but as one paramter, not two.
+# =============================================================================
+
+def linfit_origin(y1, y2, log=False):
+    """
+    Perform a linear regression between two datasets. (That is, gets the *ratio* between the datasets.)
+    Solves for only *one* paramter, not two!
+    Assumes that the line goes through the origin -- ie, for y = mx + b, assume b = 0.
+    
+    Parameters
+    -----
+    
+    y1: 
+        First data set
+    y2:
+        Second data set. Must be at same x values at the first data set.
+        
+    [log]:
+        Optional. If set, perform the fit in log space, rather than linear.
+        
+    Outputs:
+    ----    
+    scalefac:
+        Solved ratio between y1 and y2. If `log` is set, then this is an offset, not a ratio.
+    covariance:
+        Covariance.
+        
+    """
+
+    import numpy as np
+#    from   scipy.optimize import curve_fit
+    
+    if (log):
+        (scalefac, covariance) = curve_fit(lambda x, m: m+x, np.log(y1), np.log(y2))
+        scalefac = np.exp(scalefac)  
+    else:
+        (scalefac, covariance) = curve_fit(lambda x, m: m*x, y1, y2)   
+
+    return (scalefac, covariance)    
