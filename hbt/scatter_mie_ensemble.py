@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
 
-Created on Mon Nov 20 09:38:43 2017
-
-@author: throop
-"""
 
 import math       
 import matplotlib.pyplot as plt # pyplot
@@ -22,11 +17,13 @@ def scatter_mie_ensemble(nm_refract, n, r, ang_phase, alam, do_plot=False):
     
     The returned phase function is properly normalized s.t. \\int(0 .. pi) {P sin(alpha) d_alpha} = 2.
     
+    Calculated using pymiecoated library. That library supports coated grains, but my functions do not.
+    
     Parameters
     ------
 
     nm_refract:
-        Index of refraction. Complex.
+        Index of refraction. Complex. Imaginary component is typically positive, not negative.
     n:
         Particle number distribution.
     r: 
@@ -87,19 +84,29 @@ def scatter_mie_ensemble(nm_refract, n, r, ang_phase, alam, do_plot=False):
        # Now convert from S1 and S2, to P11: Use p. 2 of http://nit.colorado.edu/atoc5560/week8.pdf
       
             p11_mie[i, j]  = 4 * pi / (k**2 * sigma) * ( (np.abs(S1))**2 + (np.abs(S2))**2) / 2
-    
-       
        
     if (do_plot):
         for i, x_i in enumerate(x):
             plt.plot(ang_phase.to('deg'), p11_mie[i, :], label = 'X = {:.1f}'.format(x_i))
-        plt.title("N = {}".format(nm_refract))
+        plt.title("P11, nm = {}".format(nm_refract))
         plt.yscale('log')
-        plt.legend(loc='upper left')
+#        plt.legend(loc='upper left')
         plt.xlabel('Phase Angle [deg]')
+        plt.title('P11')
+        plt.show()
+
+        for i, x_i in enumerate(x):
+            plt.plot(ang_phase.to('deg'), p11_mie[i, :] * n[i] * r[i]**2, label = 'X = {:.1f}'.format(x_i))
+        plt.title("P11 * n(r) * r^2, nm = {}".format(nm_refract))
+        plt.yscale('log')
+#        plt.legend(loc='upper left')
+        plt.xlabel('Phase Angle [deg]')
+
         plt.show()
     
+    
     # Multiply by the size dist, and flatten the array and return just showing the angular dependence.
+    #      I(theta) = n(r) pi r^2 Q_sca P_11(theta)
 
     terms = np.transpose(np.tile(pi * n * r**2 * qsca, (num_ang,1)))
     
@@ -111,6 +118,7 @@ def scatter_mie_ensemble(nm_refract, n, r, ang_phase, alam, do_plot=False):
 
     # Now normalize it. We want \int (0 .. pi) {P(alpha) sin(alpha) d_alpha} = 2
     # The accuracy of the normalized result will depend on how many angular bins are used.
+    # This normalization is 
     
     d_ang = ang_phase - np.roll(ang_phase,1)
     d_ang[0] = 0
@@ -147,18 +155,34 @@ def test_scatter_mie_ensemble():
     alam = 500*u.nm
     
     # Set up the size distribution
+    alam   = 500  * u.nm
+    rmin   = 0.01 * u.micron
+    rmax   = 50   * u.micron     
+    num_r  = 50
     
-    r_min = 0.1
-    r_max = 20
-    num_r = 30
+    pi     = math.pi
     
-    q    = 3.5
-    r    = hbt.frange(r_min, r_max, num_r, log=True)*u.micron
-    n    = r.value**-q
+    # Define the exponent of the size distribution
     
+    q_1    = 5
+    q_2    = 5
+    r_break=0.5*u.micron  
+    
+    r      = hbt.frange(rmin, rmax, num_r, log=True)*u.micron  # Astropy bug? When I run frange(), it drops the units.
+    n      = hbt.powerdist_broken(r, r_break, q_1, q_2)        # Power law  
+    n      = r**(-5)
+    
+#    r_min = 0.1
+#    r_max = 20
+#    num_r = 30
+    
+#    q    = 3.5
+#    r    = hbt.frange(r_min, r_max, num_r, log=True)*u.micron
+#    n    = r.value**-q
+#    
     # Set up the angular distribution
     
-    num_ang = 55
+    num_ang = 91
     
     ang_phase = hbt.frange(0, pi, num_ang)*u.rad # Phase angle.
     
@@ -173,14 +197,14 @@ def test_scatter_mie_ensemble():
     plt.subplot(1,2,1)
     plt.plot(ang_phase.to('deg'), phase)
     plt.xlabel('Phase Angle [deg]')
-    plt.title('q = {}'.format(q))
+    plt.title('q = {}'.format((q_1, q_2)))
     plt.yscale('log')
     
     plt.subplot(1,2,2)
-    plt.plot(r.to('micron'), n)
+    plt.plot(r.to('micron'), n * r**2)
     plt.xlabel('Radius [micron]')
     plt.ylabel('Number')
     plt.yscale('log')
-    plt.title('q={}'.format(q))
+    plt.title('n(r) * r^2, q={}'.format((q_1, q_2)))
     plt.xscale('log')
     plt.show()
