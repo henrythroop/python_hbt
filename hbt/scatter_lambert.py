@@ -22,7 +22,8 @@ def scatter_lambert(ang_phase, albedo=1):
     -----
     
     ang_phase:
-        Phase angle. Radians, or astropy units.
+        Phase angle. Radians, or astropy units. Must be in range 0 .. pi.
+        
     albedo:
         Albedo. Optional.
         
@@ -30,7 +31,7 @@ def scatter_lambert(ang_phase, albedo=1):
     
     pi = math.pi
     
-    p11_lambert		 = 8/(3 * pi) * (np.sin(ang_phase) + (pi - np.sin(ang_phase)) * np.cos(ang_phase))
+    p11_lambert		 = 8/(3 * pi) * (np.sin(ang_phase) + (pi - ang_phase) * np.cos(ang_phase))
   
   			          # But hang on -- how is this phase function right since it doesn't include diffraction! Ugh...
   			          # The real phase function should really be half this, I think. This properly integrates to 
@@ -38,12 +39,21 @@ def scatter_lambert(ang_phase, albedo=1):
   			          # the diffraction spike, meaning these P11's in backscatter would go down.
   			          # OK, halving it. That will have the effect of making particles darker, harder to see, and 
   			          # increasing N for lambert.
+
+                        # NB: At one point code was using "(pi-np.sin(ang_phase))" -- definite error.
+
   
+    
+    # Q: How do I write code so that it interacts nicely with both scalars and unit-ed arrays?
+    # I can do    3.14 - 0    but not    3.13 - 0*u.rad
+    
     p11_lambert      *= 0.5
   			          
     p11_lambert      *= albedo
     
-    p11_lambert_out       = np.clip(p11_lambert, 0, 1000) # None fails here. Numpy bug?
+#    p11_lambert_out       = np.clip(p11_lambert, 0, 1000) # None fails here. Numpy bug?
     
-    return(p11_lambert_out)
+    return(p11_lambert)
+    
+
     
