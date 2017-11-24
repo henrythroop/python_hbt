@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt # pyplot
 import numpy as np
 from   astropy import units as u           # Units library
 from   pymiecoated import Mie
+import astropy
 
-def scatter_lambert(ang_phase, albedo=1):
+def scatter_lambert(ang_phase_in, albedo=1):
     
     """
     Return the phase function of a Lambertian scatterer. Phase function is properly normalized.
@@ -29,6 +30,13 @@ def scatter_lambert(ang_phase, albedo=1):
         
     """
     
+    # Convert from units, to scalar. I'm not sure of the best way to handle this -- probably not like this!
+    
+    if (type(ang_phase_in) == astropy.units.quantity.Quantity):
+        ang_phase = ang_phase_in.value
+    else:
+        ang_phase = ang_phase_in
+        
     pi = math.pi
     
     p11_lambert		 = 8/(3 * pi) * (np.sin(ang_phase) + (pi - ang_phase) * np.cos(ang_phase))
@@ -42,10 +50,8 @@ def scatter_lambert(ang_phase, albedo=1):
 
                         # NB: At one point code was using "(pi-np.sin(ang_phase))" -- definite error.
 
-  
-    
     # Q: How do I write code so that it interacts nicely with both scalars and unit-ed arrays?
-    # I can do    3.14 - 0    but not    3.13 - 0*u.rad
+    # I can do    3.14 - 0.5    but not    3.13 - 0.5*u.rad
     
     p11_lambert      *= 0.5
   			          
