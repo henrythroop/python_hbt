@@ -720,6 +720,14 @@ def set_plot_defaults(cmap='Greys'):
 def wheremin( arr ):
    """
    Determines the index at which an array has its minimum value
+   
+   NB: Usually I should use np.argmin() instead of this function. I think I didn't know about it at the time.
+   
+   Parameters
+   -----
+   arr:
+       NumPy array
+       
    """
    
    index = np.where(arr == np.amin(arr))
@@ -728,6 +736,9 @@ def wheremin( arr ):
 def wheremax( arr ):
    """
    Determines the index at which an array has its max value
+   
+   NB: Should usually use np.argmax() instead.
+   
    """
    
    index = np.where(arr == np.amax(arr))
