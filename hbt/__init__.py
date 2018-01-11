@@ -1125,6 +1125,39 @@ def get_translation_images_bruteforce(im_a, im_b):
     return (np.array((dy_out, dx_out)), sum)
 
 #==============================================================================
+# Logical OR between two arrays, preserving NaN
+#==============================================================================
+
+def nanlogical_and(m1,m2):
+    
+    """ Logical AND between two arrays, preserving NaN.
+    
+    Boolean array elements are either True or False. No NaN allowed.
+    This function takes two input *float* arrays, ANDs them together.
+    1 = True
+    0 = False
+    NaN = (one or more elements was NaN in the input)
+    """
+    
+    out = np.logical_and(m1,m2).astype(float)
+    out[np.isnan(m1)] = np.nan
+    out[np.isnan(m2)] = np.nan
+    
+    return(out)
+
+#==============================================================================
+# Logical AND between two arrays, preserving NaN
+#==============================================================================
+    
+def nanlogical_or(m1,m2):
+    
+    out = np.logical_or(m1,m2).astype(float)
+    out[np.isnan(m1)] = np.nan
+    out[np.isnan(m2)] = np.nan
+    
+    return(out)
+    
+#==============================================================================
 # Function to remove some vertical striping from LORRI images.
 #==============================================================================
 
