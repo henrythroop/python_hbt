@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt # pyplot
 import numpy as np
 from   astropy import units as u           # Units library
 from   pymiecoated import Mie
+import astropy
 
-def scatter_lambert(ang_phase, albedo=1):
+def scatter_lambert(ang_phase_in, albedo=1):
     
     """
     Return the phase function of a Lambertian scatterer. Phase function is properly normalized.
@@ -22,15 +23,23 @@ def scatter_lambert(ang_phase, albedo=1):
     -----
     
     ang_phase:
-        Phase angle. Radians, or astropy units.
+        Phase angle. Radians, or astropy units. Must be in range 0 .. pi.
+        
     albedo:
         Albedo. Optional.
         
     """
     
+    # Convert from units, to scalar. I'm not sure of the best way to handle this -- probably not like this!
+    
+    if (type(ang_phase_in) == astropy.units.quantity.Quantity):
+        ang_phase = ang_phase_in.value
+    else:
+        ang_phase = ang_phase_in
+        
     pi = math.pi
     
-    p11_lambert		 = 8/(3 * pi) * (np.sin(ang_phase) + (pi - np.sin(ang_phase)) * np.cos(ang_phase))
+    p11_lambert		 = 8/(3 * pi) * (np.sin(ang_phase) + (pi - ang_phase) * np.cos(ang_phase))
   
   			          # But hang on -- how is this phase function right since it doesn't include diffraction! Ugh...
   			          # The real phase function should really be half this, I think. This properly integrates to 
@@ -38,12 +47,19 @@ def scatter_lambert(ang_phase, albedo=1):
   			          # the diffraction spike, meaning these P11's in backscatter would go down.
   			          # OK, halving it. That will have the effect of making particles darker, harder to see, and 
   			          # increasing N for lambert.
-  
+
+                        # NB: At one point code was using "(pi-np.sin(ang_phase))" -- definite error.
+
+    # Q: How do I write code so that it interacts nicely with both scalars and unit-ed arrays?
+    # I can do    3.14 - 0.5    but not    3.13 - 0.5*u.rad
+    
     p11_lambert      *= 0.5
   			          
     p11_lambert      *= albedo
     
-    p11_lambert_out       = np.clip(p11_lambert, 0, 1000) # None fails here. Numpy bug?
+#    p11_lambert_out       = np.clip(p11_lambert, 0, 1000) # None fails here. Numpy bug?
     
-    return(p11_lambert_out)
+    return(p11_lambert)
+    
+
     
