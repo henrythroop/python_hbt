@@ -13,6 +13,8 @@ import spiceypy as sp
 from   astropy.visualization import wcsaxes
 import hbt
 from   astropy.wcs import WCS
+import os
+import matplotlib.pyplot as plt
 
 # Create backplanes based on an image number. This is a stand-alone function, not part of the method.
 # It creates ones 
@@ -258,7 +260,7 @@ def create_backplane(file,
                 # Get the radius ('alt') and azimuth ('lon') of the intersect, in the ring plane
                 
 #                lon, lat, alt = sp.recpgr(name_target, pt_intersect_frame, r_e, flat) # Returns (lon, lat, alt)
-                radius_body, lon, lat = sp.reclat(pt_intersect_jup)                         # Returns (radius, lon, lat)
+                radius_body, lon, lat = sp.reclat(pt_intersect_frame)                     # Returns (radius, lon, lat)
 
                 # Calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
         
@@ -502,7 +504,7 @@ if (__name__ == '__main__'):
     DO_TEST_JUPITER = False
     if (DO_TEST_JUPITER):
        
-        file_in       = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'       
+        file_in       = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'
         file_tm       = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
         sp.furnsh(file_tm)
         name_target   = 'Jupiter'
@@ -512,7 +514,8 @@ if (__name__ == '__main__'):
     DO_TEST_MU69 = True
     if (DO_TEST_MU69):
         file_in = os.path.join(os.path.expanduser('~'), 'Data', 'NH_KEM_Hazard', 'ORT1_Jan18', 
-                                   'lor_0406731132_0x633_sci_HAZARD_test1.fit')
+                                   'pwcs_ort1','K1LR_MU69ApprField_115d_L2_2017264','lor_0368314467_0x633_pwcs.fits')
+#                                   'lor_0406731132_0x633_sci_HAZARD_test1.fit')
     
         frame         = '2014_MU69_SUNFLOWER_ROT'
         name_target   = 'MU69'
@@ -540,5 +543,78 @@ if (__name__ == '__main__'):
     
             plt.show()
 
-    # Now write everything to a new FITS file.
+    # Now write everything to a new FITS file. 
     
+    file_out = file_in.replace('.fit', '_backplaned.fit')   # Works for both .fit and .fits
+    
+    # Open the existing file
+    
+    hdu = fits.open(file_in)
+    
+    # Go thru all of the new backplanes, and add them one by one. For each, create an ImageHDU, and then add it.
+    
+    for key in planes.keys():
+        hdu_new = fits.ImageHDU(data=planes[key].astype(np.float32), name=key, header=None)
+        hdu.append(hdu_new)
+    
+    # Write to a new file
+    
+    hdu.writeto(file_out, overwrite=True)
+    print("Wrote: {}; {} planes; {:.1f} MB".format(file_out, 
+                                                   len(hdu), 
+                                                   os.path.getsize(file_out)/1e6))
+
+    hdu.close()
+    
+#    hdu1 = fits.open(file_in)
+#    hdu2 = fits.open(file_out)
+#    
+    # Now test the newly generated backplanes
+    
+    file_new = file_out
+    stretch_percent = 90    
+    stretch = astropy.visualization.PercentileInterval(stretch_percent)
+    
+    hdu = fits.open(file_new)
+    
+    # Start up SPICE
+    
+    file_kernel = '/Users/throop/git/NH_rings/kernels_kem.tm'
+    sp.furnsh(file_kernel)
+        
+    # Look up position of MU69 in pixels.
+
+    et = hdu[0].header['SPCSCET']
+    utc = sp.et2utc(et, 'C', 0)
+    abcorr = 'LT'
+    frame = 'J2000'
+    name_target = 'MU69'
+    name_observer = 'New Horizons'
+    w = WCS(file_new)
+    
+    (st,lt) = sp.spkezr(name_target, et, frame, abcorr, name_observer)
+    vec_obs_mu69 = st[0:3]
+    (_, ra, dec) = sp.recrad(vec_obs_mu69)
+    (pos_pix_x, pos_pix_y) = w.wcs_world2pix(ra*hbt.r2d, dec*hbt.r2d, 0)
+    
+#    Plot the image itself
+ 
+    hbt.figsize((10,10)) 
+    plt.imshow(stretch(hdu[0].data))
+
+    # Plot one of the planes
+
+    plt.imshow(stretch(hdu['Longitude_eq'].data), alpha=0.5, cmap=plt.cm.Reds_r)
+
+    # Plot the ring
+ 
+    radius_ring = 100_000  # This needs to be adjusted for different distances.
+    radius_arr = hdu['Radius_eq'].data
+    radius_good = np.logical_and(radius_arr > radius_ring*0.95, radius_arr < radius_ring*1.05)
+    plt.imshow(radius_good, alpha=0.3)
+    
+    # Plot MU69
+    
+    plt.plot(pos_pix_x, pos_pix_y, ms=10, marker = 'o', color='green')    
+    plt.title("{}, {}".format(os.path.basename(file_new), utc))
+    plt.show()    
