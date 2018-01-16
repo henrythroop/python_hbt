@@ -283,17 +283,30 @@ def create_backplane(file,
                     ang_metis_arr[i_y, i_x]    = sp.vsep(vec_pix_j2k, vec_metis_j2k)
                     ang_amalthea_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_amalthea_j2k) 
 
-        # Assemble the results
+        # Assemble the results into a backplane
     
         backplane = {
              'RA'           : ra_2d.astype(float),  # return radians
              'Dec'          : dec_2d.astype(float), # return radians 
-             'dRA'          : dra_arr.astype(float),
-             'dDec'         : ddec_arr.astype(float),
+             'dRA_km'       : dra_arr.astype(float),
+             'dDec_km'      : ddec_arr.astype(float),
              'Radius_eq'    : radius_arr.astype(float),
              'Longitude_eq' : lon_arr.astype(float), 
-             'Phase'        : phase_arr.astype(float)  }
+             'Phase'        : phase_arr.astype(float)
+             }
         
+        # Assemble a bunch of descriptors, to be put into the FITS headers
+        
+        desc = {
+                'RA of pixel, radians',
+                'Dec of pixel, radians',
+                'Offset from target in target plane, RA direction, km',
+                'Offset from target in target plane, Dec direction, km',
+                'Projected equatorial radius, km',
+                'Projected equatorial longitude, km',
+                'Sun-target-observer phase angle, radians'
+                }
+                
         # In the case of Jupiter, add a few extra fields
         
         if (name_body.upper() == 'JUPITER'):
@@ -327,7 +340,7 @@ def create_backplane(file,
         
     # And return the backplane set
                  
-    return backplane
+    return (backplane, desc)
     
 
 # =============================================================================
