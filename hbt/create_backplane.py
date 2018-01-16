@@ -47,8 +47,8 @@ import matplotlib.pyplot as plt
 # from within the GUI.
 
 def create_backplane(file, 
-                     frame         = 'IAU_JUPITER', 
-                     name_target   = 'Jupiter', 
+                     frame         = 'J2000', 
+                     name_target   = 'MU69', 
                      name_observer = 'New Horizons', 
                      type          = None):
     
@@ -341,175 +341,10 @@ def create_backplane(file,
     # And return the backplane set
                  
     return (backplane, desc)
-    
-
-# =============================================================================
-#  Do the backplane for Jupiter
-#  This is a long module, because we deal with all the satellites, the J-ring, etc.        
-# =============================================================================
-    
-    if (name_target == 'Jupiter'):
-        
-        # Look up Jupiter body parameters, used for PGRREC().
-    
-        (num, radii) = sp.bodvrd(name_target, 'RADII', 3)
-        
-        r_e = radii[0]
-        r_p = radii[2]
-        flat = (r_e - r_p) / r_e
-
-        # Define a spice 'plane' along Jupiter's equatorial plane.
-            
-        # Get the plane in Jupiter coordinates. Pretty easy!  Though we might want to do it in J2K coords
-        
-        plane_jup = sp.nvp2pl([0,0,1], [0,0,0])    # nvp2pl: Normal Vec + Point to Plane
-        
-        # Define a few more output arrays for the final backplane set
-        
-        ang_metis_arr    = np.zeros((n_dy, n_dx))   # Angle from pixel to body, in radians
-        ang_adrastea_arr = ang_metis_arr.copy()
-        ang_thebe_arr    = ang_metis_arr.copy()
-        ang_amalthea_arr = ang_metis_arr.copy()
-        
-        # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
-                
-        mx_j2k_jup = sp.pxform('J2000', frame, et) # from, to, et
-        
-        # Get vec from Jup to NH, in Jupiter frame (or whatever named frame is passed in)
-                       
-        (st_jup_sc_jup, lt) = sp.spkezr(name_observer, et, frame,         abcorr, name_target)
-        (st_jup_sc_j2k, lt) = sp.spkezr(name_observer, et, 'J2000',       abcorr, name_target)     
-        
-        vec_jup_sc_jup = st_jup_sc_jup[0:3]
-        vec_jup_sc_j2k = st_jup_sc_j2k[0:3]
-    
-        # Name this vector a 'point'
-            
-        pt_jup_sc_jup = vec_jup_sc_jup
-    
-        # Get vector from Jupiter to Sun
-        # spkezr(target ... observer)
-    
-        (st_jup_sun_jup, lt) = sp.spkezr('Sun', et, frame, abcorr, name_target) # From Jup to Sun, in Jup frame
-        vec_jup_sun_jup = st_jup_sun_jup[0:3]
-        
-        # NB: at 2007-055T07:50:03.368, sub-obs lat = -6, d = 6.9 million km = 95 rj.
-        # sub-obs lon/lat = 350.2 / -6.7
-        
-    #    rj = 71492  # Jupiter radius, in km. Just for q&d conversions
-        
-        xs = range(n_dx)
-        ys = range(n_dy)
-        (i_x_2d, i_y_2d) = np.meshgrid(xs, ys)  # 5000 x 700: same shape as input MVIC image
-        
-        (ra_2d, dec_2d) = w.wcs_pix2world(i_x_2d, i_y_2d, False)
-    
-    # Now compute position for Adrastea, Metis, Thebe
-    
-        vec_metis_j2k,lt     = sp.spkezr('Metis',    et, 'J2000', abcorr, 'New Horizons')
-        vec_adrastea_j2k,lt  = sp.spkezr('Adrastea', et, 'J2000', abcorr, 'New Horizons')
-        vec_thebe_j2k,lt     = sp.spkezr('Thebe',    et, 'J2000', abcorr, 'New Horizons')
-        vec_amalthea_j2k,lt  = sp.spkezr('Amalthea', et, 'J2000', abcorr, 'New Horizons')
-        
-        vec_metis_j2k        = np.array(vec_metis_j2k[0:3])
-        vec_thebe_j2k        = np.array(vec_thebe_j2k[0:3])
-        vec_adrastea_j2k     = np.array(vec_adrastea_j2k[0:3])
-        vec_amalthea_j2k     = np.array(vec_amalthea_j2k[0:3])
-        
-    #    stop
-        
-        for i_x in xs:
-            for i_y in ys:
-        
-                # Look up the vector direction of this single pixel, which is defined by an RA and Dec
-                # Vector is thru mpixel to ring, in J2K 
-        
-                vec_pix_j2k =  sp.radrec(1., ra_2d[i_y, i_x]*hbt.d2r, dec_2d[i_y, i_x]*hbt.d2r) 
-                
-                # Convert vector along the pixel direction, from J2K into IAU_JUP frame
-          
-                vec_pix_jup = sp.mxv(mx_j2k_jup, vec_pix_j2k)
-        
-                # And calculate the intercept point between this vector, and the plane defined by Jupiter's equator.
-                # Intersect ray and plane. Jup coords.
-                    
-                (npts, pt_intersect_jup) = sp.inrypl(pt_jup_sc_jup, vec_pix_jup, plane_jup) 
-        
-                # Now calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
-        
-                vec_ring_sun_jup = -pt_intersect_jup + vec_jup_sun_jup
-                
-                angle_phase = sp.vsep(-vec_pix_jup, vec_ring_sun_jup)
-    
-                # Now calc angular separation between this pixel, and the satellites in our list
-                # Since these are huge arrays, cast into floats to make sure they are not doubles.
-                
-                if DO_SATELLITES:
-                    ang_thebe_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_thebe_j2k)
-                    ang_adrastea_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_adrastea_j2k)
-                    ang_metis_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_metis_j2k)
-                    ang_amalthea_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_amalthea_j2k)
-                    
-                # Save various derived quantities
-                
-                lon, lat, alt = sp.recpgr(name_target, pt_intersect_jup, r_e, flat) # Returns (lon, lat, alt)
-                alt, lon, lat = sp.reclat(pt_intersect_jup)                         # Returns (radius, lon, lat)
-                
-                radius_arr[i_y, i_x] = alt
-                lon_arr[i_y, i_x]    = lon
-                phase_arr[i_y, i_x]  = angle_phase
-                
-        # Assemble the results
-    
-        if DO_SATELLITES:
-            backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians
-                     'Dec'          : (dec_2d * hbt.d2r).astype(float), # return radians
-                     'Radius_eq'    : radius_arr.astype(float),
-                     'Longitude_eq' : lon_arr.astype(float), 
-                     'Phase'        : phase_arr.astype(float),
-                     'Ang_Thebe'    : ang_thebe_arr.astype(float),   # Angle to Thebe, in radians
-                     'Ang_Metis'    : ang_metis_arr.astype(float),
-                     'Ang_Amalthea' : ang_amalthea_arr.astype(float),
-                     'Ang_Adrastea' : ang_adrastea_arr.astype(float)}
-    
-        # If distance to any of the small sats is < 0.3 deg, then delete that entry in the dictionary
-        
-            if (np.amin(ang_thebe_arr) > fov_lorri):
-                del backplane['Ang_Thebe']
-            else:
-                print("Keeping Thebe".format(np.min(ang_thebe_arr) * hbt.r2d))
-        
-            if (np.amin(ang_metis_arr) > fov_lorri):
-                del backplane['Ang_Metis']
-            else:
-                print("Keeping Metis, min = {} deg".format(np.min(ang_metis_arr) * hbt.r2d))
-                
-            if (np.amin(ang_amalthea_arr) > fov_lorri):
-                del backplane['Ang_Amalthea']
-            else:
-                print("Keeping Amalthea, min = {} deg".format(np.amin(ang_amalthea_arr) * hbt.r2d))
-        
-            if (np.amin(ang_adrastea_arr) > fov_lorri):
-                del backplane['Ang_Adrastea']
-            else:
-                print("Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d))
-    
-        else:
-            backplane = {'RA'           : (ra_2d * hbt.d2r).astype(float), # return radians
-                     'Dec'          : (dec_2d * hbt.d2r).astype(float), # return radians
-                     'Radius_eq'    : radius_arr.astype(float),
-                     'Longitude_eq' : lon_arr.astype(float), 
-                     'Phase'        : phase_arr.astype(float)}
-
-        
-    # And return them
-                 
-    return backplane
-
-##### END OF FUNCTION #####
 
 # =============================================================================
 # Do some tests to validate the function
+# This creates files in memory, but does not write to file    
 # =============================================================================
     
 if (__name__ == '__main__'):
@@ -526,21 +361,25 @@ if (__name__ == '__main__'):
    
     DO_TEST_MU69 = True
     if (DO_TEST_MU69):
-        file_in = os.path.join(os.path.expanduser('~'), 'Data', 'NH_KEM_Hazard', 'ORT1_Jan18', 
-                                   'pwcs_ort1','K1LR_MU69ApprField_115d_L2_2017264','lor_0368314467_0x633_pwcs.fits')
-#                                   'lor_0406731132_0x633_sci_HAZARD_test1.fit')
-    
+#        file_in = os.path.join(os.path.expanduser('~'), 'Data', 'ORT1', 'lor_0368310087_0x633_sci_HAZARD_test1.fit') 
+
+        file_in = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
         frame         = '2014_MU69_SUNFLOWER_ROT'
         name_target   = 'MU69'
         name_observer = 'New Horizons'
-        file_tm = '/Users/throop/git/NH_rings/kernels_kem.tm'  # SPICE metakernel
+        file_tm       = '/Users/throop/git/NH_rings/kernels_kem.tm'  # SPICE metakernel
         sp.furnsh(file_tm)
-
    
     if (DO_TEST_JUPITER or DO_TEST_MU69):
         
-        planes = create_backplane(file_in, frame=frame, name_target=name_target, name_observer=name_observer)
-    
+        # Create the backplanes in memory
+        
+        (planes, desc) = create_backplane(file_in, frame=frame, name_target=name_target, name_observer=name_observer)
+
+# =============================================================================
+# Now test the newly generated backplanes
+# =============================================================================
+        
     # If requested, plot all of the planes to the screen, for validation
     
         DO_PLOT = True
@@ -556,33 +395,7 @@ if (__name__ == '__main__'):
     
             plt.show()
 
-    # Now write everything to a new FITS file. 
-    
-    file_out = file_in.replace('.fit', '_backplaned.fit')   # Works for both .fit and .fits
-    
-    # Open the existing file
-    
-    hdu = fits.open(file_in)
-    
-    # Go thru all of the new backplanes, and add them one by one. For each, create an ImageHDU, and then add it.
-    
-    for key in planes.keys():
-        hdu_new = fits.ImageHDU(data=planes[key].astype(np.float32), name=key, header=None)
-        hdu.append(hdu_new)
-    
-    # Write to a new file
-    
-    hdu.writeto(file_out, overwrite=True)
-    print("Wrote: {}; {} planes; {:.1f} MB".format(file_out, 
-                                                   len(hdu), 
-                                                   os.path.getsize(file_out)/1e6))
-
-    hdu.close()
-    
-#    hdu1 = fits.open(file_in)
-#    hdu2 = fits.open(file_out)
-#    
-    # Now test the newly generated backplanes
+# XXX DELETE ALL THIS BELOW?
     
     file_new = file_out
     stretch_percent = 90    
@@ -590,10 +403,12 @@ if (__name__ == '__main__'):
     
     hdu = fits.open(file_new)
     
-    # Start up SPICE
+    # Start up SPICE. Load kernels, only if none is currently loaded
     
     file_kernel = '/Users/throop/git/NH_rings/kernels_kem.tm'
-    sp.furnsh(file_kernel)
+    
+    if (sp.ktotal('SPK') == 0):
+        sp.furnsh(file_kernel)
         
     # Look up position of MU69 in pixels.
 
