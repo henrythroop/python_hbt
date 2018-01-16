@@ -13,7 +13,7 @@ import numpy as np
 import astropy
 import astropy.modeling
 import skimage.transform as skt  # This 'resize' function is more useful than np's
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt # Define in each function individually
 import matplotlib                # We need this to access 'rc'
 import spiceypy as sp
 from   astropy.io import fits
@@ -278,6 +278,8 @@ def powerdist_broken(r, r_break, q_1, q_2):
         The n(r) power law size distribution.
         
     """
+    
+    import matplotlib.pyplot as plt
     
     # I want this to work whether the input array has units, or not!
  
