@@ -56,6 +56,8 @@ def create_backplane(file,
     Returns a set of backplanes for a single specified image. The image must have WCS coords available in its header.
     Backplanes include navigation info for every pixel, including RA, Dec, Eq Lon, Phase, etc.
     
+    The results are returned to memory, and not written to a file.
+    
     SPICE kernels must be alreaded loaded, and spiceypy running.
     
     Parameters
@@ -64,7 +66,7 @@ def create_backplane(file,
     file:
         String. Input filename, for FITS file.
     frame:
-        String. Reference frame. 'IAU_JUPITER', 'IAU_MU69', '2014_MU69_SUNFLOWER_ROT', etc.
+        String. Reference frame of the target body. 'IAU_JUPITER', 'IAU_MU69', '2014_MU69_SUNFLOWER_ROT', etc.
     name_target:
         String. Name of the central body. All geometry is referenced relative to this (e.g., radius, azimuth, etc)
     name_observer:
@@ -75,10 +77,13 @@ def create_backplane(file,
     Output
     ----
 
-    Output is a tuple, consisting of each of the backplanes. The size of each of these arrays is the same as the 
-    input image.
+    Output is a tuple, consisting of each of the backplanes, and a text description for each one. 
+    The size of each of these arrays is the same as the input image.
     
-    output = (ra, dec, radius_eq, longitude_eq, phase)
+    output = (backplanes, descs)
+    
+        backplanes = (ra,      dec,      radius_eq,      longitude_eq,      phase)
+        descs      = (desc_ra, desc_dec, desc_radius_eq, desc_longitude_eq, desc_phase)
     
     Radius_eq:
         Radius, in the equatorial plane, in km
@@ -108,23 +113,9 @@ def create_backplane(file,
 
     DO_SATELLITES = False  # Flag: Do we create an additional backplane for each of Jupiter's small sats?
     
-    DO_TEST = False
-    
-    if DO_TEST:
-        
-        file = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'       
-        file_tm = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
-        sp.furnsh(file_tm)
-        name_target = 'Jupiter'
-        frame = 'IAU_JUPITER'
-        name_observer = 'New Horizons'
-    
-    #    arr = get_image_nh(file)
-#    file = '/Users/throop/Data/'
-    
     w = WCS(file) # Warning: I have gotten a segfault here before if passing a FITS file with no WCS info.
     
-    # Print some values. Not sure if this will work now that I have converted it to a string, not a dictionary...
+    # Open the FITS file
     
     hdulist = fits.open(file)
     
@@ -257,10 +248,9 @@ def create_backplane(file,
                 if ('MU69' in name_target):
                     pt_intersect_frame = np.array([pt_intersect_frame[0], pt_intersect_frame[2], pt_intersect_frame[1]])
                 
-                # Get the radius ('alt') and azimuth ('lon') of the intersect, in the ring plane
+                # Get the radius and azimuth of the intersect, in the ring plane
                 
-#                lon, lat, alt = sp.recpgr(name_target, pt_intersect_frame, r_e, flat) # Returns (lon, lat, alt)
-                radius_body, lon, lat = sp.reclat(pt_intersect_frame)                     # Returns (radius, lon, lat)
+                radius_body, lon, lat = sp.reclat(pt_intersect_frame)
 
                 # Calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
         
@@ -336,7 +326,6 @@ def create_backplane(file,
                 del backplane['Ang_Adrastea']
             else:
                 print("Keeping Adrastea".format(np.min(ang_adrastea_arr) * hbt.r2d))
-    
         
     # And return the backplane set
                  
