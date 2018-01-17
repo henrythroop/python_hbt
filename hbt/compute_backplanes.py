@@ -342,8 +342,13 @@ def compute_backplanes(file,
     
 if (__name__ == '__main__'):
     
-    DO_TEST_JUPITER = False
-    if (DO_TEST_JUPITER):
+    import  matplotlib.pyplot as plt
+    
+    do_test_jupiter = False
+    do_test_mu69    = True
+    do_plot         = True
+    
+    if (do_test_jupiter):
        
         file_in       = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'
         file_tm       = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
@@ -352,9 +357,8 @@ if (__name__ == '__main__'):
         frame         = 'IAU_JUPITER'
         name_observer = 'New Horizons'
    
-    DO_TEST_MU69 = True
-    if (DO_TEST_MU69):
-#        file_in = os.path.join(os.path.expanduser('~'), 'Data', 'ORT1', 'lor_0368310087_0x633_sci_HAZARD_test1.fit') 
+    
+    if (do_test_mu69):
 
         file_in = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
         frame         = '2014_MU69_SUNFLOWER_ROT'
@@ -363,21 +367,22 @@ if (__name__ == '__main__'):
         file_tm       = '/Users/throop/git/NH_rings/kernels_kem.tm'  # SPICE metakernel
         sp.furnsh(file_tm)
    
-    if (DO_TEST_JUPITER or DO_TEST_MU69):
+    if (do_test_jupiter or do_test_mu69):
         
         # Create the backplanes in memory
         
-        (planes, desc) = compute_backplanes(file_in, frame=frame, name_target=name_target, name_observer=name_observer)
+        (planes, desc) = compute_backplanes(file_in, 
+                                            frame = frame, 
+                                            name_target = name_target, 
+                                            name_observer = name_observer)
 
-# =============================================================================
-# Now test the newly generated backplanes
-# =============================================================================
+        print("Backplanes generated for {}".format(file_in))
         
-    # If requested, plot all of the planes to the screen, for validation
-    
-        DO_PLOT = True
-    
-        if (DO_PLOT):
+# =============================================================================
+# Now plot the newly generated backplanes
+# =============================================================================
+            
+        if do_plot:
             i=1
             fig = plt.subplots()
             for key in planes.keys():
@@ -387,55 +392,3 @@ if (__name__ == '__main__'):
                 i+=1
     
             plt.show()
-
-# XXX DELETE ALL THIS BELOW?
-    
-    file_new = file_out
-    stretch_percent = 90    
-    stretch = astropy.visualization.PercentileInterval(stretch_percent)
-    
-    hdu = fits.open(file_new)
-    
-    # Start up SPICE. Load kernels, only if none is currently loaded
-    
-    file_kernel = '/Users/throop/git/NH_rings/kernels_kem.tm'
-    
-    if (sp.ktotal('SPK') == 0):
-        sp.furnsh(file_kernel)
-        
-    # Look up position of MU69 in pixels.
-
-    et = hdu[0].header['SPCSCET']
-    utc = sp.et2utc(et, 'C', 0)
-    abcorr = 'LT'
-    frame = 'J2000'
-    name_target = 'MU69'
-    name_observer = 'New Horizons'
-    w = WCS(file_new)
-    
-    (st,lt) = sp.spkezr(name_target, et, frame, abcorr, name_observer)
-    vec_obs_mu69 = st[0:3]
-    (_, ra, dec) = sp.recrad(vec_obs_mu69)
-    (pos_pix_x, pos_pix_y) = w.wcs_world2pix(ra*hbt.r2d, dec*hbt.r2d, 0)
-    
-#    Plot the image itself
- 
-    hbt.figsize((10,10)) 
-    plt.imshow(stretch(hdu[0].data))
-
-    # Plot one of the planes
-
-    plt.imshow(stretch(hdu['Longitude_eq'].data), alpha=0.5, cmap=plt.cm.Reds_r)
-
-    # Plot the ring
- 
-    radius_ring = 100_000  # This needs to be adjusted for different distances.
-    radius_arr = hdu['Radius_eq'].data
-    radius_good = np.logical_and(radius_arr > radius_ring*0.95, radius_arr < radius_ring*1.05)
-    plt.imshow(radius_good, alpha=0.3)
-    
-    # Plot MU69
-    
-    plt.plot(pos_pix_x, pos_pix_y, ms=10, marker = 'o', color='green')    
-    plt.title("{}, {}".format(os.path.basename(file_new), utc))
-    plt.show()    

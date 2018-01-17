@@ -54,7 +54,7 @@ from nh_create_straylight_median    import nh_create_straylight_median
 from nh_get_straylight_median       import nh_get_straylight_median
 from nh_create_straylight_median_filename import nh_create_straylight_median_filename
 from nh_jring_process_image         import nh_jring_process_image
-from create_backplane               import create_backplane
+from compute_backplanes             import compute_backplanes
 from calc_offset_points             import calc_offset_points
 from navigate_image_stellar         import navigate_image_stellar
 from scatter_mie_ensemble           import scatter_mie_ensemble
