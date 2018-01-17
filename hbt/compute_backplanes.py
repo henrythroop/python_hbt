@@ -46,11 +46,7 @@ import matplotlib.pyplot as plt
 # And, this means I should just make a script that does all the backplanes one time... rather than generating them 
 # from within the GUI.
 
-def compute_backplanes(file, 
-                       frame         = 'J2000', 
-                       name_target   = 'MU69', 
-                       name_observer = 'New Horizons', 
-                       type          = None):
+def compute_backplanes(file, name_target, frame, name_observer):
     
     """
     Returns a set of backplanes for a single specified image. The image must have WCS coords available in its header.
@@ -67,12 +63,11 @@ def compute_backplanes(file,
         String. Input filename, for FITS file.
     frame:
         String. Reference frame of the target body. 'IAU_JUPITER', 'IAU_MU69', '2014_MU69_SUNFLOWER_ROT', etc.
+                This is the frame that the Radius_eq and Longitude_eq are computed in.
     name_target:
         String. Name of the central body. All geometry is referenced relative to this (e.g., radius, azimuth, etc)
     name_observer:
         String. Name of the observer. Must be a SPICE body name (e.g., 'New Horizons')
-    type:
-        String. Type of ring to assume for the backplane. Must be None, or 'Sunflower'.
         
     Output
     ----
@@ -101,26 +96,33 @@ def compute_backplanes(file,
     With special options selected (TBD), then additional backplanes will be generated -- e.g., a set of planes
     for each of the Jovian satellites in the image, or sunflower orbit, etc.
     
-    No new FITS file is written. The only output is the returned data.
+    No new FITS file is written. The only output is the returned tuple.
     
     """
 
+    if not(frame):
+        raise ValueError('frame undefined')
+    
+    if not(name_target):
+        raise ValueError('name_target undefined')
+        
+    if not(name_observer):
+        raise ValueError('name_observer undefined')
+        
     name_body = name_target  # Sometimes we use one, sometimes the other. Both are identical
     
     fov_lorri = 0.3 * hbt.d2r
    
-    abcorr = 'LT+S'
+    abcorr = 'LT'
 
-    DO_SATELLITES = False  # Flag: Do we create an additional backplane for each of Jupiter's small sats?
-    
-    w = WCS(file) # Warning: I have gotten a segfault here before if passing a FITS file with no WCS info.
+    do_satellites = False  # Flag: Do we create an additional backplane for each of Jupiter's small sats?
     
     # Open the FITS file
     
+    w       = WCS(file) # Warning: I have gotten a segfault here before if passing a FITS file with no WCS info.    
     hdulist = fits.open(file)
     
     et      = float(hdulist[0].header['SPCSCET']) # ET of mid-exposure, on s/c
-    
     n_dx    = int(hdulist[0].header['NAXIS1']) # Pixel dimensions of image. Both LORRI and MVIC have this.
     n_dy    = int(hdulist[0].header['NAXIS2'])
     
@@ -171,7 +173,7 @@ def compute_backplanes(file,
 
             plane_target = sp.nvp2pl([0,1,0], [0,0,0]) # Normal Vec + Point to Plane. Use +Y (anti-sun) and origin
 
-        # Get xformation matrix from J2K to jupiter system coords. I can use this for points *or* vectors.
+        # Get xformation matrix from J2K to target system coords. I can use this for points *or* vectors.
                 
         mx_j2k_frame = sp.pxform('J2000', frame, et) # from, to, et
         
@@ -203,14 +205,14 @@ def compute_backplanes(file,
         xs = range(n_dx)
         ys = range(n_dy)
         (i_x_2d, i_y_2d) = np.meshgrid(xs, ys)
-        (ra_2d, dec_2d) = w.wcs_pix2world(i_x_2d, i_y_2d, False) # Returns in degrees
-        ra_2d  *= hbt.d2r                                        # Convert to radians
-        dec_2d *= hbt.d2r
+        (ra_arr, dec_arr) = w.wcs_pix2world(i_x_2d, i_y_2d, False) # Returns in degrees
+        ra_arr  *= hbt.d2r                                        # Convert to radians
+        dec_arr *= hbt.d2r
         
         # Compute the projected distance from MU69, in the sky plane, in km, for each pixel
         
-        dra_arr = (ra_2d   - ra_sc_target)  * dist_target_sc / np.cos(dec_2d)
-        ddec_arr = (dec_2d - dec_sc_target) * dist_target_sc  # Convert to km
+        dra_arr = (ra_arr   - ra_sc_target)  * dist_target_sc / np.cos(dec_arr)
+        ddec_arr = (dec_arr - dec_sc_target) * dist_target_sc  # Convert to km
     
     # Now compute position for additional bodies, as needed
     
@@ -231,7 +233,7 @@ def compute_backplanes(file,
                 # Look up the vector direction of this single pixel, which is defined by an RA and Dec
                 # Vector is thru mpixel to ring, in J2K 
         
-                vec_pix_j2k =  sp.radrec(1., ra_2d[i_y, i_x], dec_2d[i_y, i_x]) 
+                vec_pix_j2k =  sp.radrec(1., ra_arr[i_y, i_x], dec_arr[i_y, i_x]) 
                 
                 # Convert vector along the pixel direction, from J2K into the target body frame
           
@@ -276,8 +278,8 @@ def compute_backplanes(file,
         # Assemble the results into a backplane
     
         backplane = {
-             'RA'           : ra_2d.astype(float),  # return radians
-             'Dec'          : dec_2d.astype(float), # return radians 
+             'RA'           : ra_arr.astype(float),  # return radians
+             'Dec'          : dec_arr.astype(float), # return radians 
              'dRA_km'       : dra_arr.astype(float),
              'dDec_km'      : ddec_arr.astype(float),
              'Radius_eq'    : radius_arr.astype(float),
@@ -352,41 +354,44 @@ if (__name__ == '__main__'):
        
         file_in       = '/Users/throop/Dropbox/Data/NH_Jring/data/jupiter/level2/lor/all/lor_0034612923_0x630_sci_1.fit'
         file_tm       = '/Users/throop/gv/dev/gv_kernels_new_horizons.txt'  # SPICE metakernel
-        sp.furnsh(file_tm)
         name_target   = 'Jupiter'
         frame         = 'IAU_JUPITER'
         name_observer = 'New Horizons'
-   
-    
+       
     if (do_test_mu69):
 
-        file_in = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
+        file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
+        file_in       = '/Users/throop/Data/ORT1/Test/lor_0406731132_0x633_sci_HAZARD_test1-1.fit'
         frame         = '2014_MU69_SUNFLOWER_ROT'
         name_target   = 'MU69'
         name_observer = 'New Horizons'
         file_tm       = '/Users/throop/git/NH_rings/kernels_kem.tm'  # SPICE metakernel
-        sp.furnsh(file_tm)
    
     if (do_test_jupiter or do_test_mu69):
-        
+
+         # Start SPICE, if necessary
+    
+        if (sp.ktotal('ALL') == 0):
+            sp.furnsh(file_tm)
+               
         # Create the backplanes in memory
         
-        (planes, desc) = compute_backplanes(file_in, 
-                                            frame = frame, 
-                                            name_target = name_target, 
-                                            name_observer = name_observer)
+        (planes, desc) = compute_backplanes(file_in, name_target, frame, name_observer)
 
         print("Backplanes generated for {}".format(file_in))
         
 # =============================================================================
-# Now plot the newly generated backplanes
+# Plot the newly generated backplanes, if requested
 # =============================================================================
             
         if do_plot:
-            i=1
+            
+            nxy = math.ceil(math.sqrt(len(planes)))  # Compute the grid size needed to plot all the planes to screen
+            
+            i = 1
             fig = plt.subplots()
             for key in planes.keys():
-                plt.subplot(3,3,i)
+                plt.subplot(nxy,nxy,i)
                 plt.imshow(planes[key])
                 plt.title(key)
                 i+=1
