@@ -46,11 +46,11 @@ import matplotlib.pyplot as plt
 # And, this means I should just make a script that does all the backplanes one time... rather than generating them 
 # from within the GUI.
 
-def create_backplane(file, 
-                     frame         = 'J2000', 
-                     name_target   = 'MU69', 
-                     name_observer = 'New Horizons', 
-                     type          = None):
+def compute_backplanes(file, 
+                       frame         = 'J2000', 
+                       name_target   = 'MU69', 
+                       name_observer = 'New Horizons', 
+                       type          = None):
     
     """
     Returns a set of backplanes for a single specified image. The image must have WCS coords available in its header.
@@ -332,6 +332,10 @@ def create_backplane(file,
     return (backplane, desc)
 
 # =============================================================================
+# End of function
+# =============================================================================
+
+# =============================================================================
 # Do some tests to validate the function
 # This creates files in memory, but does not write to file    
 # =============================================================================
@@ -363,7 +367,7 @@ if (__name__ == '__main__'):
         
         # Create the backplanes in memory
         
-        (planes, desc) = create_backplane(file_in, frame=frame, name_target=name_target, name_observer=name_observer)
+        (planes, desc) = compute_backplanes(file_in, frame=frame, name_target=name_target, name_observer=name_observer)
 
 # =============================================================================
 # Now test the newly generated backplanes
