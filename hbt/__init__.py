@@ -1204,6 +1204,38 @@ def lorri_destripe(im):
     return(im_out)
 
 # =============================================================================
+# Roll an image
+# =============================================================================
+
+def roll(arr, *args):
+    
+    """
+    This is just a short rewrapping of the np.roll() function, to roll quickly in two dimensions.
+    Amount to roll by is rounded, unlike required int of np.roll().
+    
+    Parameters
+    -----
+    arr:
+        Array to roll.
+    dx:
+        Roll in x direction. Rounded to closest int.
+    dy:
+        Roll in y direction. Rounded to closest int.
+    """
+
+    if (len(args) == 1):
+        dx = args[0]
+        return(np.roll(arr,int(round(dx)),0))
+    
+    if (len(args) == 2):
+        dx = args[0]
+        dy = args[1]
+        return(np.roll(np.roll(arr,int(round(dx)),1),int(round(dy)),0))
+        
+    raise(AssertionError('roll() must take either 2 or 3 arguments'))    
+    
+    
+# =============================================================================
 # Function to do linear fit, but as one paramter, not two.
 # =============================================================================
 
