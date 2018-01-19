@@ -9,6 +9,7 @@
 
 # @author: throop
 
+import math
 import numpy as np
 import astropy
 import astropy.modeling
@@ -130,6 +131,22 @@ def frange(start, end, *args, **kwargs):
 #==============================================================================
     
 def set_fontsize(size=15):
+    """
+    Set the matplotlib font size.
+    """
+    
+    font = {'family' : 'sans-serif',
+            'weight' : 'normal',
+            'size'   : size}
+
+    matplotlib.rc('font', **font)
+
+def fontsize(size):
+    """
+    Set the matplotilb font size.
+    
+    This is the revised and recommended version.
+    """
     
     font = {'family' : 'sans-serif',
             'weight' : 'normal',
@@ -1203,6 +1220,57 @@ def lorri_destripe(im):
           
     return(im_out)
 
+# =============================================================================
+# Function to Trim (ie, auto-crop) an image
+# =============================================================================
+
+def trim_image(img, val_bg = 0):
+    """
+    Trim an image by removing all pixel data from edges that is a certain level.
+    
+    Analogue to Photoshop 'Trim' function, which is also an auto-crop.
+    
+    Parameters:    
+        img: Image data
+        
+    Optional paramters:
+        val_bg: Value of background level. Typically 0.
+    """
+    
+    # https://codereview.stackexchange.com/questions/132914/crop-black-border-of-image-using-numpy
+    
+    # This is neat and much more compact than I could write it!
+    # I think this will fail if there is an all-zero row in the middle of the image.
+    
+    mask = (img != val_bg)
+    return img[np.ix_(mask.any(1),mask.any(0))] 
+
+#==============================================================================
+# Function to round outward.
+#==============================================================================
+
+def roundout(x):
+    """
+    Round a value outward. Works symmetrically for negative and positive values.
+    roundout(-21.5) = -22
+    """
+    
+    return math.trunc(x + math.copysign(.5, x))
+
+#==============================================================================
+# Function to do ceiling outward.
+#==============================================================================
+
+def ceilout(x):
+    """
+    Round a value outward. Works symmetrically for negative and positive values.
+    ceilout(-21.1) = -22
+    """
+    if (x > 0):
+        return math.ceil(x)
+    else:
+        return(math.ceil(x-1))
+   
 # =============================================================================
 # Roll an image
 # =============================================================================
