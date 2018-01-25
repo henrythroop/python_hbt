@@ -400,6 +400,8 @@ def x2bin(val, bins):
     """
     Returns the index of a bin, given its value.
     Note that I have x2bin and y2bin, and they are different.
+    
+    XXX It is probably better to use np.digitize() than this routine!
     """
     
     return hbt.y2bin(val, range(np.size(bins)), bins)
