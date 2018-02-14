@@ -14,7 +14,6 @@ This file is to process my list of EPO talks etc into a format for Mark Sykes' W
 @author: throop
 """
 
-
 f = open('outreach_hbt_2017', 'r')
 text = f.read()
 f.close()
