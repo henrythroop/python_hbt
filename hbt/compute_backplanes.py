@@ -75,8 +75,9 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         
         This allows the simulation of (e.g.) a ring system inclined relative to the nominal body equatorial plane.
         
-        For MU69, the following descriptions are roughly accurate. But it is better to experiment and find the 
-        appropriate angle that way, than rely on this ad hoc description.
+        For MU69 sunflower rings, the following descriptions are roughly accurate, becuase the +Y axis points
+        sunward, which is *almost* toward the observer. But it is better to experiment and find the 
+        appropriate angle that way, than rely on this ad hoc description. These are close for starting with.
  
                       `angle1` = Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
                       `angle2` = Rotation angle, if tilted front-back. 
