@@ -16,12 +16,9 @@ from   astropy.wcs import WCS
 import os
 import matplotlib.pyplot as plt
 
-# Create backplanes based on an image number. This is a stand-alone function, not part of the method.
-# It creates ones 
+# Create backplanes based on an image number. This is a stand-alone function, *not* a class or method.
 
 # SPICE is required here, but it is *not* initialized. It is assumed that that has already been done.
-# pds-tools does not implement the CSPICE.KTOTAL('ALL') function, which is the way I know of to list loaded 
-# kernel files. So, just run something else first which initializes SPICE with a good kernel set.
 
 # For each pixel, do the followiung:
 # o Get its RA/Dec value from WCS
@@ -46,7 +43,7 @@ import matplotlib.pyplot as plt
 # And, this means I should just make a script that does all the backplanes one time... rather than generating them 
 # from within the GUI.
 
-def compute_backplanes(file, name_target, frame, name_observer):
+def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2=0, angle3=0):
     
     """
     Returns a set of backplanes for a single specified image. The image must have WCS coords available in its header.
@@ -68,6 +65,22 @@ def compute_backplanes(file, name_target, frame, name_observer):
         String. Name of the central body. All geometry is referenced relative to this (e.g., radius, azimuth, etc)
     name_observer:
         String. Name of the observer. Must be a SPICE body name (e.g., 'New Horizons')
+    
+    Optional Parameters
+    ----
+    
+    angle{1,2,3}:
+        Rotation angles which are applied when defining the plane in space that the backplane will be generated for.
+        These are applied in the order 1, 2, 3. Angles are in radians. Nominal values are 0.
+        
+        This allows the simulation of (e.g.) a ring system inclined relative to the nominal body equatorial plane.
+        
+        For MU69, the following descriptions are roughly accurate. But it is better to experiment and find the 
+        appropriate angle that way, than rely on this ad hoc description.
+ 
+                      `angle1` = Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
+                      `angle2` = Rotation angle, if tilted front-back. 
+                      `angle3` = Tilt right-left, from face-on.
         
     Output
     ----
@@ -141,7 +154,7 @@ def compute_backplanes(file, name_target, frame, name_observer):
 
 # =============================================================================
 #  Do the backplane, in the general case.
-#  This is a long module, because we deal with all the satellites, the J-ring, etc.        
+#  This is a long routine, because we deal with all the satellites, the J-ring, etc.        
 # =============================================================================
     
     if (True):
@@ -170,8 +183,12 @@ def compute_backplanes(file, name_target, frame, name_observer):
         if ('MU69' in name_target.upper()):
             
         # Define a plane, which is the plane of sunflower rings (ie, X-Z plane in Sunflower frame)
+        # If additional angles are passed, then create an Euler matrix which will do additional angles of rotation.
 
-            plane_target = sp.nvp2pl([0,1,0], [0,0,0]) # Normal Vec + Point to Plane. Use +Y (anti-sun) and origin
+            mx_euler = sp.eul2m(angle3, angle2, angle1, 3, 2, 1)  # (1, 2, 3) refers to axes (x, y, z)
+            vec_plane = [0, 1, 0]                                 # Use +Y (anti-sun dir)
+            vec_plane_tilted = sp.mxv(mx_euler, vec_plane)
+            plane_target = sp.nvp2pl(vec_plane_tilted, [0,0,0]) # "Normal Vec + Point to Plane". 0,0,0 = origin.
 
         # Get xformation matrix from J2K to target system coords. I can use this for points *or* vectors.
                 
@@ -361,11 +378,10 @@ if (__name__ == '__main__'):
     if (do_test_mu69):
 
         file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
-        file_in       = '/Users/throop/Data/ORT1/Test/lor_0406731132_0x633_sci_HAZARD_test1-1.fit'
         frame         = '2014_MU69_SUNFLOWER_ROT'
         name_target   = 'MU69'
         name_observer = 'New Horizons'
-        file_tm       = '/Users/throop/git/NH_rings/kernels_kem.tm'  # SPICE metakernel
+        file_tm       = '/Users/throop/git/NH_rings/kernels_kem_prime.tm'  # SPICE metakernel
    
     if (do_test_jupiter or do_test_mu69):
 
@@ -376,7 +392,10 @@ if (__name__ == '__main__'):
                
         # Create the backplanes in memory
         
-        (planes, desc) = compute_backplanes(file_in, name_target, frame, name_observer)
+        (planes, desc) = compute_backplanes(file_in, name_target, frame, name_observer,
+                      angle1=130*hbt.d2r,  # Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
+                      angle2=00*hbt.d2r,  # Or rotation angle, if tilted front-back. 
+                      angle3=00*hbt.d2r)  # Tilt right-left, from face-on
 
         print("Backplanes generated for {}".format(file_in))
         
@@ -388,6 +407,8 @@ if (__name__ == '__main__'):
             
             nxy = math.ceil(math.sqrt(len(planes)))  # Compute the grid size needed to plot all the planes to screen
             
+            # Loop and plot each subplane individually, as color gradient plots.
+            
             i = 1
             fig = plt.subplots()
             for key in planes.keys():
@@ -395,5 +416,18 @@ if (__name__ == '__main__'):
                 plt.imshow(planes[key])
                 plt.title(key)
                 i+=1
-    
+
+            # Make a few more plots as contour plots. Easier to see this way.
+            
+            planes_extra = ['Radius_eq', 'Longitude_eq']
+
+            for key in planes_extra:
+                
+                plt.subplot(nxy, nxy, i)
+                plt.contour(planes[key], aspect=1)
+                plt.ylim((hbt.sizex(planes[key]), 0))
+                plt.gca().set_aspect('equal')
+                plt.title(key)
+                i+=1
+                
             plt.show()
