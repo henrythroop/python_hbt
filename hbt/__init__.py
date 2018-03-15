@@ -512,6 +512,16 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
         return ra, dec # Return in radians
       
 
+# =============================================================================
+# Normalize an array, to an optional max
+# =============================================================================
+
+def normalize(arr, max=1):
+   a =       arr - np.amin(arr)
+   a = max * a   / np.amax(a)
+   
+   return a
+
 ##########
 # Normalize two images using linear regression
 ##########
