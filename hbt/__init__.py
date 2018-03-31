@@ -429,6 +429,12 @@ def sizey(arr):
     """
     return(arr.shape[1])
 
+def sizez(arr):
+    """
+    Return z size of an array. No error handling.
+    """
+    return(arr.shape[2])
+    
 def get_range_user(maxrange = 10000):
 
     """
