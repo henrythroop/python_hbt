@@ -1319,7 +1319,28 @@ def roll(arr, *args):
         return(np.roll(np.roll(arr,int(round(dx)),1),int(round(dy)),0))
         
     raise(AssertionError('roll() must take either 2 or 3 arguments'))    
+
+# =============================================================================
+# Do a logarithmic stretch, and unstretch
+# =============================================================================
     
+def logstretch(arr, val):
+    """
+    Do a logarithmic stretch.
+    
+    val: The zero point. 
+    """
+    
+    return np.log(val + arr)
+
+def logstretch_invert(arr, val):
+    """
+    Do a logarithmic stretch.
+    
+    val: The zero point. 
+    """
+    
+    return np.exp(arr) - val
     
 # =============================================================================
 # Function to do linear fit, but as one paramter, not two.
