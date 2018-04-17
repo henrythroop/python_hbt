@@ -681,20 +681,57 @@ def reprfix(arr):
 def figsize(size=None): # Was imsize(), but I think this is better
     """
     Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
+    
+    The existing plot size is saved in a stack. It is restored using figsize.restore().
+    
+    if `size` is missing, then `figsize.restore()` is called.
+    
+    arguments
+    -----
+    
+    size:
+        Size (horizontal, vertical) of element matplotlib.rcParams['figure.figsize']
+        
     """
     
-    size_default = (10,6)   # If empty argument, then reset back to default
-    
-    if (size==None):
-        size_out = size_default
-    else:
-        size_out = (size[0], size[1])
+    if size:
+        size_current = matplotlib.rcParams['figure.figsize']   # Grab old value, if set
         
-    matplotlib.rc('figure', figsize=size_out)
+        if hasattr(hbt.figsize, 'saved'):
+            hbt.figsize.saved.append(size_current)            # Add to list of saved values
+        else:
+            hbt.figsize.saved = [size_current]                # If there is no list of saved values, init it.
+            
+        matplotlib.rcParams['figure.figsize'] = size   # Set the new value    
+
+    else:
+        hbt.figsize_restore()   # If no argument passed, then restore old value
     
+    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
+
+def figsize_restore():
+
+    """
+    Restore the plot size to the previous value.
+    
+    If the stack of saved previous values is exhausted, then a common default will be used.
+    
+    """
+    default = [10,6]
+    
+    saved = hbt.figsize.saved
+    
+    if saved:
+        matplotlib.rcParams['figure.figsize'] = hbt.figsize.saved.pop()
+    else:
+        matplotlib.rcParams['figure.figsize'] = default
+    
+    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
+
+
 def correct_stellab(radec, vel):
     """
-    Corect for stellar aberration.
+im    Corect for stellar aberration.
     radec is array (n,2) in radians. velocity in km/sec. Both should be in J2K coords.
     """
 
