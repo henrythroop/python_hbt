@@ -707,7 +707,7 @@ def figsize(size=None): # Was imsize(), but I think this is better
     else:
         hbt.figsize_restore()   # If no argument passed, then restore old value
     
-    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
+#    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
 
 def figsize_restore():
 
@@ -726,8 +726,7 @@ def figsize_restore():
     else:
         matplotlib.rcParams['figure.figsize'] = default
     
-    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
-
+#    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
 
 def correct_stellab(radec, vel):
     """
