@@ -147,7 +147,7 @@ def fontsize(size):
     
     This is the revised and recommended version.
     """
-    
+        
     font = {'family' : 'sans-serif',
             'weight' : 'normal',
             'size'   : size}
@@ -678,13 +678,16 @@ def reprfix(arr):
 
     return out
      
-def figsize(size=None): # Was imsize(), but I think this is better
+def figsize(size=None, size_y=None): # Was imsize(), but I think this is better
     """
     Set plot size to tuple (horizontal, vertical). Same as using rc, but easier syntax.
     
     The existing plot size is saved in a stack. It is restored using figsize.restore().
     
-    if `size` is missing, then `figsize.restore()` is called.
+    if `size` is not passed, then `figsize.restore()` is called.
+    
+    The size can be specified either as a tuple, or as two distinct arguments:
+        `figsize(10,2)` or `figsize((10,2))`
     
     arguments
     -----
@@ -693,6 +696,13 @@ def figsize(size=None): # Was imsize(), but I think this is better
         Size (horizontal, vertical) of element matplotlib.rcParams['figure.figsize']
         
     """
+    
+    # If two arguments are passed, merge them into a tuple
+    
+    if (size_y):
+        size = (size, size_y)
+    
+    # If one (or two) argument is passed, do the action
     
     if size:
         size_current = matplotlib.rcParams['figure.figsize']   # Grab old value, if set
@@ -703,9 +713,11 @@ def figsize(size=None): # Was imsize(), but I think this is better
             hbt.figsize.saved = [size_current]                # If there is no list of saved values, init it.
             
         matplotlib.rcParams['figure.figsize'] = size   # Set the new value    
-
+    
+    # if zero arguments are passed, then restore old value:
+        
     else:
-        hbt.figsize_restore()   # If no argument passed, then restore old value
+        hbt.figsize_restore()
     
 #    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
 
@@ -1010,6 +1022,19 @@ def sfit(arr, degree=3, binning=16, mask=None):
 def remove_sfit(arr, **kwargs):
     """
     Return an array with a polynomial fit removed. Same as sfit, but better for inline usage.
+    
+    Arguments
+    -----
+        
+    arr:
+        Array 
+        
+    degree:
+        Exponent to use
+    
+    binning:
+        Downsample by this amount. Default 16. Set to 1 if needed.
+        
     """
     
     return arr - hbt.sfit(arr, **kwargs)
