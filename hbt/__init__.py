@@ -1028,12 +1028,18 @@ def remove_sfit(arr, **kwargs):
         
     arr:
         Array 
-        
+    
+    Keyword parameters
+    -----
+    
     degree:
         Exponent to use
     
     binning:
         Downsample by this amount. Default 16. Set to 1 if needed.
+        
+    mask:
+        Boolean mask. Only use the pixels marked True.
         
     """
     
