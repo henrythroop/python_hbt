@@ -112,7 +112,36 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 #        frame_sfit_arr[i,:,:] = frame - hbt.sfit(frame, power)  # Calculate the sfit to each individual frame
 #        frame_ffit_arr[i,:,:] = frame - hbt.ffit(frame)
     
-    frame_med      = np.median(frame_arr, axis=0)  
+    # Now take the median!
+    
+    frame_med      = np.median(frame_arr, axis=0)
+    
+    # Now that we have the median for each pixel... take the median of pixels below the median.
+    
+    frame_arr_step_2 = frame_arr.copy()
+    for j in range(hbt.sizex(frame_arr)):
+        frame_arr_step_2[j][frame_arr_step_2[j] > frame_med] = np.nan
+    
+    frame_med_step_2 = np.nanmedian(frame_arr_step_2, axis=0)
+
+    frame_arr_step_3 = frame_arr_step_2.copy()
+    for j in range(hbt.sizex(frame_arr)):
+        frame_arr_step_3[j][frame_arr_step_3[j] > frame_med_step_2] = np.nan
+    
+    frame_med_step_3 = np.nanmedian(frame_arr_step_2, axis=0)
+    
+    plt.subplot(1,3,1)
+    plt.imshow(stretch(hbt.remove_sfit(frame_med,degree=5)), cmap='plasma')
+    plt.title('Median')
+    plt.subplot(1,3,2)
+    plt.imshow(stretch(hbt.remove_sfit(frame_med_step_2,degree=5)), cmap='plasma')
+    plt.title('Median of pixels < median')
+    plt.subplot(1,3,3)
+    plt.imshow(stretch(hbt.remove_sfit(frame_med_step_3,degree=5)), cmap='plasma')
+    plt.title('Median of pixels < pixels < median')
+    plt.show()
+    
+
     frame_med_sfit = hbt.remove_sfit(frame_med, degree=power) # Take median using sfit images
     
 #    frame_ffit_med = np.median(frame_ffit_arr, axis=0) # Take median using fft  images
