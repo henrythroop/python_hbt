@@ -73,7 +73,7 @@ def nh_get_straylight_median(index_group, index_files, do_fft=False, do_sfit=Tru
 # Test cases
 #==============================================================================
      
-def test():
+if __name__ == '__main__':
 
     import astropy.visualization
     
@@ -95,4 +95,11 @@ def test():
     arr_bg = hbt.nh_get_straylight_median(7,[49,50,51],do_sfit=False)
     arr_image = hbt.nh_get_straylight_median(7,[52], do_sfit=False)
     
-    plt.imshow(stretch(hbt.remove_sfit(arr_image - arr_bg,1)))
+    plt.imshow(stretch(hbt.remove_sfit(arr_image - arr_bg,degree=1)))
+    
+    # Now try one for real, from 8/0-48 sequence.
+    # There are a lot of ring artifacts left we wnt to get rid of.
+    
+    arr = hbt.nh_get_straylight_median(8,hbt.frange(0,48), do_sfit=True, power=5)
+    plt.imshow(stretch(hbt.remove_sfit(arr,degree=1)))
+    
