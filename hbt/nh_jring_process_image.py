@@ -23,11 +23,14 @@ import astropy.modeling
 import scipy.ndimage
 import re
 from skimage.io import imread, imsave   # For PNG reading
+import os
 
 
 import pickle # For load/save
 
 import hbt
+from nh_create_straylight_median_filename import nh_create_straylight_median_filename
+from nh_jring_mask_from_objectlist import nh_jring_mask_from_objectlist
 
 ##########
 # Process Image -- do all of the processing on the current image
@@ -47,7 +50,7 @@ import hbt
 #
 # Otherwise, the result is just a regular array 
 
-def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=-1):
+def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=-1, mask_sfit=None):
     
     """
     Return image with stray light removed. Flux is preserved and no clipping is done.
@@ -71,7 +74,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         - Multiply background image by 2
         - Subtract data - background
         - Remove a 5th degree polynomial from the result [always done, regardless]
-        - Load the mask file mask_7_10 and incorporate via a tuple
+        - Load the Photoshop-created mask file "mask_7_10" and incorporate via a tuple
         - Return final result
 
     vars:
@@ -82,9 +85,17 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 
     index_image:
         Index of current group. Not used except for Next/Prev.
+        
+    mask_sfit:
+        An optional mask to be applied when doing the sfit. Ony pixels with True will be used.
+        This is to mask out satellites, stars, CRs, etc. so they don't affect the sfit().
              
     """
-    
+
+    stretch_percent = 90    
+    stretch = astropy.visualization.PercentileInterval(stretch_percent) # PI(90) scales to 5th..95th %ile.
+
+
 # Load the arrays with all of the filenames
 
     dir_out = '/Users/throop/Data/NH_Jring/out/'
@@ -99,16 +110,22 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
     
     DO_MASK = False  # We set this based on whether a mask is passed in or not
 
-    dir_mask = dir_out.replace('out','masks')   # Directory where the mask files are
+    dir_mask_stray = dir_out.replace('out','masks')   # Directory where the mask files are
     
     # Process the group names. Some of this is duplicated logic -- depends on how we want to use it.
 
     groups = astropy.table.unique(t, keys=(['Desc']))['Desc']
 
+
+    
     if (index_group != -1):  # Only do this if we actually passed a group in
         groupmask = (t['Desc'] == groups[index_group])
         t_group = t[groupmask]	
+
+        # Look up the filename, in case we need it.
     
+        file_image = t_group['Filename'][index_image]
+        
     if (method == 'Previous'):
         file_prev = t_group['Filename'][index_image-1]
 #            print "file =      " + filename
@@ -153,7 +170,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
             power = float(vars[0])
             frac  = 0
             image = image_raw
-            image_bg = hbt.sfit(image, power)
+            image_bg = hbt.sfit(image, power, mask=mask_sfit)
             image = image - image_bg
             
         if (np.size(vars) == 2): # Two variables: interpret as group num and file num
@@ -187,7 +204,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
             image_bg = hbt.read_lorri(filename_bg, frac_clip = 1, bg_method = 'None')
             
             image = image_fg - float(frac) * image_bg                
-            image = image - hbt.sfit(image, power)
+            image = image - hbt.sfit(image, power, mask=mask_sfit)
             
         image_processed = image
 
@@ -259,17 +276,21 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # 
 # This mask is a fixed pattern, read from a file, for stray light etc.
 # It is *not* for stars or satellites, which are calculated separately.
+#
+# To make these mask files, the steps are...
+
+# Maskfile is using same name structure as for the summed bg straylight images -- e.g., 8/0-48.            
 #         
 # True = good pixel. False = bad.
         
-        file_mask = None
+        file_mask_stray = None
                 
         match = re.search('(mask[0-9a-z._\-]+)', str)
         
-        print("Str = {}, dir_mask = {}".format(str, dir_mask))
+        print("Str = {}, dir_mask_stray = {}".format(str, dir_mask_stray))
         
         if match: 
-            file_mask = dir_mask + match.group(0) + '.png'    # Create the filename
+            file_mask_stray = dir_mask_stray + match.group(0) + '.png'    # Create the filename
             DO_MASK = True
             
             str = str.replace(match.group(0), '').strip()     # Remove the phrase from the string
@@ -355,25 +376,36 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # Now that we have parsed the string, do the image processing
 #=============================================================================
 
-# Load the mask file, if it exists. Otherwise, make a blank mask of True.
+# Load the Photoshop stray mask file, if it exists. Otherwise, make a blank mask of True.
         
-        if file_mask:
+        if file_mask_stray:
 
             try:
-                mask = imread(file_mask) > 128                # Read file. Mask PNG file is 0-255. Convert to boolean.
+                mask_stray = imread(file_mask_stray) > 128      # Read file. Mask PNG file is 0-255. Convert to boolean.
         
-                print("Reading mask file {}".format(file_mask))
+                print("Reading mask file {}".format(file_mask_stray))
                 
-                if (len(np.shape(mask)) > 2):                 # If Photoshop saved multiple planes, then just take first
-                    mask = mask[:,:,0]
+                if (len(np.shape(mask_stray)) > 2):                 # If Photoshop saved multiple planes, then just take first
+                    mask_stray = mask_stray[:,:,0]
                     
             except IOError:                                   # If mask file is missing
-                print("Stray light mask file {} not found".format(file_mask))
+                print("Stray light mask file {} not found".format(file_mask_stray))
             
         else:
-            mask = np.ones(np.shape(image_raw),dtype=bool)
-            
-# Rotate the stray light image
+            mask_stray = np.ones(np.shape(image_raw),dtype=bool)
+
+# Load the object mask. This masks out stars and satellites, which should not have sfit applied to them.
+       
+        file_objects = os.path.basename(file_image).replace('.fit', '_objects.txt')
+        mask_objects = nh_jring_mask_from_objectlist(file_objects)
+        mask_objects = np.logical_not(mask_objects)   # Make so True = good pixel
+        
+# Merge the two masks together
+        
+        mask = np.logical_or(mask_objects, mask_objects)
+
+# Rotate the stray light image, if that has been requested 
+# [this probably doesn't work, but that's fine -- I didn't end up using this.]
 
         image_stray = np.rot90(image_stray, angle_rotate_deg/90)  # np.rot90() takes 1, 2, 3, 4 = 90, 180, 270, 360.
         
@@ -391,14 +423,32 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         frac_good = np.sum(mask) / (np.prod(np.shape(mask)))
         
         print("Applying mask, fraction good = {}".format(frac_good))
-        
+                
 # Remove a polynomial from the result. This is where the mask comes into play.
+# XXX NB: I think the logic here could be cleaned up. sfit() now allows a mask= argument ,
+#         but it must not have when I wrote this code.        
         
         sfit_masked = hbt.sfit(image_masked, poly_after)
         
         image_processed = image_processed - sfit_masked
 
         print("Removing sfit {}".format(poly_after))
+
+        # Plot the masks and sfits, for diagnostics 
+        
+        do_plot_masks = False
+        if do_plot_masks:
+            
+            plt.subplot(1,3,1)
+            plt.imshow(stretch(mask))
+            plt.title('mask')
+            plt.subplot(1,3,2)
+            plt.imshow(stretch(image_masked))
+            plt.title('image_masked')
+            plt.subplot(1,3,3)
+            plt.imshow(sfit_masked)
+            plt.title('sfit_masked')
+            plt.show()
         
 # =============================================================================
 # END OF CASE STATEMENT FOR METHODS
@@ -428,62 +478,33 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 
         im = image_raw
 
-#        plt.subplot(3,3,1) # vertical, horizontal, index = typewriter-style
-#        plt.title('image_raw, mean=' + hbt.trunc(np.mean(im),3))
-#        plt.imshow(stretch(im))
-#        
-#        plt.subplot(3,3,4) # vertical, horizontal
-#        plt.imshow(stretch(im))
-#        plt.title('image_raw, mean=' + hbt.trunc(np.mean(im),3))
-
-        im = hbt.remove_sfit(im,5)
+        im = hbt.remove_sfit(im, degree=5)
         plt.subplot(1,3,1) # vertical, horizontal, index
-        plt.imshow(stretch(hbt.remove_sfit(im,5)))
-        plt.title('image_raw - sfit(imag_raw,5), mean=' + hbt.trunc(np.mean(im),3))
+        plt.imshow(stretch(hbt.remove_sfit(im, degree=5)))
+        plt.title('remove_sfit(image_raw, degree=5), mean=' + hbt.trunc(np.mean(im),3))
+        plt.colorbar()
         
 #       Column 2: Stray only. This will throw an error if we haven't read in a stray light file -- just ignore it.
-
-#        im = stray
- 
-#        plt.subplot(3,3,2)
-#        plt.imshow(stretch(im))
-#        plt.title('stray_norm, mean=' + hbt.trunc(np.mean(im),3))
-#
-#        plt.subplot(3,3,5)
-#        plt.imshow(stretch(im))
-#        plt.title('stray_norm, mean=' + hbt.trunc(np.mean(im),3))
         
         plt.subplot(1,3,2)
         try:
-            plt.imshow(stretch(hbt.remove_sfit(image_stray,5))) # This won't do much since it is already applied
+            plt.imshow(stretch(hbt.remove_sfit(image_stray, degree=5))) # This won't do much since it is already applied
         except UnboundLocalError:
             print("No stray light to subtract")
         
-        plt.title('stray_norm - sfit(stray_norm,5), mean=' + hbt.trunc(np.mean(im),3))
+        plt.title('remove_sfit(stray_norm, degree=5), mean=' + hbt.trunc(np.mean(im),3))
 
         # Column 3: raw - stray
-        
-#        im = image_raw - stray_
-        
-#        plt.subplot(3,3,3)
-#        plt.imshow(stretch(im))
-#        plt.title('raw - stray, mean=' + hbt.trunc(np.mean(im),3))
-#
-#        im = hbt.remove_sfit(im,5) - stray_norm
-#        
-#        plt.subplot(3,3,6)
-#        plt.imshow(stretch(im))
-#        plt.title('raw-s5(raw) - stray, mean=' + hbt.trunc(np.mean(im),3))
 
         plt.subplot(1,3,3)
 
         try:
-            im = hbt.remove_sfit(image_raw - image_stray,5)
+            im = hbt.remove_sfit(image_raw - image_stray,degree=5)
             plt.imshow(stretch(im))
         except UnboundLocalError:  
             print("No stray light to subtract")
         
-        plt.title('sfit(raw-stray,5), med ' + hbt.trunc(np.median(im),3))
+        plt.title('remove_sfit(image_raw - image_stray, degree=5), med ' + hbt.trunc(np.median(im),3))
         
         plt.show()
 
@@ -498,39 +519,118 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
 # Now do some q&d testing
 # =============================================================================
 
-def junk():
+if (__name__ == '__main__'):
     
-    import hbt
+#    import hbt
     
-    method = 'String'
-    vars = '64-66 p10 *1.5 mask_7_61-63'
-    index_group = 7
-    index_image = 61 # This is used only when using Prev / Next. Otherwise it is ignored.
-
-    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0034676524_0x630_sci_1_opnav.fit'
-
-    do_sfit = False
+#    from nh_create_straylight_median_filename import nh_create_straylight_median_filename
     
-    stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile
+#    from nh_jring_process_image import nh_jring_process_image
+#    from nh_jring_mask_from_objectlist import nh_jring_mask_from_objectlist
+    import os.path
 
-    test = \
-      nh_create_straylight_median_filename(index_group, index_image, do_fft=False, do_sfit=do_sfit, power=5)
+    # Set up groups so we can read an image given a group / image number
+    
+    file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get files, etc.
+
+    stretch_percent = 90    
+    stretch = astropy.visualization.PercentileInterval(stretch_percent) # PI(90) scales to 5th..95th %ile.
+
+    lun = open(file_pickle, 'rb')
+    t = pickle.load(lun)
+    lun.close()
+
+    # Process the group names. Some of this is duplicated logic -- depends on how we want to use it.
+
+    groups = astropy.table.unique(t, keys=(['Desc']))['Desc']
+    
+    index_group = 8
+    index_images = [80, 81]
+    
+    groupmask = (t['Desc'] == groups[index_group])
+    t_group = t[groupmask]
+    index_images_stray = hbt.frange(54,107)
+
+    # Set up the stray light mask file.
+    
+    file_mask_stray = '/Users/throop/Data/NH_Jring/masks/mask_{}_{}-{}.png'.format(index_group, 
+                                                              np.min(index_images_stray),
+                                                              np.max(index_images_stray))
+
+    dir_backplanes = '/Users/throop/data/NH_Jring/out/'
+
+    # Now loop over the images
+    
+    for index_image in index_images:
+        file_image = t_group[index_image]['Filename']
+    
+        method = 'String'
+    
+    #    vars = '64-66 p10 *1.5 mask_7_61-63'
+        vars = '8/54-107 p5'
+    
+        # Load the object mask
         
-    image_raw = hbt.read_lorri(file)
-      
-    out = hbt.nh_jring_process_image(image_raw, method, vars, index_group, index_image)
+        file_objects = os.path.basename(file_image).replace('.fit', '_objects.txt')
+        
+        mask_objects = nh_jring_mask_from_objectlist(file_objects)    
+    
+        do_sfit = False
+        
+        file_straylight_median = \
+          nh_create_straylight_median_filename(index_group, index_image, do_fft=False, do_sfit=do_sfit, power=5)
+        
+        image_stray = hbt.nh_get_straylight_median(index_group, index_images_stray.astype('int'))
+        
+        # Read the image
+        
+        image_raw = hbt.read_lorri(file_image)      
+        out       = hbt.nh_jring_process_image(image_raw, method, vars, index_group, index_image)
+    
+        # Extract the output. There is a second field passed back, if we passed a mask to the input
+            
+        if len(out) == 2:
+            (im, ma) = out
+    
+        else:
+            im = out
+    
+        # Plot the image!
+        
+        plt.subplot(1,4,1)
+        plt.imshow(stretch(image_raw))
+        plt.title('stretch(image_raw)')
 
-    (im, ma) = out
-    
+        plt.subplot(1,4,2)
+        plt.imshow(stretch(im))
+        plt.imshow(mask_objects, alpha=0.2, cmap='plasma')
+        plt.title('stretch(image_raw), overlay w mask_objects')
+        
+        plt.subplot(1,4,3)
+        plt.imshow(mask_objects)
+        plt.title('mask_objects')
+        plt.show()
+
+        plt.subplot(1,4,1)
+        plt.imshow(stretch(hbt.remove_sfit(image_raw,degree=5)), cmap='plasma')
+        plt.title('hbt.remove_sfit(image_raw)')
+
+        plt.subplot(1,4,3)
+        plt.imshow(stretch(hbt.remove_sfit(image_raw,degree=5, mask=np.logical_not(mask_objects))), cmap='plasma')
+        plt.title('hbt.remove_sfit(mask=mask_objects)')
+        
+        plt.show()
+        
+        
 ###
-    method = 'String'
-    index_group = 5
-    index_image = 2
-    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0034676524_0x630_sci_1_opnav.fit'
-    image_raw = hbt.read_lorri(file)
-    
-    vars = '5/0-5 r3 *0.1'
-    out = nh_jring_process_image(image_raw, method, vars)
-    plt.imshow(stretch(out))
-    plt.show()
-    
+#    method = 'String'
+#    index_group = 5
+#    index_image = 2
+#    file = '/Users/throop/data/NH_Jring/data/jupiter/level2/lor/all/lor_0034676524_0x630_sci_1_opnav.fit'
+#    image_raw = hbt.read_lorri(file)
+#    
+#    vars = '5/0-5 r3 *0.1'
+#    out = nh_jring_process_image(image_raw, method, vars)
+#    plt.imshow(stretch(out), origin='lower')
+#    plt.show()
+#    
