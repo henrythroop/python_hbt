@@ -24,6 +24,7 @@ import scipy
 import scipy.misc
 import os
 import hbt
+from astropy.convolution import Gaussian2DKernel
 
 def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=True, power=5):
     
@@ -57,7 +58,9 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 
     do_debug = True
     
-    do_destripe = True
+    do_destripe = True   # Flag: Do we apply LORRI de-striping to each frame?
+    
+    do_normalize = True
     
     stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile
 
@@ -131,14 +134,41 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     # Now take the median!
     
     frame_med      = np.median(frame_arr, axis=0)
+
+    # Now normalize if necessary
     
+    if do_normalize:
+        frame_arr_norm = frame_arr.copy()
+        
+        for i in range(num_files):
+            (frame_arr_norm[i], r) = hbt.normalize_images(frame_arr[i], frame_med)
+                    
+        frame_arr = frame_arr_norm
+
+    # Make a plot of the mean and median of each file, to see how the normalization worked
+    
+        mean_arr = np.zeros(num_files)
+        median_arr = np.zeros(num_files)
+        for i in range(num_files):
+            mean_arr[i] = np.nanmean(frame_arr[i])
+            median_arr[i] = np.nanmedian(frame_arr[i])
+        plt.plot(mean_arr, label='mean')
+        plt.plot(median_arr, label='median')
+        plt.legend()
+        plt.show()
+
+    # Take the median, again
+        
+        frame_med      = np.median(frame_arr, axis=0)
+
+            
     # Now that we have the median for each pixel... take the median of pixels below the median.
     
-#    frame_arr_step_2 = frame_arr.copy()
-#    for j in range(hbt.sizex(frame_arr)):
-#        frame_arr_step_2[j][frame_arr_step_2[j] > frame_med] = np.nan
-#    
-#    frame_med_step_2 = np.nanmedian(frame_arr_step_2, axis=0)
+    frame_arr_step_2 = frame_arr.copy()
+    for j in range(hbt.sizex(frame_arr)):
+        frame_arr_step_2[j][frame_arr_step_2[j] > frame_med] = np.nan
+    
+    frame_med_step_2 = np.nanmedian(frame_arr_step_2, axis=0)
 #
 #    frame_arr_step_3 = frame_arr_step_2.copy()
 #    for j in range(hbt.sizex(frame_arr)):
@@ -193,20 +223,41 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     frame_p90  = np.percentile(frame_arr, 90, axis=0)
     
     frames_pall = np.array([frame_p10, frame_p20, frame_p30, frame_p40, frame_p50, frame_p60, frame_p70, frame_p80])
+    frames_pall = np.array([frame_p10, frame_p20])
 
     # Mean these frames all together
     
     frames_pall_med = np.mean(frames_pall,axis=0)
     
-    plt.imshow(stretch(hbt.remove_sfit(frames_pall_med)),cmap='plasma')
+    plt.imshow(stretch(hbt.remove_sfit(frames_pall_med)))
     plt.title('frames_pall_med')
     plt.show()
-    
-    # Save into the ouput array
 
-#    plt.imshow(stretch(hbt.remove_sfit(frame_p90)),cmap='plasma')
-    
     frame_med = frames_pall_med
+    
+    # Convolve the output array with a gaussian, to smooth it
+    # *** Did a test. Doing this gaussian convolution to smooth it makes no difference.
+
+    do_smooth = True  # Smooth the output array with a gaussian kernel?
+    
+    if do_smooth:
+        
+        kernel = Gaussian2DKernel(3)
+        frame_med_convolve = astropy.convolution.convolve(frame_med,kernel, boundary='extend')
+        
+        # Repair the edges, by copying data back from the orignal source image, pre-convolution
+        # Copy from a few kernel widths away, to be sure we get it all.
+        
+        frame_med_convolve[0:12,:] = frame_med[0:12,:]
+        frame_med_convolve[-12:,:] = frame_med[-12:,:]
+        frame_med_convolve[:,0:12] = frame_med[:,0:12]
+        frame_med_convolve[:,-12:] = frame_med[:,-12:]
+        
+        # Save into the ouput array
+    
+        frame_med = frame_med_convolve
+    
+#    frame_med = frame_p20
 
     #%%%
 
@@ -239,6 +290,8 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     
 if (__name__ == '__main__'):
     
+    stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile
+
     print("Testing...")
     
     index_group = 8
@@ -249,4 +302,5 @@ if (__name__ == '__main__'):
     
     (arr,mask) = nh_create_straylight_median(index_group, index_files, do_fft=do_fft, do_sfit=do_sfit, power=power)
  
-    plt.imshow(stretch(hbt.remove_sfit(arr, degree=5)),cmap='plasma')
+    plt.set_cmap('plasma')
+    plt.imshow(stretch(hbt.remove_sfit(arr, degree=5)))
