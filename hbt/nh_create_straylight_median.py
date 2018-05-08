@@ -27,6 +27,7 @@ import hbt
 
 def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=True, power=5):
     
+    
     """
     This takes a set of related observations, and creates a median image of all of them,
     in a form useful for straylight removal.
@@ -36,6 +37,13 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     
     For a user, should call NH_GET_STRAYLIGHT_MEDIAN, rather than the current function, which will avoid having
     to deal with filenames.
+    
+    Although the filename is called 'median', this function uses different techniques to calculate the
+    best background image, including percentiles, means, etc -- not just a median.
+    
+    This routine does not use a photoshop mask. That can be used elsewhere.
+    
+    This routine also does not use an object mask. But, other stray light processing parts do that. 
     
     """
 
@@ -47,9 +55,13 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
 #   
 #     This routine returns the array itself, and a recommended base filename. It does not write it to disk.
 
-    DO_DEBUG = True
+    do_debug = True
     
-    if DO_DEBUG:
+    do_destripe = True
+    
+    stretch = astropy.visualization.PercentileInterval(90)  # PI(90) scales array to 5th .. 95th %ile
+
+    if do_debug:
         print("nh_create_straylight_median: {}/{}-{}".format(index_group, index_files[0], index_files[-1]))
         
     file_pickle = '/Users/throop/Data/NH_Jring/out/nh_jring_read_params_571.pkl' # Filename to read to get filenames, etc.
@@ -88,6 +100,10 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
         file = t_group['Filename'][n] # Look up filename
         print("Reading: " + file)
         frame = hbt.read_lorri(file,frac_clip = 1)
+
+        if do_destripe:
+            frame = hbt.lorri_destripe(frame)
+            
         if (hbt.sizex(frame) != dx_0):
             print("For image {}, dx={}, dy={}".format(i, hbt.sizex(frame), hbt.sizey(frame)))
 
@@ -118,29 +134,81 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
     
     # Now that we have the median for each pixel... take the median of pixels below the median.
     
-    frame_arr_step_2 = frame_arr.copy()
-    for j in range(hbt.sizex(frame_arr)):
-        frame_arr_step_2[j][frame_arr_step_2[j] > frame_med] = np.nan
+#    frame_arr_step_2 = frame_arr.copy()
+#    for j in range(hbt.sizex(frame_arr)):
+#        frame_arr_step_2[j][frame_arr_step_2[j] > frame_med] = np.nan
+#    
+#    frame_med_step_2 = np.nanmedian(frame_arr_step_2, axis=0)
+#
+#    frame_arr_step_3 = frame_arr_step_2.copy()
+#    for j in range(hbt.sizex(frame_arr)):
+#        frame_arr_step_3[j][frame_arr_step_3[j] > frame_med_step_2] = np.nan
+#    
+#    frame_med_step_3 = np.nanmedian(frame_arr_step_2, axis=0)
+#    
+#    frame_med_step3  = np.percentile(frame_arr, 10, axis=0)
+#    
+#    hbt.figsize(25,25)
+#    plt.subplot(1,3,1)
+#    plt.imshow(stretch(hbt.remove_sfit(frame_med,degree=5)), cmap='plasma')
+#    plt.title('Median')
+#    
+#    plt.subplot(1,3,2)
+#    plt.imshow(stretch(hbt.remove_sfit(frame_med_step_2,degree=5)), cmap='plasma')
+#    plt.title('Median of pixels < median')
+#    
+#    plt.subplot(1,3,3)
+#    plt.imshow(stretch(hbt.remove_sfit(frame_med_step_3,degree=5)), cmap='plasma')
+#    plt.title('Median of pixels < pixels < median')
+#    plt.show()
+#    hbt.figsize()
     
-    frame_med_step_2 = np.nanmedian(frame_arr_step_2, axis=0)
+    #%%%
+    
+    ######
+    # Now just do some experimentation. I am just trying a bunch of things, to try to get the best signal here.
+    # In theory a median will work well. The problem is that this just doesn't exclude all the ring.
+    # So I tried taking 30th percentile. Works better. 
+    # Tried taking 1st percentile (ie, faintest value at each pixel). But this still had a ring, dammit! 
+    # I think it must be because a few images are anomalously faint, throwing off the statistics.
+    #
+    # The method right here uses a very ad-hoc percentile method. There is no reason it should work. 
+    # I've just found that it does.
+    ######
+    
+    hbt.figsize(10,10)   
+    frame_percentile  = np.percentile(frame_arr, 99, axis=0)
+    plt.imshow(stretch(hbt.remove_sfit(frame_percentile,degree=5)), cmap='plasma')
 
-    frame_arr_step_3 = frame_arr_step_2.copy()
-    for j in range(hbt.sizex(frame_arr)):
-        frame_arr_step_3[j][frame_arr_step_3[j] > frame_med_step_2] = np.nan
+    # Take the mmedians at a bunch of different percentiles
     
-    frame_med_step_3 = np.nanmedian(frame_arr_step_2, axis=0)
+    frame_p10  = np.percentile(frame_arr, 10, axis=0)
+    frame_p20  = np.percentile(frame_arr, 20, axis=0)
+    frame_p30  = np.percentile(frame_arr, 30, axis=0)
+    frame_p40  = np.percentile(frame_arr, 40, axis=0)
+    frame_p50  = np.percentile(frame_arr, 50, axis=0)
+    frame_p60  = np.percentile(frame_arr, 60, axis=0)
+    frame_p70  = np.percentile(frame_arr, 70, axis=0)
+    frame_p80  = np.percentile(frame_arr, 80, axis=0)
+    frame_p90  = np.percentile(frame_arr, 90, axis=0)
     
-    plt.subplot(1,3,1)
-    plt.imshow(stretch(hbt.remove_sfit(frame_med,degree=5)), cmap='plasma')
-    plt.title('Median')
-    plt.subplot(1,3,2)
-    plt.imshow(stretch(hbt.remove_sfit(frame_med_step_2,degree=5)), cmap='plasma')
-    plt.title('Median of pixels < median')
-    plt.subplot(1,3,3)
-    plt.imshow(stretch(hbt.remove_sfit(frame_med_step_3,degree=5)), cmap='plasma')
-    plt.title('Median of pixels < pixels < median')
+    frames_pall = np.array([frame_p10, frame_p20, frame_p30, frame_p40, frame_p50, frame_p60, frame_p70, frame_p80])
+
+    # Mean these frames all together
+    
+    frames_pall_med = np.mean(frames_pall,axis=0)
+    
+    plt.imshow(stretch(hbt.remove_sfit(frames_pall_med)),cmap='plasma')
+    plt.title('frames_pall_med')
     plt.show()
     
+    # Save into the ouput array
+
+#    plt.imshow(stretch(hbt.remove_sfit(frame_p90)),cmap='plasma')
+    
+    frame_med = frames_pall_med
+
+    #%%%
 
     frame_med_sfit = hbt.remove_sfit(frame_med, degree=power) # Take median using sfit images
     
@@ -163,4 +231,22 @@ def nh_create_straylight_median(index_group, index_files, do_fft=False, do_sfit=
         return (frame_med_sfit, file_base)
     
     else:
-        return (frame_med, file_base)    
+        return (frame_med, file_base)   
+
+# =============================================================================
+# End of Function
+# =============================================================================
+    
+if (__name__ == '__main__'):
+    
+    print("Testing...")
+    
+    index_group = 8
+    index_files = hbt.frange(0,47)
+    do_fft      = False
+    power       = 5
+    do_sfit     = False
+    
+    (arr,mask) = nh_create_straylight_median(index_group, index_files, do_fft=do_fft, do_sfit=do_sfit, power=power)
+ 
+    plt.imshow(stretch(hbt.remove_sfit(arr, degree=5)),cmap='plasma')
