@@ -533,10 +533,24 @@ def normalize(arr, max=1):
 ##########
 
 def normalize_images(arr1, arr2, DO_HISTOGRAM=False):
-    """Performs linear regression on two images to try to match them.
-     Returns fit parameter r: for best fit, use arr2 * r[0] + r[1]
-     Goal is to set arr1 to the level of arr2"""
-   
+    """
+     Performs linear regression on two images to try to match them.
+     
+     Inputs
+     -----
+     
+     arr1:
+         Array which will be normalized
+     
+     arr2:
+         Array to normalize to
+     
+     Return values:
+     -----
+     
+     (arr1_norm, r), where r is a tuple, and arr1 * r[0] + r[1] nearly matches arr2.
+    """
+     
     import matplotlib.pyplot as plt
     from   scipy.stats import linregress
     
