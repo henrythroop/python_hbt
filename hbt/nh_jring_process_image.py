@@ -385,7 +385,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
                 print("Reading mask file {}".format(file_mask_stray))
                 
-                if (len(np.shape(mask_stray)) > 2):                 # If Photoshop saved multiple planes, then just take first
+                if (len(np.shape(mask_stray)) > 2):          # If Photoshop saved multiple planes, then just take first
                     mask_stray = mask_stray[:,:,0]
                     
             except IOError:                                   # If mask file is missing
@@ -402,7 +402,7 @@ def nh_jring_process_image(image_raw, method, vars, index_group=-1, index_image=
         
 # Merge the two masks together
         
-        mask = np.logical_or(mask_objects, mask_objects)
+        mask = np.logical_and(mask_objects, mask_stray)  # Output good if inputs are both good
 
 # Rotate the stray light image, if that has been requested 
 # [this probably doesn't work, but that's fine -- I didn't end up using this.]
@@ -544,14 +544,18 @@ if (__name__ == '__main__'):
 
     groups = astropy.table.unique(t, keys=(['Desc']))['Desc']
     
-    index_group = 8
-    index_images = [80, 81]
+    index_group = 7
+    index_images = [15,16]
+    
+    method = 'String'
+    vars   = 'mask_7_8-15 p5'
+#    vars = '64-66 p10 *1.5 mask_7_61-63'
     
     groupmask = (t['Desc'] == groups[index_group])
     t_group = t[groupmask]
-    index_images_stray = hbt.frange(54,107)
+    index_images_stray = hbt.frange(8,15)
 
-    # Set up the stray light mask file.
+    # Set up the stray light mask file (created w Photoshop)
     
     file_mask_stray = '/Users/throop/Data/NH_Jring/masks/mask_{}_{}-{}.png'.format(index_group, 
                                                               np.min(index_images_stray),
@@ -563,12 +567,7 @@ if (__name__ == '__main__'):
     
     for index_image in index_images:
         file_image = t_group[index_image]['Filename']
-    
-        method = 'String'
-    
-    #    vars = '64-66 p10 *1.5 mask_7_61-63'
-        vars = '8/54-107 p5'
-    
+        
         # Load the object mask
         
         file_objects = os.path.basename(file_image).replace('.fit', '_objects.txt')
