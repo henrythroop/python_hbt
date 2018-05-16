@@ -1457,7 +1457,12 @@ def linfit_origin(y1, y2, log=False):
 #    from   scipy.optimize import curve_fit
     
     if (log):
-        (scalefac, covariance) = curve_fit(lambda x, m: m+x, np.log(y1), np.log(y2))
+        
+        # In the case of log, remove any points which are <0, and would break things
+        
+        good = np.logical_and( np.array(y1 > 0), np.array(y2 > 0) )
+        
+        (scalefac, covariance) = curve_fit(lambda x, m: m+x, np.log(y1[good]), np.log(y2[good]))
         scalefac = np.exp(scalefac)  
     else:
         (scalefac, covariance) = curve_fit(lambda x, m: m*x, y1, y2)   
