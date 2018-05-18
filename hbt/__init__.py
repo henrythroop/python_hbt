@@ -27,6 +27,7 @@ import photutils
 from   astropy import units as u           # Units library
 
 from   scipy.optimize import curve_fit
+from   astropy.convolution import Box1DKernel, Gaussian1DKernel, convolve
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -898,6 +899,15 @@ def smooth_boxcar(ydata, binning):
    smoothed = smoothed_padded[binning:-binning]
    
    return smoothed
+
+def smooth(ydata, binning, **kwargs):
+    """
+    Simple gaussian smoothing
+    """
+
+    kernel = Gaussian1DKernel(binning)
+
+    return(convolve(ydata, kernel, **kwargs))    
     
 def longest_common_substring(S,T):
     """
