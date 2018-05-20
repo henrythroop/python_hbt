@@ -27,6 +27,7 @@ import photutils
 from   astropy import units as u           # Units library
 
 from   scipy.optimize import curve_fit
+from   astropy.convolution import Box1DKernel, Gaussian1DKernel, convolve
 
 # First define some constants. These are available to the outside world, 
 # just like math.pi is available as a constant (*not* a function).
@@ -898,6 +899,15 @@ def smooth_boxcar(ydata, binning):
    smoothed = smoothed_padded[binning:-binning]
    
    return smoothed
+
+def smooth(ydata, binning, **kwargs):
+    """
+    Simple gaussian smoothing
+    """
+
+    kernel = Gaussian1DKernel(binning)
+
+    return(convolve(ydata, kernel, **kwargs))    
     
 def longest_common_substring(S,T):
     """
@@ -1457,7 +1467,12 @@ def linfit_origin(y1, y2, log=False):
 #    from   scipy.optimize import curve_fit
     
     if (log):
-        (scalefac, covariance) = curve_fit(lambda x, m: m+x, np.log(y1), np.log(y2))
+        
+        # In the case of log, remove any points which are <0, and would break things
+        
+        good = np.logical_and( np.array(y1 > 0), np.array(y2 > 0) )
+        
+        (scalefac, covariance) = curve_fit(lambda x, m: m+x, np.log(y1[good]), np.log(y2[good]))
         scalefac = np.exp(scalefac)  
     else:
         (scalefac, covariance) = curve_fit(lambda x, m: m*x, y1, y2)   
