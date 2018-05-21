@@ -420,15 +420,27 @@ def is_array(arg):
 
 def sizex(arr):
     """
-    Return x size of an array
+    Return x size of an array -- that is, the first dimension
     """
     return(arr.shape[0])
 
 def sizey(arr):
     """
-    Return y size of an array. No error handling.
+    Return y size of an array -- that is, the second dimension. No error handling.
     """
     return(arr.shape[1])
+
+def sizex_im(arr):
+    """
+    Return width = x size of an image -- that is, the second dimension.
+    """
+    return(arr.shape[1])
+
+def sizey_im(arr):
+    """
+    Return height = y size of an image -- that is, the *first* dimension in Python. No error handling.
+    """
+    return(arr.shape[0])
 
 def sizez(arr):
     """
@@ -902,7 +914,9 @@ def smooth_boxcar(ydata, binning):
 
 def smooth(ydata, binning, **kwargs):
     """
-    Simple gaussian smoothing
+    Simple Gaussian smoothing. Returned size is same as input size.
+    
+    Can use `boundary='wrap|fill|extend'` as per `astropy.convolution.convolve()`.
     """
 
     kernel = Gaussian1DKernel(binning)
