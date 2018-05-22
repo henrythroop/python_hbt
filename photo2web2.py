@@ -14,13 +14,16 @@ rather than individual HTML pages.
 The caption font size, alignment, etc. are defined in lightgallery.css. To edit them,
 put their new values into .lg-sub-html and its descendents in photos.css .
 
+I tried to use justifiedGallery to make the thumbnails slightly more beautiful. I probably could have gotten it
+working eventually, but I didn't, and it's only a minimal improvement.
+
 Henry Throop 22-May-2018
 
 To be done:
     - Make a new thumnail generator. Thumbs now need to be made in the perl code.
       Consider using sips, which might be faster than imagemagick.
     - Make page responsive to different screen sizes.
-    - Figure out why thumbnail animations are broken.
+    - Figure out why thumbnail animations are broken. [Can't figure it out. Abandoning.]
     - Add some CSS or something to make the header information < full screen width
     - Reduce caption width to less than full screen width.
     - Make a new caption extractor. Use 'sips --getProperty description *jpg', which is much faster
@@ -95,6 +98,7 @@ for line in header_txt:
 lun.write('<div class="demo-gallery">\n')
 lun.write('<div id="lightgallery" class="list-unstyled row">' + "\n")
 
+j = 0
 # Loop and print the entry for each image
 
 for i,file in enumerate(files_original):
@@ -104,8 +108,12 @@ for i,file in enumerate(files_original):
     # If this image starts a new section, then create the HTML for that
 
     if  '##' in captions[i]:
+        if (j > 0):
+            lun.write('</div>\n')
         caption, section = caption.split('##')
-        lun.write(f'<div><br><hr> <h3>{section}</h3> </div>\n\n')
+        lun.write(f'<br><hr> <h3>{section}</h3>\n\n')
+        lun.write(f'<div id="gallery{j}">\n')
+        j+=1
 
     # If caption is just a filename, then zero it out
     
@@ -117,18 +125,27 @@ for i,file in enumerate(files_original):
     caption = caption.replace('"', '&quot;')
     caption = caption.replace("'", '&#x27;')
     
+    basename = os.path.basename(file)
+                          
     # Here, define a <span> </span> element which is the image itself. 
     # We tag this span with class=item, and then use a corresponding selector in the call to lightgallery.
     # This prevents lightgallery from being called on headers, <hr>, and random text on the page which is not pics.
     
     line_span = f'<span class="item" data-sub-html="<span class=caption>{caption}</span>"' + \
-                f'data-src="originals/{os.path.basename(file)}">\n' + \
-                f'  <img src="thumbnails/s{os.path.basename(file)}"/>\n' + \
+                f'data-src="originals/{basename}">\n' + \
+                f'  <a href="originals/{basename}">\n' + \
+                f'  <img src="thumbnails/s{basename}"/>\n' + \
+                f'  </a>\n' + \
                 f'  </span>\n\n'
    
+    # As a test, define the element as an <a> anchor.
+    
+    line_a =    f'<span class="item"> <a href="originals/{basename}"> <img src="thumbnails/s{basename}"/> </a></span>\n\n'
+    
     # Finally, print the entire HTML line, with image, thumbnail, and caption, to the file
 
     lun.write(line_span)
+#    lun.write(line_a)
 
 # Print the HTML footer, and close the file
 
