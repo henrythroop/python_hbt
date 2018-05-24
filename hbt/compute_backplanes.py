@@ -152,6 +152,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     lon_arr    = np.zeros((n_dy, n_dx))     # Longitude of pixel (defined with recpgr)
     lat_arr    = np.zeros((n_dy, n_dx))     # Latitude of pixel (which is zero, so meaningless)
     radius_arr = np.zeros((n_dy, n_dx))     # Radius, in km
+    altitude_arr= np.zeros((n_dy, n_dx))    # Altitude above midplane, in km
     ra_arr     = np.zeros((n_dy, n_dx))     # RA of pixel
     dec_arr    = np.zeros((n_dy, n_dx))     # Dec of pixel
     dra_arr    = np.zeros((n_dy, n_dx))     # dRA of pixel: Distance in sky plane between pixel and body, in km. 
@@ -205,10 +206,11 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         # This is defined in the 'MU69_SUNFLOWER' frame
 
             mx_euler = sp.eul2m(angle3, angle2, angle1, 3, 2, 1)  # (1, 2, 3) refers to axes (x, y, z)
-            vec_plane = [0, 1, 0]                                 # Use +Y (anti-sun dir)
+            vec_plane = [0, 1, 0]                                 # Use +Y (anti-sun dir), which is normal to XZ.
             vec_plane_tilted = sp.mxv(mx_euler, vec_plane)
             plane_target_eq = sp.nvp2pl(vec_plane_tilted, [0,0,0]) # "Normal Vec + Point to Plane". 0,0,0 = origin.
 
+        
 # =============================================================================
 # Set up the various output planes and arrays necessary for computation
 # =============================================================================
@@ -226,6 +228,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         vec_target_sc_frame = st_target_sc_frame[0:3]
         vec_target_sc_j2k   = st_target_sc_j2k[0:3]
         dist_target_sc      = sp.vnorm(vec_target_sc_j2k)   # Get target distance, in km
+        
+        vec_sc_target_frame = -vec_target_sc_frame
         
         # Name this vector a 'point'. INRYPL requires a point argument.
             
@@ -287,19 +291,57 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         
                 # And calculate the intercept point between this vector, and the ring plane.
                 # All these are in body coordinates.
-                    
+                # plane_target_eq is defined as the body's equatorial plane (its XZ for MU69).
+                
+                # ** Some question as to whether we should shoot this vector at the ring plane, or the sky plane.
+                # Ring plane is normally the one we want. Eq's break down for edge-on rings... there is always
+                # an ambiguity.
                 (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_target_eq) 
                                                                                              # pt, vec, plane
 
-                # In the case of MU69, the frame is defined s.t. the ring is in the XZ plane. This is strange, and 
-                # I bet MU69 is the only ring like this. Swap it so that Z means 'vertical, out of plane.'
+                # ** For testing, try intersecting the sky plane instead of the ring plane.
+                # ** Confrimed: Using sky plane gives identical results in case of face-on rings.
+                #    And it gives meaningful results in case of edge-on rings, where ring plane did not.
                 
-                if ('MU69' in name_target):
+                do_sky_plane = True
+                if do_sky_plane:
+                    plane_sky_frame = sp.nvp2pl(vec_sc_target_frame, [0,0,0])  # Frame normal to s/c vec, cntrd on MU69
+                    (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_sky_frame) 
+                    
+                # In the case of MU69 (both sunflower and tunacan), the frame is defined s.t. the ring 
+                # is in the XZ plane, not XY. This is strange (but correct).
+                # I bet MU69 is the only ring like this. Swap it so that Z means 'vertical, out of plane' -- 
+                # that is, put it into normal XYZ rectangular coords, so we can use RECLAT etc on it.
+                
+                if ('MU69' in name_target):  # Was 0 2 1. But this makes tunacan radius look in wrong dir.
+                                             # 201 looks same
+                                             # 210 similar
+                                             # 201 similar
+                                             # 102, 120 similar.
+                                             # ** None of these change orientation of 'radius' backplane. OK.
+                                             
                     pt_intersect_frame = np.array([pt_intersect_frame[0], pt_intersect_frame[2], pt_intersect_frame[1]])
                 
                 # Get the radius and azimuth of the intersect, in the ring plane
+                # Q: Why for the TUNACAN is the radius zero here along horizontal (see plot)?
+                # A: Ahh, it is not zero. It is just that the 'projected radius' of a ring that is nearly edge-on
+                # can be huge! Basically, if we try to calc the intersection with that plane, it will give screwy
+                # answers, because the plane is so close to edge-on that intersection could be a long way 
+                # from body itself.
+                
+                # Instead, I really want to take the tangent sky plane, intersect that, and then calc the 
+                # position of that (in xyz, radius, longitude, etc).
+                # Since that plane is fixed, I don't see a disadvantage to doing that.
                 
                 radius_body, lon, lat = sp.reclat(pt_intersect_frame)
+                                
+                # Get the vertical position (altitude)
+                # ** Ahh, this is zero because the intersectin point is in the plane -- that is, z position of zero,duh.
+                
+                # Thinking about this a lot, I think I have to define a sky plane. Ugh.
+                
+                altitude = pt_intersect_frame[2]
+#                print(f'pt_intersect_frame = {pt_intersect_frame}')
 
                 # Calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
         
@@ -312,6 +354,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 radius_arr[i_y, i_x] = radius_body  # RECPGR returns altitude, not radius. (RECLAT returns radius.)
                 lon_arr[i_y, i_x]    = lon
                 phase_arr[i_y, i_x]  = angle_phase
+                altitude_arr[i_y, i_x] = altitude
                 
                 # Now calc angular separation between this pixel, and the satellites in our list
                 # Since these are huge arrays, cast into floats to make sure they are not doubles.
@@ -331,10 +374,11 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
              'dDec_km'      : ddec_arr.astype(float),
              'Radius_eq'    : radius_arr.astype(float),
              'Longitude_eq' : lon_arr.astype(float), 
+             'Altitude_eq'  : altitude_arr.astype(float),
              'Phase'        : phase_arr.astype(float),
-             'X_sky'        : x_skyplane.astype(float),
-             'Y_sky'        : y_skyplane.astype(float),  # Looks like 'Y' is the one I want for vertical position
-             'Z_sky'        : z_skyplane.astype(float)
+#             'X_sky'        : x_skyplane.astype(float),
+#             'Y_sky'        : y_skyplane.astype(float),  # Looks like 'Y' is the one I want for vertical position
+#             'Z_sky'        : z_skyplane.astype(float)
              }
         
         # Assemble a bunch of descriptors, to be put into the FITS headers
@@ -346,10 +390,11 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 'Offset from target in target plane, Dec direction, km',
                 'Projected equatorial radius, km',
                 'Projected equatorial longitude, km',
+                'Altitude above midplane, km',
                 'Sun-target-observer phase angle, radians',
-                'X position of sky plane intercept',
-                'Y position of sky plane intercept',
-                'Z position of sky plane intercept'
+#                'X position of sky plane intercept',
+#                'Y position of sky plane intercept',
+#                'Z position of sky plane intercept'
                 }
                 
         # In the case of Jupiter, add a few extra fields
@@ -397,6 +442,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     
 if (__name__ == '__main__'):
     
+    
     import  matplotlib.pyplot as plt
     
     do_test_jupiter = False
@@ -414,11 +460,18 @@ if (__name__ == '__main__'):
     if (do_test_mu69):
 
         file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
-        frame         = '2014_MU69_SUNFLOWER_ROT'
+#        frame         = '2014_MU69_SUNFLOWER_ROT'
+        frame         = '2014_MU69_TUNACAN_INERT'
         name_target   = 'MU69'
         name_observer = 'New Horizons'
         file_tm       = '/Users/throop/git/NH_rings/kernels_kem_prime.tm'  # SPICE metakernel
    
+    # Start SPICE. Unload the existing kernel, if loaded, just for safety.
+    
+    if sp.ktotal('ALL'):
+        sp.unload(file_tm)
+    sp.furnsh(file_tm)
+    
     if (do_test_jupiter or do_test_mu69):
 
          # Start SPICE, if necessary
@@ -429,9 +482,9 @@ if (__name__ == '__main__'):
         # Create the backplanes in memory
         
         (planes, desc) = compute_backplanes(file_in, name_target, frame, name_observer,
-                      angle1=88*hbt.d2r,  # Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
+                      angle1=00*hbt.d2r,  # Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
                       angle2=00*hbt.d2r,  # Or rotation angle, if tilted front-back. 
-                      angle3=30*hbt.d2r)  # Tilt right-left, from face-on
+                      angle3=00*hbt.d2r)  # Tilt right-left, from face-on
 
         print("Backplanes generated for {}".format(file_in))
         
