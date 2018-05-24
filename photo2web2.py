@@ -24,10 +24,16 @@ To be done:
       Consider using sips, which might be faster than imagemagick.
     - Make page responsive to different screen sizes.
     - Figure out why thumbnail animations are broken. [Can't figure it out. Abandoning.]
-    - Add some CSS or something to make the header information < full screen width
+    - Add some CSS or something to make the header information < full screen width [DONE]
     - Reduce caption width to less than full screen width.
     - Make a new caption extractor. Use 'sips --getProperty description *jpg', which is much faster
       than exiftool.
+    - Figure out what to do with YouTube links. [Ugh. I can embed them just fine, though ugly. But I cant' 
+      get them working the proper way.]
+    - See if I can smallen the captions at all? Or put to side, or dismiss easily, or?? Since they always
+      partially block.
+    - Q: At one point I was getting a custom URL each time I clicked around. But no longer. Why not?? 
+      I really prefer it. [SOLVED: Turn the 'hash' option back on.]
 
 """
 
@@ -35,126 +41,177 @@ import glob
 import os.path
 from html import escape
 
-dir_photos = '/Users/throop/photos/Trips/Test'
+# =============================================================================
+# Function definitions
+# =============================================================================
 
-files_original = glob.glob(os.path.join(dir_photos, 'originals/*.jpg'))
-
-file_captions  = os.path.join(dir_photos, 'captions.txt')   # A list of all captions, one per line-pair, via exiftool
-file_header    = os.path.join(dir_photos, 'header.html')    # Header with JS includes, CSS, etc.   
-file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. First line is gallery title
-file_footer    = os.path.join(dir_photos, 'footer.html')  # HTML footer with JS startup, etc.
-file_out       = os.path.join(dir_photos, 'show.html')    # Final output filename
-
-captions = []
-header   = []
-footer   = []
-
-header_txt = []
-
-with open(file_captions, "r") as ins:
-    captions = []
-    for line in ins:
-        line = line.replace('\n', '')  # Kill blank lines (which are intentional separators), and strip newlines too.
-        if line:
-          captions.append(line)
-
-# Read text header
-        
-with open(file_header_txt, "r") as lun:
-    for line in lun:
-        header_txt.append(line)
-
-# Extract the title of the gallery from the header.txt file
-        
-title_gallery = header_txt[0]
-header_txt = header_txt[1:]
-
-# Read HTML header. Plug in the gallery name as needed.
-          
-with open(file_header, "r") as lun:
-    for line in lun:
-        header.append(line.replace('TITLE_HERE', title_gallery))
-
-# Read HTML footer
-        
-with open(file_footer, "r") as lun:
-    for line in lun:
-        footer.append(line)
-
-# Now do the output
-        
-lun = open(file_out, "w")
-
-# Write HTML header
-
-for line in header:
-    lun.write(line)
-
-# Write text header
-
-for line in header_txt:
-    lun.write(line)
-
-lun.write('<div class="demo-gallery">\n')
-lun.write('<div id="lightgallery" class="list-unstyled row">' + "\n")
-
-j = 0
-# Loop and print the entry for each image
-
-for i,file in enumerate(files_original):
-
-    caption = captions[i]
-
-    # If this image starts a new section, then create the HTML for that
-
-    if  '##' in captions[i]:
-        if (j > 0):
-            lun.write('</div>\n')
-        caption, section = caption.split('##')
-        lun.write(f'<br><hr> <h3>{section}</h3>\n\n')
-        lun.write(f'<div id="gallery{j}">\n')
-        j+=1
-
-    # If caption is just a filename, then zero it out
+def make_gallery_item(caption, basename, type = 'span'):
+    """
+    Return an HTML line for the gallery.
+    """
     
-    if '.jpg' in caption:
-        caption = ''
-        
-    # Handle " < > etc in captions. But actually I'm not sure I want to do that... just quotes, perhaps.
-    
-    caption = caption.replace('"', '&quot;')
-    caption = caption.replace("'", '&#x27;')
-    
-    basename = os.path.basename(file)
-                          
-    # Here, define a <span> </span> element which is the image itself. 
-    # We tag this span with class=item, and then use a corresponding selector in the call to lightgallery.
-    # This prevents lightgallery from being called on headers, <hr>, and random text on the page which is not pics.
-    
-    line_span = f'<span class="item" data-sub-html="<span class=caption>{caption}</span>"' + \
-                f'data-src="originals/{basename}">\n' + \
+    if '.jpg' in basename:
+        line  = f'<span class="item" data-sub-html="<span class=caption>{caption}</span>"' + \
+                f' data-src="originals/{basename}">\n' + \
                 f'  <a href="originals/{basename}">\n' + \
                 f'  <img src="thumbnails/s{basename}"/>\n' + \
                 f'  </a>\n' + \
                 f'  </span>\n\n'
-   
-    # As a test, define the element as an <a> anchor.
-    
-    line_a =    f'<span class="item"> <a href="originals/{basename}"> <img src="thumbnails/s{basename}"/> </a></span>\n\n'
-    
-    # Finally, print the entire HTML line, with image, thumbnail, and caption, to the file
 
-    lun.write(line_span)
-#    lun.write(line_a)
+    if 'youtube.com' in basename:
+        basename = basename.replace('embed', 'watch')
+        line  = f'<span class="item"' + \
+                f' data-src="{basename}"> ' + \
+                f'  <a href="{basename}" data-src="{basename}"> ' + \
+                f'  <img src="http://img.youtube.com/vi/dNSZTp-mHrc/default.jpg"/>' + \
+                f'  </a>' + \
+                f'  </span>\n\n'
 
-# Print the HTML footer, and close the file
+# For debugging, 
+# http://throop/photos/Trips/Test/show.html#lg=1&slide=89
+# Solved! Looks like link must be of form https://youtu.be/AuCqrwxquPU .  And, the base browser URL for gallery
+                # itself must be http://, not file:// or else get JS errors.
+# Problem: how long does it take PowWeb to update my directory??  It's some finite time, like 10 minutes.              
+                
+        # As a test, define the element as an <a> anchor.
+        
+#    line_a = f'<span class="item"> <a href="originals/{basename}"> <img src="thumbnails/s{basename}"/> </a></span>\n\n'
 
-lun.write('</div>\n')    
-lun.write('</div>\n')
+    return line
+
+# =============================================================================
+# Start main code
+# =============================================================================
+
+def photo2web():
+    dir_photos = '/Users/throop/photos/Trips/Test'
     
-for line in footer:
-    lun.write(line)    
-    
-lun.close()
-print(f'Wrote: {file_out}')
+    files_original = glob.glob(os.path.join(dir_photos, 'originals/*.jpg'))
 
+    # Here, define a <span> </span> element which is the image itself. 
+    # We tag this span with class=item, and then use a corresponding selector in the call to lightgallery.
+    # This prevents lightgallery from being called on headers, <hr>, and random text on the page which is not pics.
+    
+    file_captions  = os.path.join(dir_photos, 'captions.txt')   # List of all captions, one per line-pair, via exiftool
+    file_header    = os.path.join(dir_photos, 'header.html')    # Header with JS includes, CSS, etc.   
+    file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. Line0 is gallery title
+    file_footer    = os.path.join(dir_photos, 'footer.html')  # HTML footer with JS startup, etc.
+    file_out       = os.path.join(dir_photos, 'show.html')    # Final output filename
+    
+    captions = []
+    header   = []
+    footer   = []
+    
+    header_txt = []
+    
+    with open(file_captions, "r") as ins:
+        captions = []
+        for line in ins:
+            line = line.replace('\n', '')  # Kill blank lines (which are intentional separators), and strip newlines.
+            if line:
+              captions.append(line)
+    
+    # Read text header
+            
+    with open(file_header_txt, "r") as lun:
+        for line in lun:
+            header_txt.append(line)
+    
+    # Extract the title of the gallery from the header.txt file
+            
+    title_gallery = header_txt[0]
+    header_txt = header_txt[1:]
+    
+    # Read HTML header. Plug in the gallery name as needed.
+              
+    with open(file_header, "r") as lun:
+        for line in lun:
+            header.append(line.replace('TITLE_HERE', title_gallery))
+    
+    # Read HTML footer
+            
+    with open(file_footer, "r") as lun:
+        for line in lun:
+            footer.append(line)
+    
+    # Now do the output
+            
+    lun = open(file_out, "w")
+    
+    # Write HTML header
+    
+    for line in header:
+        lun.write(line)
+    
+    # Write text header
+    
+    for line in header_txt:
+        lun.write(line)
+    
+    lun.write('<div class="demo-gallery">\n')
+    lun.write('<div id="lightgallery" class="list-unstyled row">' + "\n")
+    
+    j = 0
+    # Loop and print the entry for each image
+    
+    for i,file in enumerate(files_original):
+    
+        caption = captions[i]
+    
+        # If this image starts a new section, then create the HTML for that
+    
+        if  '##' in captions[i]:
+            if (j > 0):
+                lun.write('</div>\n')
+            caption, section = caption.split('##')
+            lun.write(f'<br><hr> <h3>{section}</h3>\n\n')
+            lun.write(f'<div id="gallery{j}">\n')
+            j+=1
+    
+        # If caption is just a filename, then zero it out
+        
+        if '.jpg' in caption:
+            caption = ''
+            
+        # Handle " < > etc in captions. But actually I'm not sure I want to do that... just quotes, perhaps.
+        
+        caption = caption.replace('"', '&quot;')
+        caption = caption.replace("'", '&#x27;')
+        
+        basename = os.path.basename(file)
+
+        # If the caption has a youtube link in it, make a new slide for that.
+        
+        if 'youtube.com/embed' not in caption:
+            line = make_gallery_item(caption, basename)
+
+        else:    
+            (caption1, url) = caption.split('<iframe')
+            line1           = make_gallery_item(caption1, basename)            
+            url             = 'http' + url.split('http')[1].split('&quot')[0]            
+            line2           = make_gallery_item('', url)            
+            line            = line1 + line2
+        
+        # Print the entire HTML line, with image, thumbnail, and caption, to the file
+    
+        lun.write(line)
+        print(line) 
+       
+   # Print the HTML footer, and close the file
+    
+    lun.write('</div>\n')    
+    lun.write('</div>\n')
+        
+    for line in footer:
+        lun.write(line)    
+        
+    lun.close()
+    print(f'Wrote: {file_out}')
+
+# =============================================================================
+# Call the main code
+# =============================================================================
+
+if (__name__ == '__main__'):
+    photo2web()
+    
