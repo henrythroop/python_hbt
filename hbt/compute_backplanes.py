@@ -240,24 +240,6 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         (st_target_sun_frame, lt) = sp.spkezr('Sun', et, frame, abcorr, name_target) # From body to Sun, in body frame
         vec_target_sun_frame = st_target_sun_frame[0:3]
         
-        # Set up a plane normal to the observer, that goes through the target. 
-        # It should be centered on the target. It basically defines the 'sky plane.'
-        # By convention, set up vector so it points from body, out into anti-observer direction.
-        # Set this up in J2K.
-        
-        pt_plane_obs_targ_norm_j2k = sp.spkezr('Sun', et, 'J2000', abcorr, name_target)[0][0:3]  # Find abs pos of body
-        
-        vec_plane_obs_targ_norm_j2k = -vec_target_sc_j2k                                        # Find normal vec
-        
-        plane_target_sky = sp.nvp2pl(vec_plane_obs_targ_norm_j2k, pt_plane_obs_targ_norm_j2k) # Create the plane
-        
-        # Compute the position of the observer, relative to Sun, in J2K coords. This is for skyplane calc below.
-        # Also get position of target, relative to Sun.
-        # I could equally well do these as position wrt SS barycenter, but I don't know body name for that.
-        
-        pt_obs_j2k    = sp.spkezr('Sun', et, 'J2000', abcorr, name_observer)[0][0:3]
-        pt_target_j2k = sp.spkezr('Sun', et, 'J2000', abcorr, name_observer)[0][0:3]
-        
         # Create a 2D array of RA and Dec points
         
         xs = range(n_dx)
@@ -325,37 +307,11 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 
                 angle_phase = sp.vsep(-vec_pix_frame, vec_ring_sun_frame)
 
-                # Calc the vertical position ('Z') in the sky plane. This is useful for edge-on rings.
-                # To do this, take the vector for this pixel, and find intersection 
-                # with skyplane.
-                # Arguments: INRYPL(pt_of_vec, dir_of_vec, plane_to_intersect
-                #     Pt = sun-to-observer
-                #     vector = observer-to-pixel ray
-                #     plane = (defined sky plane variable)
-                
-                # Now get the intersection point. It is returned in the same frame as the ray, which is J2K
-                (npts, pt_intersect_j2k) = sp.inrypl(pt_obs_j2k, vec_pix_j2k, plane_target_sky)
-                
-                # Now take this point, and convert into a vertical position in the body frame.
-                # To do this transform the pt from J2K coords, into body frame, and then take z
-                
-                pt_intersect_j2k_relative = pt_intersect_j2k - pt_target_j2k
-                vec_pix_frame = sp.mxv(mx_j2k_frame, pt_intersect_j2k_relative)  # Now this is XYZ in MU69 coords
-
-                if ('MU69' in name_target):
-                    pt_intersect_skyplane = pt_intersect_frame # Q: Do we need to swap XYZ here? Not sure.
-                    
-#                                     = np.array([pt_intersect_frame[0], pt_intersect_frame[2], pt_intersect_frame[1]])
-
                 # Save various derived quantities
                          
                 radius_arr[i_y, i_x] = radius_body  # RECPGR returns altitude, not radius. (RECLAT returns radius.)
                 lon_arr[i_y, i_x]    = lon
                 phase_arr[i_y, i_x]  = angle_phase
-                x_skyplane[i_y, i_x] = pt_intersect_frame[0]
-                y_skyplane[i_y, i_x] = pt_intersect_frame[1]
-                z_skyplane[i_y, i_x] = pt_intersect_frame[2]
-                
                 
                 # Now calc angular separation between this pixel, and the satellites in our list
                 # Since these are huge arrays, cast into floats to make sure they are not doubles.
