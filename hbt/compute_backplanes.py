@@ -294,24 +294,29 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 # plane_target_eq is defined as the body's equatorial plane (its XZ for MU69).
                 
                 # ** Some question as to whether we should shoot this vector at the ring plane, or the sky plane.
-                # Ring plane is normally the one we want. Eq's break down for edge-on rings... there is always
-                # an ambiguity.
-                (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_target_eq) 
-                                                                                             # pt, vec, plane
+                # Ring plane is normally the one we want. But, for the case of edge-on rings, the eq's break down.
+                # So, we should use the sky plane instead. Testing shows that for the case of MU69 Eq's break down 
+                # for edge-on rings... there is always an ambiguity.
 
                 # ** For testing, try intersecting the sky plane instead of the ring plane.
-                # ** Confrimed: Using sky plane gives identical results in case of face-on rings.
+                # ** Confirmed: Using sky plane gives identical results in case of face-on rings.
                 #    And it gives meaningful results in case of edge-on rings, where ring plane did not.
+                #    However, for normal rings (e.g., Jupiter), we should continue using the ring plane, not sky plane.
                 
                 do_sky_plane = True
                 
-                if do_sky_plane:
+                if do_sky_plane and ('MU69' in name_target):
                     plane_sky_frame = sp.nvp2pl(vec_sc_target_frame, [0,0,0])  # Frame normal to s/c vec, cntrd on MU69
                     (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_sky_frame) 
                     
                     # pt_intersect_frame is the point where the ray hits the skyplane, in the coordinate frame
                     # of the target body.
-                    
+    
+                else:
+                    (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_target_eq) 
+                                                                                             # pt, vec, plane
+                
+                # Swap axes in target frame if needed.                
                 # In the case of MU69 (both sunflower and tunacan), the frame is defined s.t. the ring 
                 # is in the XZ plane, not XY. This is strange (but correct).
                 # I bet MU69 is the only ring like this. Swap it so that Z means 'vertical, out of plane' -- 
@@ -337,14 +342,17 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 # position of that (in xyz, radius, longitude, etc).
                 # Since that plane is fixed, I don't see a disadvantage to doing that.
                 
-                radius_body, lon, lat = sp.reclat(pt_intersect_frame)
-                                
-                # Get the vertical position (altitude)
-                # ** Ahh, this is zero because the intersectin point is in the plane -- that is, z position of zero,duh.
+                # We want the 'radius' to be the radius in the equatorial plane -- that is, sqrt(x^2 + y^2).
+                # We don't want it to be the 'SPICE radius', which is the distance.
+                # (For MU69 equatorial plane is nominally XZ, but we have already changed that above to XY.)
                 
+                _radius_3d, lon, lat = sp.reclat(pt_intersect_frame)
+                
+                radius_eq = sp.vnorm([pt_intersect_frame[0], pt_intersect_frame[1], 0])
+                
+                # Get the vertical position (altitude)
                 
                 altitude = pt_intersect_frame[2]
-#                print(f'pt_intersect_frame = {pt_intersect_frame}')
 
                 # Calculate the phase angle: angle between s/c-to-ring, and ring-to-sun
         
@@ -354,7 +362,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
 
                 # Save various derived quantities
                          
-                radius_arr[i_y, i_x] = radius_body  # RECPGR returns altitude, not radius. (RECLAT returns radius.)
+                radius_arr[i_y, i_x] = radius_eq
                 lon_arr[i_y, i_x]    = lon
                 phase_arr[i_y, i_x]  = angle_phase
                 altitude_arr[i_y, i_x] = altitude
@@ -377,11 +385,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
              'dDec_km'      : ddec_arr.astype(float),
              'Radius_eq'    : radius_arr.astype(float),
              'Longitude_eq' : lon_arr.astype(float), 
-             'Altitude_eq'  : altitude_arr.astype(float),
              'Phase'        : phase_arr.astype(float),
-#             'X_sky'        : x_skyplane.astype(float),
-#             'Y_sky'        : y_skyplane.astype(float),  # Looks like 'Y' is the one I want for vertical position
-#             'Z_sky'        : z_skyplane.astype(float)
+             'Altitude_eq'  : altitude_arr.astype(float),
              }
         
         # Assemble a bunch of descriptors, to be put into the FITS headers
@@ -393,8 +398,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 'Offset from target in target plane, Dec direction, km',
                 'Projected equatorial radius, km',
                 'Projected equatorial longitude, km',
-                'Altitude above midplane, km',
                 'Sun-target-observer phase angle, radians',
+                'Altitude above midplane, km',
 #                'X position of sky plane intercept',
 #                'Y position of sky plane intercept',
 #                'Z position of sky plane intercept'
@@ -444,7 +449,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
 # =============================================================================
     
 if (__name__ == '__main__'):
-    
+
+#%%%    
     import  matplotlib.pyplot as plt
     
     do_test_jupiter = False
@@ -466,16 +472,20 @@ if (__name__ == '__main__'):
         
         if ('ORT3' in file_in):
             frame         = '2014_MU69_TUNACAN_ROT'    # Use this for ORT3
-#        if ('ORT1' in file_in) or ('ORT2' in file_in):
-#            frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
+        if ('ORT1' in file_in) or ('ORT2' in file_in):
+            frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
        
-        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
+#        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
 #        frame         = '2014_MU69_TUNACAN_ROT'   # Use this for ORT1 and ORT2
 
         name_target   = 'MU69'
         name_observer = 'New Horizons'
         file_tm       = '/Users/throop/git/NH_rings/kernels_kem_prime.tm'  # SPICE metakernel
    
+    
+    stretch_percent = 90    
+    stretch = astropy.visualization.PercentileInterval(stretch_percent) # PI(90) scales to 5th..95th %ile.
+
     # Start SPICE. Unload the existing kernel, if loaded, just for safety.
     
     if sp.ktotal('ALL'):
@@ -503,9 +513,10 @@ if (__name__ == '__main__'):
             
         if do_plot:
 
-            planes_extra = ['Radius_eq', 'Longitude_eq']
+            planes_contour = ['Radius_eq', 'Longitude_eq']
+            
             hbt.fontsize(8)
-            nxy = math.ceil(math.sqrt(len(planes) + len(planes_extra)))  # Compute the grid size 
+            nxy = math.ceil(math.sqrt(len(planes) + len(planes_contour)))  # Compute the grid size 
                                                                          # needed to plot all the planes to screen
             
             # Loop and plot each subplane individually, as color gradient plots.
@@ -521,7 +532,7 @@ if (__name__ == '__main__'):
             
             # Make a few more plots as contour plots. Easier to see this way.
             
-            for key in planes_extra:    
+            for key in planes_contour:    
                 plt.subplot(nxy, nxy, i)
                 plt.contour(planes[key], aspect=1)
                 plt.ylim((hbt.sizex(planes[key]), 0))
@@ -538,5 +549,13 @@ if (__name__ == '__main__'):
             im = f['PRIMARY'].data
             hbt.figsize((10,10))
             plt.imshow(stretch(im), origin='lower')
-            plt.imshow(planes['Radius_eq'] < 10000)
+
+            # In the case of a tunacan orbit, plot a tunacan from the backplane
+
+            if ('ORT3' in file_in):               
+                plt.imshow((np.abs(planes['Altitude_eq']) < 3000) &
+                           (planes['Radius_eq'] < 5000),
+                           alpha=0.5)
+            plt.show()    
             
+#%%%
