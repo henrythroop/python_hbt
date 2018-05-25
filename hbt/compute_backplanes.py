@@ -304,9 +304,13 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 #    And it gives meaningful results in case of edge-on rings, where ring plane did not.
                 
                 do_sky_plane = True
+                
                 if do_sky_plane:
                     plane_sky_frame = sp.nvp2pl(vec_sc_target_frame, [0,0,0])  # Frame normal to s/c vec, cntrd on MU69
                     (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_sky_frame) 
+                    
+                    # pt_intersect_frame is the point where the ray hits the skyplane, in the coordinate frame
+                    # of the target body.
                     
                 # In the case of MU69 (both sunflower and tunacan), the frame is defined s.t. the ring 
                 # is in the XZ plane, not XY. This is strange (but correct).
@@ -338,7 +342,6 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 # Get the vertical position (altitude)
                 # ** Ahh, this is zero because the intersectin point is in the plane -- that is, z position of zero,duh.
                 
-                # Thinking about this a lot, I think I have to define a sky plane. Ugh.
                 
                 altitude = pt_intersect_frame[2]
 #                print(f'pt_intersect_frame = {pt_intersect_frame}')
@@ -442,7 +445,6 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     
 if (__name__ == '__main__'):
     
-    
     import  matplotlib.pyplot as plt
     
     do_test_jupiter = False
@@ -460,8 +462,16 @@ if (__name__ == '__main__'):
     if (do_test_mu69):
 
         file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
-#        frame         = '2014_MU69_SUNFLOWER_ROT'
-        frame         = '2014_MU69_TUNACAN_INERT'
+        file_in       = '/Users/throop/Data/ORT3/buie/all/lor_0407015627_0x633_wcs_HAZARD_ort3.fit'
+        
+        if ('ORT3' in file_in):
+            frame         = '2014_MU69_TUNACAN_ROT'    # Use this for ORT3
+#        if ('ORT1' in file_in) or ('ORT2' in file_in):
+#            frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
+       
+        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
+#        frame         = '2014_MU69_TUNACAN_ROT'   # Use this for ORT1 and ORT2
+
         name_target   = 'MU69'
         name_observer = 'New Horizons'
         file_tm       = '/Users/throop/git/NH_rings/kernels_kem_prime.tm'  # SPICE metakernel
@@ -469,16 +479,15 @@ if (__name__ == '__main__'):
     # Start SPICE. Unload the existing kernel, if loaded, just for safety.
     
     if sp.ktotal('ALL'):
-        sp.unload(file_tm)
+        try:
+            sp.unload(file_tm)
+#            break
+        except:
+            print("Can't unload")
     sp.furnsh(file_tm)
-    
+     
     if (do_test_jupiter or do_test_mu69):
 
-         # Start SPICE, if necessary
-    
-        if (sp.ktotal('ALL') == 0):
-            sp.furnsh(file_tm)
-               
         # Create the backplanes in memory
         
         (planes, desc) = compute_backplanes(file_in, name_target, frame, name_observer,
@@ -493,9 +502,11 @@ if (__name__ == '__main__'):
 # =============================================================================
             
         if do_plot:
-            
+
+            planes_extra = ['Radius_eq', 'Longitude_eq']
             hbt.fontsize(8)
-            nxy = math.ceil(math.sqrt(len(planes)))  # Compute the grid size needed to plot all the planes to screen
+            nxy = math.ceil(math.sqrt(len(planes) + len(planes_extra)))  # Compute the grid size 
+                                                                         # needed to plot all the planes to screen
             
             # Loop and plot each subplane individually, as color gradient plots.
             
@@ -507,13 +518,10 @@ if (__name__ == '__main__'):
                 plt.title(key)
                 plt.colorbar()
                 i+=1
-
+            
             # Make a few more plots as contour plots. Easier to see this way.
             
-            planes_extra = ['Radius_eq', 'Longitude_eq']
-
-            for key in planes_extra:
-                
+            for key in planes_extra:    
                 plt.subplot(nxy, nxy, i)
                 plt.contour(planes[key], aspect=1)
                 plt.ylim((hbt.sizex(planes[key]), 0))
@@ -523,3 +531,12 @@ if (__name__ == '__main__'):
             
             plt.tight_layout()
             plt.show()
+            
+            # Plot the original image too
+            
+            f = fits.open(file_in)
+            im = f['PRIMARY'].data
+            hbt.figsize((10,10))
+            plt.imshow(stretch(im), origin='lower')
+            plt.imshow(planes['Radius_eq'] < 10000)
+            
