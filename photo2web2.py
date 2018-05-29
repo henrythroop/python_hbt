@@ -27,14 +27,22 @@ To be done:
     - Add some CSS or something to make the header information < full screen width [DONE]
     - Reduce caption width to less than full screen width.
     - Make a new caption extractor. Use 'sips --getProperty description *jpg', which is much faster
-      than exiftool.
+      than exiftool. [DONE]
     - Figure out what to do with YouTube links. [Ugh. I can embed them just fine, though ugly. But I can't 
-      get them working the proper way.]
+      get them working the proper way.] [FIXED]
     - See if I can smallen the captions at all? Or put to side, or dismiss easily, or?? Since they always
       partially block.
     - Q: At one point I was getting a custom URL each time I clicked around. But no longer. Why not?? 
       I really prefer it. [SOLVED: Turn the 'hash' option back on.]
 
+# 29-May-2018
+      
+      - Thumbnails are not yet made by this program. So, to use:
+          - Output all files from LR
+          - run 'photo2web_old' (perl). This will copy files into originals/, make the thumbnails, and extract captions,
+                       and put into show_old.html and index_old.html.
+          - run 'phtoto2web' (python, this program). This will make the HTML, fancy JS gallery, etc. and put into 
+                       index.html .
 """
 
 import glob
@@ -42,6 +50,7 @@ import os.path
 from html import escape
 from bs4 import BeautifulSoup  # HTML parser
 import subprocess
+import datetime
 
 # =============================================================================
 # Function definitions
@@ -98,7 +107,7 @@ def make_gallery_item(caption, basename, type = 'span'):
                 f'  </span>\n\n'
 
     if 'youtu' in basename:
-        id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4)
+        id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4). # Create the YouTube thumbnail!
         line  = f'<span class="item"' + \
                 f' data-src="{basename}"> ' + \
                 f'  <a href="{basename}" data-src="{basename}"> ' + \
@@ -106,18 +115,27 @@ def make_gallery_item(caption, basename, type = 'span'):
                 f'  </a>' + \
                 f'  </span>\n\n'
 
-# For debugging, 
-# http://throop/photos/Trips/Test/show.html#lg=1&slide=89
-# Solved! Looks like link must be of form https://youtu.be/AuCqrwxquPU .  And, the base browser URL for gallery
-                # itself must be http://, not file:// or else get JS errors.
-# Problem: how long does it take PowWeb to update my directory??  It's some finite time, like 10 minutes.              
-                
         # As a test, define the element as an <a> anchor.
         
 #    line_a = f'<span class="item"> <a href="originals/{basename}"> <img src="thumbnails/s{basename}"/> </a></span>\n\n'
 
     return line
 
+def make_thumbnails(files):
+    """
+    Make thumbnails for the specified files.
+    """
+    
+    # OK, right now this code does nothing. I want it to do the same as the original Perl code did:
+    
+#    o Get a list of new .jpg's in the main directory
+#    o For each one:
+#        o If basename of it matches one in originals, make new thumbs and copy and replace
+#        o If it doens't match an existing one, then (?? -- not sure) -- make new thumbs and copy, no rename
+#       
+    
+    return None
+    
 # =============================================================================
 # Start main code
 # =============================================================================
@@ -149,7 +167,7 @@ def photo2web():
     
     captions = get_all_captions(files_original)
     
-    print('Read {len(captions)} captions')
+    print(f'Read {len(captions)} captions')
     
     # Read text header
             
@@ -168,11 +186,12 @@ def photo2web():
         for line in lun:
             header.append(line.replace('TITLE_HERE', title_gallery))
     
-    # Read HTML footer
+    # Read HTML footer. Plug in the date as needed.
             
+    datestr = datetime.datetime.now().strftime("%d %b %Y")
     with open(file_footer, "r") as lun:
         for line in lun:
-            footer.append(line)
+            footer.append(line.replace('DATE_HERE', datestr))
     
     # Now do the output
             
@@ -192,6 +211,12 @@ def photo2web():
     lun.write('<div id="lightgallery" class="list-unstyled row">' + "\n")
     
     j = 0
+    
+    # Print a link to the old-style gallery
+
+    lun.write("<p><a href=show_old.html><b>Slideshow (old-style, all photos on one long page)</b></a><br><p>\n")
+    lun.write("<p><a href='..'><img src='../icons/info.gif' border=0><b>Return to list of galleries</b></a><p>\n")
+    
     # Loop and print the entry for each image
     
     for i,file in enumerate(files_original):
@@ -204,7 +229,7 @@ def photo2web():
             if (j > 0):
                 lun.write('</div>\n')
             caption, section = caption.split('##')
-            lun.write(f'<br><hr> <h3>{section}</h3>\n\n')
+            lun.write(f'<br><hr> <a name={j+1}> <h3>{section}</h3>\n\n')  # Anchor tag, so we can use index.html#1
             lun.write(f'<div id="gallery{j}">\n')
             j+=1
     
@@ -223,7 +248,9 @@ def photo2web():
         # If the caption has a youtube link in it, make a new slide for that.
         # Convention is this: If there is a youtube movie, put its URL in the 
         # Lightroom caption for the *previous* image. Write it like this:
-        #  "And here we are swimming.<a href=httpw://youtu.be/mov12498jE>Swimming movie!</a>"
+        #
+        #   And here we are swimming.<a href=https://youtu.be/mov12498jE>Swimming movie!</a>
+        #
         # Don't put in the <embed> or anything like that.
         
         if ('youtube.com' not in caption) and ('youtu.be' not in caption):
@@ -245,7 +272,7 @@ def photo2web():
         # Print the entire HTML line, with image, thumbnail, and caption, to the file
     
         lun.write(line)
-        print(line) 
+#        print(line) 
        
    # Print the HTML footer, and close the file
     
