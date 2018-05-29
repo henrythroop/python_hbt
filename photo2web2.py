@@ -28,7 +28,7 @@ To be done:
     - Reduce caption width to less than full screen width.
     - Make a new caption extractor. Use 'sips --getProperty description *jpg', which is much faster
       than exiftool.
-    - Figure out what to do with YouTube links. [Ugh. I can embed them just fine, though ugly. But I cant' 
+    - Figure out what to do with YouTube links. [Ugh. I can embed them just fine, though ugly. But I can't 
       get them working the proper way.]
     - See if I can smallen the captions at all? Or put to side, or dismiss easily, or?? Since they always
       partially block.
@@ -40,14 +40,53 @@ To be done:
 import glob
 import os.path
 from html import escape
+from bs4 import BeautifulSoup  # HTML parser
+import subprocess
 
 # =============================================================================
 # Function definitions
 # =============================================================================
 
+def get_all_captions(files):
+    """
+    Given a list of files, returns a list of captions.
+    This uses 'sips', which is far faster than exiftool.
+    It does not depend on using a captions.txt file.
+    """
+    
+    captions_all = subprocess.check_output(['sips', '--getProperty', 'description'] + files).decode("utf-8")
+    
+    captions = []
+    for i in range(len(files)):
+        if (i < len(files)-1):
+            pos1 = captions_all.find(files[i])
+            pos2 = captions_all.find(files[i+1])
+            caption_i = captions_all[pos1:pos2]
+        else:
+            pos1 = captions_all.find(files[i])
+            caption_i = captions_all[pos1:]
+        caption_i = caption_i.replace(files[i], '')
+        caption_i = caption_i[16:]
+        caption_i = caption_i[:-1]  # Remove final \n
+        caption_i = caption_i.replace('<nil>', '')  # Remove <nil>
+        captions.append(caption_i)
+#        print(f'Added caption {caption_i}')
+        
+    return captions
+        
 def make_gallery_item(caption, basename, type = 'span'):
     """
     Return an HTML line for the gallery.
+    
+    Parameters
+    -----
+    
+    caption:
+        String caption, HTML.
+        
+    basename:
+        String. Can be a filename (IMG_5534.jpg) or a URL (http://www.youtube.com/asdfk98)
+        
     """
     
     if '.jpg' in basename:
@@ -58,12 +97,12 @@ def make_gallery_item(caption, basename, type = 'span'):
                 f'  </a>\n' + \
                 f'  </span>\n\n'
 
-    if 'youtube.com' in basename:
-        basename = basename.replace('embed', 'watch')
+    if 'youtu' in basename:
+        id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4)
         line  = f'<span class="item"' + \
                 f' data-src="{basename}"> ' + \
                 f'  <a href="{basename}" data-src="{basename}"> ' + \
-                f'  <img src="http://img.youtube.com/vi/dNSZTp-mHrc/default.jpg"/>' + \
+                f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/>' + \
                 f'  </a>' + \
                 f'  </span>\n\n'
 
@@ -84,7 +123,8 @@ def make_gallery_item(caption, basename, type = 'span'):
 # =============================================================================
 
 def photo2web():
-    dir_photos = '/Users/throop/photos/Trips/Test'
+
+    dir_photos = '/Users/throop/photos/Trips/Bhutan_Mar18'
     
     files_original = glob.glob(os.path.join(dir_photos, 'originals/*.jpg'))
 
@@ -92,11 +132,14 @@ def photo2web():
     # We tag this span with class=item, and then use a corresponding selector in the call to lightgallery.
     # This prevents lightgallery from being called on headers, <hr>, and random text on the page which is not pics.
     
+    dir_js = '/Users/throop/photos/Trips/js'
+    dir_lg = os.path.join(dir_js, 'lightGallery-master')
+    
     file_captions  = os.path.join(dir_photos, 'captions.txt')   # List of all captions, one per line-pair, via exiftool
-    file_header    = os.path.join(dir_photos, 'header.html')    # Header with JS includes, CSS, etc.   
+    file_header    = os.path.join(dir_js, 'header.html')    # Header with JS includes, CSS, etc.   
+    file_footer    = os.path.join(dir_js, 'footer.html')  # HTML footer with JS startup, etc.
     file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. Line0 is gallery title
-    file_footer    = os.path.join(dir_photos, 'footer.html')  # HTML footer with JS startup, etc.
-    file_out       = os.path.join(dir_photos, 'show.html')    # Final output filename
+    file_out       = os.path.join(dir_photos, 'index.html')    # Final output filename
     
     captions = []
     header   = []
@@ -104,12 +147,9 @@ def photo2web():
     
     header_txt = []
     
-    with open(file_captions, "r") as ins:
-        captions = []
-        for line in ins:
-            line = line.replace('\n', '')  # Kill blank lines (which are intentional separators), and strip newlines.
-            if line:
-              captions.append(line)
+    captions = get_all_captions(files_original)
+    
+    print('Read {len(captions)} captions')
     
     # Read text header
             
@@ -181,15 +221,25 @@ def photo2web():
         basename = os.path.basename(file)
 
         # If the caption has a youtube link in it, make a new slide for that.
+        # Convention is this: If there is a youtube movie, put its URL in the 
+        # Lightroom caption for the *previous* image. Write it like this:
+        #  "And here we are swimming.<a href=httpw://youtu.be/mov12498jE>Swimming movie!</a>"
+        # Don't put in the <embed> or anything like that.
         
-        if 'youtube.com/embed' not in caption:
-            line = make_gallery_item(caption, basename)
+        if ('youtube.com' not in caption) and ('youtu.be' not in caption):
+            line = make_gallery_item(caption, basename)                     # Normal caption and URL
 
         else:    
-            (caption1, url) = caption.split('<iframe')
-            line1           = make_gallery_item(caption1, basename)            
-            url             = 'http' + url.split('http')[1].split('&quot')[0]            
-            line2           = make_gallery_item('', url)            
+            matchstr        = '<a href=https://you'
+            
+            (caption1, html) = caption.split(matchstr)
+            line1           = make_gallery_item(caption1, basename)
+            html             = matchstr + html
+            soup            = BeautifulSoup(html, 'html5lib')
+            a               = soup.find_all('a')[0]
+            url             = a.get('href')
+            caption2        = a.contents[0]
+            line2           = make_gallery_item(caption2, url)            
             line            = line1 + line2
         
         # Print the entire HTML line, with image, thumbnail, and caption, to the file
