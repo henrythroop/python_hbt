@@ -35,6 +35,8 @@ To be done:
     - Q: At one point I was getting a custom URL each time I clicked around. But no longer. Why not?? 
       I really prefer it. [SOLVED: Turn the 'hash' option back on.]
 
+https://stackoverflow.com/questions/8631076/what-is-the-fastest-way-to-generate-image-thumbnails-in-python 
+
 """
 
 import glob
