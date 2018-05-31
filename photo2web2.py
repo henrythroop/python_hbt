@@ -20,20 +20,21 @@ working eventually, but I didn't, and it's only a minimal improvement.
 Henry Throop 22-May-2018
 
 To be done:
+    - Q: At one point I was getting a custom URL each time I clicked around. But no longer. Why not?? 
+      I really prefer it. [SOLVED: Turn the 'hash' option back on.]
+    - Add some CSS or something to make the header information < full screen width [DONE]
+    - Make a new caption extractor. Use 'sips --getProperty description *jpg', which is much faster
+      than exiftool. [DONE]
+    - Figure out what to do with YouTube links. [Ugh. I can embed them just fine, though ugly. But I can't 
+      get them working the proper way.] [FIXED]
+
     - Make a new thumnail generator. Thumbs now need to be made in the perl code.
       Consider using sips, which might be faster than imagemagick.
     - Make page responsive to different screen sizes.
     - Figure out why thumbnail animations are broken. [Can't figure it out. Abandoning.]
-    - Add some CSS or something to make the header information < full screen width [DONE]
     - Reduce caption width to less than full screen width.
-    - Make a new caption extractor. Use 'sips --getProperty description *jpg', which is much faster
-      than exiftool.
-    - Figure out what to do with YouTube links. [Ugh. I can embed them just fine, though ugly. But I can't 
-      get them working the proper way.]
     - See if I can smallen the captions at all? Or put to side, or dismiss easily, or?? Since they always
       partially block.
-    - Q: At one point I was getting a custom URL each time I clicked around. But no longer. Why not?? 
-      I really prefer it. [SOLVED: Turn the 'hash' option back on.]
 
 https://stackoverflow.com/questions/8631076/what-is-the-fastest-way-to-generate-image-thumbnails-in-python 
 
@@ -56,22 +57,33 @@ def get_all_captions(files):
     It does not depend on using a captions.txt file.
     """
     
+    # For unknown reasons, it is far faster to call 'sips *' one time, rather than call sips
+    # N times, once per file. So, we do it that way.
+    # 
+    
     captions_all = subprocess.check_output(['sips', '--getProperty', 'description'] + files).decode("utf-8")
     
     captions = []
+    
+    # 'sips *' creates one long mass of data, which includes the filenames, some text, and the captions.
+    # We have to parse that mass appropriately to extract the captions from it.
+    
     for i in range(len(files)):
         if (i < len(files)-1):
-            pos1 = captions_all.find(files[i])
+            pos1 = captions_all.find(files[i])    # Caption is the text between filenames i and i+1.
             pos2 = captions_all.find(files[i+1])
             caption_i = captions_all[pos1:pos2]
         else:
-            pos1 = captions_all.find(files[i])
+            pos1 = captions_all.find(files[i])    # Except in case of final caption, where it is at end of string.
             caption_i = captions_all[pos1:]
-        caption_i = caption_i.replace(files[i], '')
-        caption_i = caption_i[16:]
-        caption_i = caption_i[:-1]  # Remove final \n
-        caption_i = caption_i.replace('<nil>', '')  # Remove <nil>
-        captions.append(caption_i)
+            
+        caption_i = caption_i.replace(files[i], '')  # Remove the filename
+        caption_i = caption_i[16:]                   # Remove the phrase 'description: '
+        caption_i = caption_i[:-1]                   # Remove final \n
+        caption_i = caption_i.replace('<nil>', '')   # Remove <nil> for files w no caption.
+
+        captions.append(caption_i)                   # Add this caption, properly parsed, to the output list
+
 #        print(f'Added caption {caption_i}')
         
     return captions
@@ -91,6 +103,8 @@ def make_gallery_item(caption, basename, type = 'span'):
         
     """
     
+    # If passed an image name, handle it
+    
     if '.jpg' in basename:
         line  = f'<span class="item" data-sub-html="<span class=caption>{caption}</span>"' + \
                 f' data-src="originals/{basename}">\n' + \
@@ -99,7 +113,9 @@ def make_gallery_item(caption, basename, type = 'span'):
                 f'  </a>\n' + \
                 f'  </span>\n\n'
 
-    if 'youtu' in basename:
+    # If we are passed a URL, like youtube.come or youtu.be , handle it
+
+    if 'youtu' in basename:      
         id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4)
         line  = f'<span class="item"' + \
                 f' data-src="{basename}"> ' + \
@@ -107,14 +123,8 @@ def make_gallery_item(caption, basename, type = 'span'):
                 f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/>' + \
                 f'  </a>' + \
                 f'  </span>\n\n'
-
-# For debugging, 
-# http://throop/photos/Trips/Test/show.html#lg=1&slide=89
-# Solved! Looks like link must be of form https://youtu.be/AuCqrwxquPU .  And, the base browser URL for gallery
-                # itself must be http://, not file:// or else get JS errors.
-# Problem: how long does it take PowWeb to update my directory??  It's some finite time, like 10 minutes.              
                 
-        # As a test, define the element as an <a> anchor.
+# As a test, define the element as an <a> anchor.
         
 #    line_a = f'<span class="item"> <a href="originals/{basename}"> <img src="thumbnails/s{basename}"/> </a></span>\n\n'
 
@@ -193,7 +203,8 @@ def photo2web():
     lun.write('<div class="demo-gallery">\n')
     lun.write('<div id="lightgallery" class="list-unstyled row">' + "\n")
     
-    j = 0
+    j = 0  # This is the current section number we are on (0, 1, 2, 3...)
+    
     # Loop and print the entry for each image
     
     for i,file in enumerate(files_original):
@@ -266,4 +277,3 @@ def photo2web():
 
 if (__name__ == '__main__'):
     photo2web()
-    
