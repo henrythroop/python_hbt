@@ -469,10 +469,14 @@ if (__name__ == '__main__'):
 
         file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
         file_in       = '/Users/throop/Data/ORT3/buie/all/lor_0407015627_0x633_wcs_HAZARD_ort3.fit'
+        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits' #ORT4
+        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731312_0x633_pwcs.fits' #Windowed yes
+        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731432_0x633_pwcs.fits' #Windowed
+        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731762_0x633_pwcs.fits' #Non-windowed
         
         if ('ORT3' in file_in):
             frame         = '2014_MU69_TUNACAN_ROT'    # Use this for ORT3
-        if ('ORT1' in file_in) or ('ORT2' in file_in):
+        if ('ORT1' in file_in) or ('ORT2' in file_in) or ('ORT4' in file_in):
             frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
        
 #        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
