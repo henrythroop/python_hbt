@@ -47,6 +47,7 @@ To be done:
 
 import glob
 import os.path
+import os
 from html import escape
 from bs4 import BeautifulSoup  # HTML parser
 import subprocess
@@ -101,18 +102,15 @@ def make_gallery_item(caption, basename, type = 'span'):
     if '.jpg' in basename:
         line  = f'<span class="item" data-sub-html="<span class=caption>{caption}</span>"' + \
                 f' data-src="originals/{basename}">\n' + \
-                f'  <a href="originals/{basename}">\n' + \
-                f'  <img src="thumbnails/s{basename}"/>\n' + \
-                f'  </a>\n' + \
+                f'  <a href="originals/{basename}"><img src="thumbnails/s{basename}"/></a>\n' + \
                 f'  </span>\n\n'
 
     if 'youtu' in basename:
         id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4). # Create the YouTube thumbnail!
         line  = f'<span class="item"' + \
                 f' data-src="{basename}"> ' + \
-                f'  <a href="{basename}" data-src="{basename}"> ' + \
-                f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/>' + \
-                f'  </a>' + \
+                f'  <a href="{basename}" data-src="{basename}">' + \
+                f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/></a>' + \
                 f'  </span>\n\n'
 
         # As a test, define the element as an <a> anchor.
@@ -142,8 +140,8 @@ def make_thumbnails(files):
 
 def photo2web():
 
-    dir_photos = '/Users/throop/photos/Trips/Bhutan_Mar18'
-    
+    dir_photos = os.getcwd()
+
     files_original = glob.glob(os.path.join(dir_photos, 'originals/*.jpg'))
 
     # Here, define a <span> </span> element which is the image itself. 
