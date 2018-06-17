@@ -162,7 +162,6 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     y_skyplane = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
     z_skyplane = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
     
-
 # =============================================================================
 #  Do the backplane, in the general case.
 #  This is a long routine, because we deal with all the satellites, the J-ring, etc.        
@@ -303,7 +302,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 #    And it gives meaningful results in case of edge-on rings, where ring plane did not.
                 #    However, for normal rings (e.g., Jupiter), we should continue using the ring plane, not sky plane.
                 
-                do_sky_plane = True
+                do_sky_plane = False  # For ORT4, where we want to use euer angles, need to set this to False
                 
                 if do_sky_plane and ('MU69' in name_target):
                     plane_sky_frame = sp.nvp2pl(vec_sc_target_frame, [0,0,0])  # Frame normal to s/c vec, cntrd on MU69
