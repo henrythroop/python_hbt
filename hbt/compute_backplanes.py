@@ -16,6 +16,11 @@ from   astropy.wcs import WCS
 import os
 import matplotlib.pyplot as plt
 
+from scipy.optimize import curve_fit
+from scipy import asarray as ar,exp
+
+from get_radial_profile_backplane import get_radial_profile_backplane
+
 # Create backplanes based on an image number. This is a stand-alone function, *not* a class or method.
 
 # SPICE is required here, but it is *not* initialized. It is assumed that that has already been done.
@@ -158,9 +163,9 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     dra_arr    = np.zeros((n_dy, n_dx))     # dRA of pixel: Distance in sky plane between pixel and body, in km. 
     ddec_arr   = np.zeros((n_dy, n_dx))     # dDec of pixel: Distande in sky plane between pixel and body, in km.
     phase_arr  = np.zeros((n_dy, n_dx))     # Phase angle    
-    x_skyplane = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
-    y_skyplane = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
-    z_skyplane = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
+    x_arr      = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
+    y_arr      = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
+    z_arr      = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
     
 # =============================================================================
 #  Do the backplane, in the general case.
@@ -204,11 +209,12 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         # If additional angles are passed, then create an Euler matrix which will do additional angles of rotation.
         # This is defined in the 'MU69_SUNFLOWER' frame
 
-            mx_euler = sp.eul2m(angle3, angle2, angle1, 3, 2, 1)  # (1, 2, 3) refers to axes (x, y, z)
             vec_plane = [0, 1, 0]                                 # Use +Y (anti-sun dir), which is normal to XZ.
-            vec_plane_tilted = sp.mxv(mx_euler, vec_plane)
-            plane_target_eq = sp.nvp2pl(vec_plane_tilted, [0,0,0]) # "Normal Vec + Point to Plane". 0,0,0 = origin.
+#            vec_plane = [0, 0, 1]                                 # Use +Y (anti-sun dir), which is normal to XZ.
+            plane_target_eq = sp.nvp2pl(vec_plane, [0,0,0]) # "Normal Vec + Point to Plane". 0,0,0 = origin.
 
+           # XXX NB: This plane in in body coords, not J2K coords. This is what we want, because the 
+           # target intercept calculation is also done in body coords.
         
 # =============================================================================
 # Set up the various output planes and arrays necessary for computation
@@ -302,7 +308,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 #    And it gives meaningful results in case of edge-on rings, where ring plane did not.
                 #    However, for normal rings (e.g., Jupiter), we should continue using the ring plane, not sky plane.
                 
-                do_sky_plane = False  # For ORT4, where we want to use euer angles, need to set this to False
+                do_sky_plane = False  # For ORT4, where we want to use euler angles, need to set this to False
                 
                 if do_sky_plane and ('MU69' in name_target):
                     plane_sky_frame = sp.nvp2pl(vec_sc_target_frame, [0,0,0])  # Frame normal to s/c vec, cntrd on MU69
@@ -311,10 +317,10 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                     # pt_intersect_frame is the point where the ray hits the skyplane, in the coordinate frame
                     # of the target body.
     
-                else:
+                else:                         # Calc intersect into equator of target plane (ie, ring plane)
                     (npts, pt_intersect_frame) = sp.inrypl(pt_target_sc_frame, vec_pix_frame, plane_target_eq) 
                                                                                              # pt, vec, plane
-                
+                    
                 # Swap axes in target frame if needed.                
                 # In the case of MU69 (both sunflower and tunacan), the frame is defined s.t. the ring 
                 # is in the XZ plane, not XY. This is strange (but correct).
@@ -347,7 +353,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 
                 _radius_3d, lon, lat = sp.reclat(pt_intersect_frame)
                 
-                radius_eq = sp.vnorm([pt_intersect_frame[0], pt_intersect_frame[1], 0])
+                radius_eq = sp.vnorm([pt_intersect_frame[0], pt_intersect_frame[1], 0])  
+#                radius_eq = sp.vnorm([pt_intersect_frame[0], pt_intersect_frame[1], pt_intersect_frame[2]])
                 
                 # Get the vertical position (altitude)
                 
@@ -365,6 +372,12 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 lon_arr[i_y, i_x]    = lon
                 phase_arr[i_y, i_x]  = angle_phase
                 altitude_arr[i_y, i_x] = altitude
+                
+                # Save these just for debugging
+                
+                x_arr[i_y, i_x] = pt_intersect_frame[0]
+                y_arr[i_y, i_x] = pt_intersect_frame[1]
+                z_arr[i_y, i_x] = pt_intersect_frame[2]
                 
                 # Now calc angular separation between this pixel, and the satellites in our list
                 # Since these are huge arrays, cast into floats to make sure they are not doubles.
@@ -386,6 +399,10 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
              'Longitude_eq' : lon_arr.astype(float), 
              'Phase'        : phase_arr.astype(float),
              'Altitude_eq'  : altitude_arr.astype(float),
+#             'x'            : x_arr.astype(float),
+#             'y'            : y_arr.astype(float),
+#             'z'            : z_arr.astype(float),
+#             
              }
         
         # Assemble a bunch of descriptors, to be put into the FITS headers
@@ -398,7 +415,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 'Projected equatorial radius, km',
                 'Projected equatorial longitude, km',
                 'Sun-target-observer phase angle, radians',
-                'Altitude above midplane, km',
+                'Altitude above midplane, km',    
 #                'X position of sky plane intercept',
 #                'Y position of sky plane intercept',
 #                'Z position of sky plane intercept'
@@ -451,6 +468,11 @@ if (__name__ == '__main__'):
 
 #%%%    
     import  matplotlib.pyplot as plt
+
+    # Define a gaussian function, for the fit
+    
+    def gaus(x,a,x0,sigma):
+        return a*exp(-(x-x0)**2/(2*sigma**2))
     
     do_test_jupiter = False
     do_test_mu69    = True
@@ -466,18 +488,22 @@ if (__name__ == '__main__'):
        
     if (do_test_mu69):
 
-        file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
-        file_in       = '/Users/throop/Data/ORT3/buie/all/lor_0407015627_0x633_wcs_HAZARD_ort3.fit'
-        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits' #ORT4
-        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731312_0x633_pwcs.fits' #Windowed yes
-        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731432_0x633_pwcs.fits' #Windowed
-        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731762_0x633_pwcs.fits' #Non-windowed
-        
+#        file_in       = '/Users/throop/Data/ORT1/porter/pwcs_ort1/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits'
+#        file_in       = '/Users/throop/Data/ORT3/buie/all/lor_0407015627_0x633_wcs_HAZARD_ort3.fit'
+#        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ00/lor_0405175932_0x633_pwcs.fits' #ORT4
+#        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731312_0x633_pwcs.fits' #Windowed yes
+#        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731432_0x633_pwcs.fits' #Windowed
+#        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731762_0x633_pwcs.fits' #Non-windowed
+        file_in       = '/Users/throop/Data/ORT4/superstack_ORT4_z4_mean_wcs_sm_hbt.fits'
+#        file_in =      '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ04/lor_0406991172_0x633_pwcs.fits'
+
         if ('ORT3' in file_in):
             frame         = '2014_MU69_TUNACAN_ROT'    # Use this for ORT3
-        if ('ORT1' in file_in) or ('ORT2' in file_in) or ('ORT4' in file_in):
+        if ('ORT1' in file_in) or ('ORT2' in file_in):
             frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
-       
+        if ('ORT4' in file_in):
+            frame         = '2014_MU69_ORT4_1'    # Ring is tilted by 30 deg, and is not a sunflower!
+               
 #        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
 #        frame         = '2014_MU69_TUNACAN_ROT'   # Use this for ORT1 and ORT2
 
@@ -498,7 +524,7 @@ if (__name__ == '__main__'):
         except:
             print("Can't unload")
     sp.furnsh(file_tm)
-     
+        
     if (do_test_jupiter or do_test_mu69):
 
         # Create the backplanes in memory
@@ -551,7 +577,7 @@ if (__name__ == '__main__'):
             f = fits.open(file_in)
             im = f['PRIMARY'].data
             hbt.figsize((10,10))
-            plt.imshow(stretch(im), origin='lower')
+#            plt.imshow(stretch(im), origin='lower')
 
             # In the case of a tunacan orbit, plot a tunacan from the backplane
 
@@ -560,5 +586,58 @@ if (__name__ == '__main__'):
                            (planes['Radius_eq'] < 5000),
                            alpha=0.5)
             plt.show()    
+            
+            if ('ORT4' in file_in):
+
+                dx = 1   # My superstack's WCS is not perfectly aligned. So, do some offsetting here.
+                dy = -4
+                radius_roll = np.roll(np.roll(planes['Radius_eq'], dx, axis=0), dy, axis=1)
+                
+                plt.imshow(stretch(im), origin='lower')
+                plt.imshow((np.abs(radius_roll < 1000)) &
+                           (np.abs(radius_roll < 3000)),
+                           alpha=0.5)
+#                plt.xlim((180,220))
+#                plt.ylim((180,220))
+                plt.show()    
+                
+            # Make a radial profile, if requested
+        
+            
+            num_pts = 200
+            
+            hbt.figsize(8,5)
+            (radius, dn) = get_radial_profile_backplane(im, 
+                                         radius_roll, num_pts=300)
+            
+            # Fit a gaussian to the radial profile, if requested
+            # ** This code works here, but for production, use radial profiles from superstack routines.
+            
+            x = radius[50:]
+            y = dn[50:]            
+            popt,pcov = curve_fit(gaus,x,y,p0=[9000,0,1000])
+
+            plt.plot(radius, dn, label = 'ORT4, backplaned, pole = (275,-56) deg')
+            plt.plot(x,gaus(x,*popt),'ro:', marker = None, ls = '--', lw=0.5, 
+                     label = f'Fit, radius={popt[1]:.0f} km, FWHM={2.35 * popt[2]:.0f} km')
+            # FWHM = 2.35 * sigma: https://ned.ipac.caltech.edu/level5/Leo/Stats2_3.html
+            plt.ylim((-0.2,1))
+            plt.xlim((0, 20000))
+            plt.xlabel('Radius [km]')
+            plt.ylabel('DN')
+            plt.legend()
+            plt.title(f'Radial profile, superstack, backplane from frame {frame}')
+            plt.show()
+
+            
+                        
+#            n = len(x)                          #the number of data
+#            mean = np.sum(x*y)/n                   #note this correction
+#            sigma = sum(y*(x-mean)**2)/n        #note this correction
+#            
+            
+
+ 
+            plt.plot(x,y)
             
 #%%%
