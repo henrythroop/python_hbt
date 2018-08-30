@@ -541,6 +541,20 @@ def normalize(arr, max=1):
    
    return a
 
+def minval(arr, epsilon=0):
+    """
+    Return the smallest non-zero elment of a numpy array.
+    
+    Arguments:    
+        arr:        NumPy array
+        
+    Optional arguments:
+        epsilon:    Value to compare to. Usually zero.     
+        
+    """
+    
+    return np.amin(arr[arr > epsilon])
+
 ##########
 # Normalize two images using linear regression
 ##########
@@ -549,19 +563,13 @@ def normalize_images(arr1, arr2, DO_HISTOGRAM=False):
     """
      Performs linear regression on two images to try to match them.
      
-     Inputs
-     -----
-     
-     arr1:
-         Array which will be normalized
-     
-     arr2:
-         Array to normalize to
+     Args:
+         arr1:         Array which will be normalized
+         
+         arr2:         Array to normalize to
      
      Return values:
-     -----
-     
-     (arr1_norm, r), where r is a tuple, and arr1 * r[0] + r[1] nearly matches arr2.
+         (arr1_norm, r), where r is a tuple, and arr1 * r[0] + r[1] nearly matches arr2.
     """
      
     import matplotlib.pyplot as plt
@@ -1446,6 +1454,75 @@ def logstretch_invert(arr, val):
     """
     
     return np.exp(arr) - val
+
+# =============================================================================
+# Replace a portion of a 2D array with another 2D array
+# =============================================================================
+
+def replace_subarr_2d(large, small, pos):
+    """
+    Replace a portion of a 2d array (e.g., an image) with another array. The upper-left position of the destination
+    is specified. 
+    
+    All arrays must be 2D.
+    
+    Properly handles case where output image is off the edge and does not fully overlap. [NOT IMPLEMENTED!]
+    
+    Arguments:
+        large: Output array
+        small: Input array
+        pos:   Position.of upper-left corner in output array. Tuple (vertical, horizontal) = (x0, y0)
+    """
+
+    x0 = pos[0]  # Vertical
+    y0 = pos[1]
+    
+    dx = hbt.sizex(small)
+    dy = hbt.sizey(small)
+    
+    large[x0:x0+dx, y0:y0+dy] = small
+    
+    return large
+
+# large = np.zeros((20,20))
+# small = np.ones((3,5))
+# out = replace_subarr_2d(large, small, (10,1))
+# plt.imshow(out)
+    
+# =============================================================================
+# Rewrite some SPICE routines (spiceypy) in order to vectorize them where they're not
+# =============================================================================
+
+def radrec_v(rad, ra, dec):
+
+    """
+    Do sp.radrec, but vectorized.
+    
+    Inputs
+    ---
+    
+    Radius:
+        Array, length N
+    RA:
+        Array, length N
+    Dec:
+        Vector, length N
+    
+    Outputs
+    ---    
+    
+    Array, N x 3
+    """    
+        
+    out = np.zeros((len(ra),3))
+    
+    if not(hbt.is_array(rad)):
+        rad_arr = rad + np.zeros(len(ra))
+        
+    for i in range(len(ra)):
+        out[i,:] = sp.radrec(rad_arr[i], ra[i], dec[i])
+        
+    return out
     
 # =============================================================================
 # Function to do linear fit, but as one paramter, not two.
