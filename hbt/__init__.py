@@ -1466,28 +1466,50 @@ def replace_subarr_2d(large, small, pos):
     
     All arrays must be 2D.
     
-    Properly handles case where output image is off the edge and does not fully overlap. [NOT IMPLEMENTED!]
+    If part of the box goes off the edge, then the box is not plotted. A warning is thrown and the original array
+    returned. (In a future improvement, it could be cropped.)
+    
+    Ordering of the position assumes image order. x is horizontl, y is vertical, and pos is (y,x).
     
     Arguments:
         large: Output array
         small: Input array
-        pos:   Position.of upper-left corner in output array. Tuple (vertical, horizontal) = (x0, y0)
+        pos:   Position.of upper-left corner in output array. Tuple (vertical, horizontal) = (y0, x0)
     """
 
-    x0 = pos[0]  # Vertical
-    y0 = pos[1]
+    ok = True # Set a flag. Is everything within limits?
     
-    dx = hbt.sizex(small)
-    dy = hbt.sizey(small)
+    # Position within the output array
     
-    large[x0:x0+dx, y0:y0+dy] = small
+    y0 = pos[0]  # Vertical
+    x0 = pos[1]  # Horizontal
     
-    return large
+    # Size of the small array
+    
+    dx = hbt.sizex_im(small)
+    dy = hbt.sizey_im(small)
+    
+    # Check all the edges
+    
+    if ( (x0 < 0) or (y0 < 0) or (x0+dx > hbt.sizex_im(large)) or (y0+dy > hbt.sizey_im(large)) ):
+        
+        ok = False
+        
+    if ok:
+        large[y0:y0+dy, x0:x0+dx] = small
 
+    else:
+        warnings.warn('Box exceeds edges -- not replaced', Warning)
+
+    return large
+    
+# pos = (18,15)
 # large = np.zeros((20,20))
 # small = np.ones((3,5))
-# out = replace_subarr_2d(large, small, (10,1))
+# out = replace_subarr_2d(large, small, pos)
 # plt.imshow(out)
+
+# plt.imshow(large)
     
 # =============================================================================
 # Rewrite some SPICE routines (spiceypy) in order to vectorize them where they're not
