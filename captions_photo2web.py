@@ -17,6 +17,9 @@ Created on Thu Apr 13 08:47:27 2017
 #
 # Format of the captions.txt file is that it has 2 x N lines, for N entries, separated by \n.
 #
+# THE CAPTIONS.TXT FILE CREATED HERE IS USED *ONLY* BY THE OLD HTML GALLERY CODE 
+# -- NOT BY THE NEW JS GALLERY CODE!
+#
 # HBT 13-Apr-2017
 
 import os
@@ -41,9 +44,33 @@ def get_captions_from_file(file):
     lun.close()
     captions = []
     for i in range(int(len(captions_raw)/2)):
-        captions.append(captions_raw[i*2])
+        caption = captions_raw[i*2]
+#           caption = process_caption(caption)
+        captions.append(caption)
     return captions
-    
+
+#==============================================================================
+# Do some minimal processing on the caption, as needed
+#==============================================================================
+
+# Convert "YOUTUBE:TVzPkJSTYfo"
+#  into   <iframe width="560" height="315" src="https://www.youtube.com/embed/ENM0-7R7jMw" 
+#         frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+#
+# This is for the old-style 'long page of HTML' gallery, to make an embedded iframe
+
+def process_caption(caption):
+
+    if 'YOUTUBE' in caption:
+        caption = caption.replace('YOUTUBE:',  
+	'\n<iframe width="560" height="315" src=https://www.youtube.com/embed/') + \
+	'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>'
+
+        caption = caption.replace('\n', ' ').replace('\r', '') + '\n'
+
+    return caption
+
+
 #==============================================================================
 # Write all captions to the output file
 #==============================================================================
@@ -76,7 +103,9 @@ def get_captions_from_images(files):
         if (caption.strip() == ''):   # If there is no caption, use the filename itself
             caption = file.split('/')[-1] + "\n"
 #            print("Using file = " + caption)
-            
+
+        caption = process_caption(caption)  # Do some processing on it, as needed (YOUTUBE)
+
         captions_new.append(caption)
 #        print("Appended " + caption)
     

@@ -43,6 +43,11 @@ To be done:
                        and put into show_old.html and index_old.html.
           - run 'phtoto2web' (python, this program). This will make the HTML, fancy JS gallery, etc. and put into 
                        index.html .
+                       
+# 17-Sep-2018
+      - Handling of movies improved. Now there is a YOUTUBE tag supplied, rather than a link; this can be parsed
+        by both old and new galleries more consistently.
+                       
 """
 
 import glob
@@ -107,6 +112,7 @@ def make_gallery_item(caption, basename, type = 'span'):
 
     if 'youtu' in basename:
         id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4). # Create the YouTube thumbnail!
+        id = id.replace('watch?v=', '')
         line  = f'<span class="item"' + \
                 f' data-src="{basename}"> ' + \
                 f'  <a href="{basename}" data-src="{basename}">' + \
@@ -142,6 +148,8 @@ def photo2web():
 
     dir_photos = os.getcwd()
 
+    dir_photos = '/Users/throop/photos/Trips/MU69_Colombia_Aug18'
+    
     files_original = glob.glob(os.path.join(dir_photos, 'originals/*.jpg'))
 
     # Here, define a <span> </span> element which is the image itself. 
@@ -227,7 +235,7 @@ def photo2web():
             if (j > 0):
                 lun.write('</div>\n')
             caption, section = caption.split('##')
-            lun.write(f'<br><hr> <a name={j+1}> <h3>{section}</h3>\n\n')  # Anchor tag, so we can use index.html#1
+            lun.write(f'<br><hr> <a name={j+1}></a> <h3>{section}</h3>\n\n')  # Anchor tag, so we can use index.html#1
             lun.write(f'<div id="gallery{j}">\n')
             j+=1
     
@@ -244,28 +252,43 @@ def photo2web():
         basename = os.path.basename(file)
 
         # If the caption has a youtube link in it, make a new slide for that.
-        # Convention is this: If there is a youtube movie, put its URL in the 
-        # Lightroom caption for the *previous* image. Write it like this:
+        # Convention is to write it like this. Do not wrap any HTML or caption around it!
         #
-        #   And here we are swimming.<a href=https://youtu.be/mov12498jE>Swimming movie!</a>
+        #         This is a caption. YOUTUBE:mov1249
         #
-        # Don't put in the <embed> or anything like that.
+        # This will be automatically converted to the right link for either the old HTML gallery,
+        # or the new JS gallery. 
+        #  - In the new JS gallery, one slide will become two.
+        #  - In the old HTML gallery, the YOUTUBE link will be turned into an <embed> link.
         
-        if ('youtube.com' not in caption) and ('youtu.be' not in caption):
+        if ('YOUTUBE:' not in caption):
             line = make_gallery_item(caption, basename)                     # Normal caption and URL
 
         else:    
-            matchstr        = '<a href=https://you'
             
-            (caption1, html) = caption.split(matchstr)
+            try:
+                (caption1, video) = caption.split('YOUTUBE:')
+            except:
+                raise ValueError(f"Can't parse caption: {caption}")
+
             line1           = make_gallery_item(caption1, basename)
-            html             = matchstr + html
-            soup            = BeautifulSoup(html, 'html5lib')
-            a               = soup.find_all('a')[0]
-            url             = a.get('href')
-            caption2        = a.contents[0]
-            line2           = make_gallery_item(caption2, url)            
+            url               = f'https://www.youtube.com/watch?v={video}'
+            html              = f'<a href={url}>Link</a>'
+            line2           = make_gallery_item(caption1, url)            
             line            = line1 + line2
+                
+            # caption2        = a.contents[0]
+            # html             = matchstr + html
+            # soup            = BeautifulSoup(html, 'html5lib')
+            # a               = soup.find_all('a')[0]
+            # line1           = make_gallery_item(caption1, basename)
+            # html             = matchstr + html
+            # soup            = BeautifulSoup(html, 'html5lib')
+            # a               = soup.find_all('a')[0]
+            # url             = a.get('href')
+            # caption2        = a.contents[0]
+            # line2           = make_gallery_item(caption2, url)            
+            # line            = line1 + line2
         
         # Print the entire HTML line, with image, thumbnail, and caption, to the file
     
