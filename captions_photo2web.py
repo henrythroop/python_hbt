@@ -57,11 +57,12 @@ def get_captions_from_file(file):
 #  into   <iframe width="560" height="315" src="https://www.youtube.com/embed/ENM0-7R7jMw" 
 #         frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 #
-# This is for the old-style 'long page of HTML' gallery, to make an embedded iframe
+# This is for the old-style 'long page of HTML' gallery, to make an embedded iframe.
+# This code will still work OK if the caption has an <embed> youtube link.
 
 def process_caption(caption):
 
-    if 'YOUTUBE' in caption:
+    if 'YOUTUBE' in caption:  # This is case-sensitive
         caption = caption.replace('YOUTUBE:',  
 	'\n<iframe width="560" height="315" src=https://www.youtube.com/embed/') + \
 	'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>'

@@ -45,7 +45,7 @@ To be done:
                        index.html .
                        
 # 17-Sep-2018
-      - Handling of movies improved. Now there is a YOUTUBE tag supplied, rather than a link; this can be parsed
+      - Handling of movies improved. Now there is a YOUTUBE: tag supplied, rather than a link; this can be parsed
         by both old and new galleries more consistently.
                        
 """
