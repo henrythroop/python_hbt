@@ -64,7 +64,7 @@ def process_caption(caption):
 
     if 'YOUTUBE' in caption:  # This is case-sensitive
         caption = caption.replace('YOUTUBE:',  
-	'\n<iframe width="560" height="315" src=https://www.youtube.com/embed/') + \
+	'\n<p><iframe width="560" height="315" src=https://www.youtube.com/embed/') + \
 	'frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>'
 
         caption = caption.replace('\n', ' ').replace('\r', '') + '\n'
