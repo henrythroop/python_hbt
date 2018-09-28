@@ -44,7 +44,11 @@ import spiceypy as sp
 from   astropy.wcs import WCS
 #from   astropy.vo.client import conesearch # Virtual Observatory, ie star catalogs
 from   astroquery.vo_conesearch import conesearch
-
+from   astroquery.vo_conesearch import ConeSearch  # ** I think this is different than the above??
+                                           # vo_conesearch.ConeSearch() is a function
+                                           # vo_conesearch.conesearch is a library
+                                           # vo_conesearch.conesearch.conesearch() is a function
+                                           
 from   astropy import units as u           # Units library
 from   astropy.coordinates import SkyCoord # To define coordinates to use in star search
 from   scipy.stats import mode
@@ -79,8 +83,10 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
     
     import imreg_dft as ird
     from   astropy.wcs import WCS
-    from   astropy.vo.client import conesearch # Virtual Observatory, ie star catalogs
-  
+    
+    # from   astropy.vo.client import conesearch # Virtual Observatory, ie star catalogs   # DEPRECATED!
+    from   astroquery.vo_conesearch import conesearch                 # New home of conesearch
+    
 # Inputs are the image array, and the WCS structure.
 # This routine does not do any file IO. The image array and header must be already loaded.
 # The image is assumed to be stretched properly s.t. stars can be found using DAOphot. 
@@ -143,7 +149,13 @@ def navigate_image_stellar(im, wcs_in, name_catalog='', do_plot=True, method='ff
                                                        # The default is 3 seconds, and that times out often.
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")                                                          
-                stars = conesearch.conesearch(wcs_in.wcs.crval, radius_search_deg, cache=True, catalog_db = url_cat)
+                # stars = conesearch.conesearch(wcs_in.wcs.crval, radius_search_deg, cache=True, catalog_db = url_cat)
+
+                # The various functions of conesearch/ConeSearch/etc are quite confusing, and are in flux.                
+                # This line below seems to work. It does not allow an explicit catalog suggstion, but it does the job.
+                
+                c = astropy.coordinates.SkyCoord(wcs_in.wcs.crval[0], wcs_in.wcs.crval[1], unit='deg')
+                stars = ConeSearch.query_region(c, f'{radius_search_deg} deg')
     
         ra_stars  = np.array(stars.array['ra'])*hbt.d2r  # Convert to radians
         dec_stars = np.array(stars.array['dec'])*hbt.d2r # Convert to radians
