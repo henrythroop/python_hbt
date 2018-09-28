@@ -1253,7 +1253,56 @@ def decosmic(im, sigma=3):
     im_fix[indices_nan_im_sm] = math.nan
     
     return im_fix
+
+def remove_outliers(arr, sigma=3, replace=np.nan):
+    """ 
+    Remove outliers from an array. Same idea as decosmic, but simpler. Works best for 1D arrays.
     
+    Parameters
+    -----
+    
+    arr: Input array. Typically 1D, but can be any dimension.
+    
+    sigma: How far from median must value be to be considered an outlier.
+    
+    replace: Replacement value. 
+    
+    """
+
+    out = arr.copy()
+    median = np.nanmedian(arr)
+
+    # with warnings.catch_warnings():
+        # warnings.simplefilter("ignore")
+    is_outlier = np.abs(arr - median) > sigma * np.nanstd(arr)  # NB: > is not nan-friendly, so it triggers warnings.
+    
+    if np.sum(is_outlier):
+        out[is_outlier] = np.nan
+          
+    return out
+
+def plt_aspect(arr, extent):
+    """
+    Return a scalar value which is the proper value to use for plt.imshow(extent=).
+    This is used when plotting a 2D image on top of a pre-existing lineplot.
+    'auto', 'none', 1.0, etc do not work.
+
+    This is just q&d syntactic sugar to do the calculation. 
+
+    
+    Parameters
+    -----
+    
+    arr:    2D image array
+    extent: Array [left, right, bottom, top]. This is the position, in data coords, that the box will be plotted,
+            on top of the 'real' plot.
+    
+    """
+    
+    aspect = hbt.sizey_im(arr) / hbt.sizex_im(arr) / ( (extent[3] - extent[2]) / (extent[1] - extent[0] ) )
+
+    return aspect
+
 #==============================================================================
 # Function to get the translation between two sets of points
 # This is my brute-force shift-and-add image translation searcher.
@@ -1475,6 +1524,9 @@ def replace_subarr_2d(large, small, pos):
         large: Output array
         small: Input array
         pos:   Position.of upper-left corner in output array. Tuple (vertical, horizontal) = (y0, x0)
+        
+    *** This routine should not be used! It works, but better to use astropy.nddata.utils.add_array
+    
     """
 
     ok = True # Set a flag. Is everything within limits?
@@ -1545,7 +1597,43 @@ def radrec_v(rad, ra, dec):
         out[i,:] = sp.radrec(rad_arr[i], ra[i], dec[i])
         
     return out
+
+# =============================================================================
+# Resize an image by a non-integer multiple up/down, while preserving NaN's    
+# =============================================================================
+
+def nanresize(arr, fac_zoom, val=0):
+    """
+    Resize an array by a non-integer value up or down.
+    Preserves NaN values.
+
+    Parameters
+    -----
     
+    arr: array to resize
+    
+    fac_zoom: Floating point
+    
+    [optional] val: Value to put in the array when resizing, instead of NaN. Default: val=0.
+    y
+    """
+    
+    import scipy.ndimage
+                  
+    mask = np.isnan(arr)
+    
+    arr_copy = arr.copy()
+    arr_copy[mask] = val
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mask_resize = scipy.ndimage.zoom(mask*1, fac_zoom) # Not sure why, but recasting to int is the key here
+        arr_resize  = scipy.ndimage.zoom(arr_copy,  fac_zoom)
+                                     
+    arr_resize[mask_resize==1]    = np.nan
+   
+    return arr_resize
+            
 # =============================================================================
 # Function to do linear fit, but as one paramter, not two.
 # =============================================================================
