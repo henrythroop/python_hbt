@@ -147,10 +147,8 @@ def make_thumbnails(files):
 def photo2web():
 
     dir_photos = os.getcwd()
-
-    dir_photos = '/Users/throop/photos/Trips/MU69_Colombia_Aug18'
     
-    files_original = glob.glob(os.path.join(dir_photos, 'originals/*.jpg'))
+    files_original = sorted(glob.glob(os.path.join(dir_photos, 'originals/*.jpg')))
 
     # Here, define a <span> </span> element which is the image itself. 
     # We tag this span with class=item, and then use a corresponding selector in the call to lightgallery.
