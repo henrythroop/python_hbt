@@ -92,7 +92,8 @@ def get_all_captions(files):
 def make_gallery_item(caption, basename, type = 'span'):
     """
     Return an HTML line for the gallery.
-    
+    Each caption is wrapped in <span class=lg-caption>, and LightGallery further wraps this in <div lg-sub-html>.
+
     Parameters
     -----
     
@@ -105,7 +106,7 @@ def make_gallery_item(caption, basename, type = 'span'):
     """
     
     if '.jpg' in basename:
-        line  = f'<span class="item" data-sub-html="<span class=caption>{caption}</span>"' + \
+        line  = f'<span class="item" data-sub-html="<span class=lg-caption>{caption}</span>"' + \
                 f' data-src="originals/{basename}">\n' + \
                 f'  <a href="originals/{basename}"><img src="thumbnails/s{basename}"/></a>\n' + \
                 f'  </span>\n\n'
