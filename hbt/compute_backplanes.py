@@ -160,8 +160,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     altitude_arr= np.zeros((n_dy, n_dx))    # Altitude above midplane, in km
     ra_arr     = np.zeros((n_dy, n_dx))     # RA of pixel
     dec_arr    = np.zeros((n_dy, n_dx))     # Dec of pixel
-    dra_arr    = np.zeros((n_dy, n_dx))     # dRA of pixel: Distance in sky plane between pixel and body, in km. 
-    ddec_arr   = np.zeros((n_dy, n_dx))     # dDec of pixel: Distande in sky plane between pixel and body, in km.
+    dra_arr    = np.zeros((n_dy, n_dx))     # dRA  of pixel: Distance in sky plane between pixel and body, in km. 
+    ddec_arr   = np.zeros((n_dy, n_dx))     # dDec of pixel: Distance in sky plane between pixel and body, in km.
     phase_arr  = np.zeros((n_dy, n_dx))     # Phase angle    
     x_arr      = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
     y_arr      = np.zeros((n_dy, n_dx))     # Intersection of sky plane: X pos in bdoy coords
@@ -258,9 +258,11 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         ra_arr  *= hbt.d2r                                        # Convert to radians
         dec_arr *= hbt.d2r
         
-        # Compute the projected distance from MU69, in the sky plane, in km, for each pixel
+        # Compute the projected distance from MU69, in the sky plane, in km, for each pixel.
+        # dist_target_sc is the distance to MU69, and we use this to convert from radians, to km.
+        # 16-Oct-2018. I had been computing this erroneously. It should be *cosdec, not /cosdec.
         
-        dra_arr  = (ra_arr   - ra_sc_target) * dist_target_sc / np.cos(dec_arr)
+        dra_arr  = (ra_arr   - ra_sc_target) * dist_target_sc * np.cos(dec_arr)
         ddec_arr = (dec_arr - dec_sc_target) * dist_target_sc  # Convert to km
     
 # =============================================================================
@@ -495,6 +497,9 @@ if (__name__ == '__main__'):
 #        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731432_0x633_pwcs.fits' #Windowed
 #        file_in       = '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ03/lor_0406731762_0x633_pwcs.fits' #Non-windowed
         file_in       = '/Users/throop/Data/ORT4/superstack_ORT4_z4_mean_wcs_sm_hbt.fits'
+        file_in       = '/Users/throop/Data/ORT4/superstack_ORT4_z4_mean_wcs_sm_hbt.fits'
+        file_in       = '/Users/throop/Data/MU69_Approach/' + \
+                          'porter/KALR_MU69_OpNav_L4_2018287/lor_0401837398_0x633_pwcs2.fits'
 #        file_in =      '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ04/lor_0406991172_0x633_pwcs.fits'
 
         if ('ORT3' in file_in):
@@ -503,6 +508,8 @@ if (__name__ == '__main__'):
             frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
         if ('ORT4' in file_in):
             frame         = '2014_MU69_ORT4_1'    # Ring is tilted by 30 deg, and is not a sunflower!
+        if ('MU69_Approach' in file_in):
+            frame         = '2014_MU69_SUNFLOWER_ROT'    # Ring is tilted by 30 deg, and is not a sunflower!
                
 #        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
 #        frame         = '2014_MU69_TUNACAN_ROT'   # Use this for ORT1 and ORT2
@@ -600,9 +607,24 @@ if (__name__ == '__main__'):
 #                plt.xlim((180,220))
 #                plt.ylim((180,220))
                 plt.show()    
+
+ 
+            if ('MU69_Approach' in file_in):
+
+                dx = 0   # Positional error in MU69 position from WCS
+                dy = 0
+                radius_roll = np.roll(np.roll(planes['Radius_eq'], dx, axis=0), dy, axis=1)
+                
+                plt.imshow(stretch(im), origin='lower')
+                plt.imshow((np.abs(radius_roll < 1000)) &
+                           (np.abs(radius_roll < 3000)),
+                           alpha=0.5)
+#                plt.xlim((180,220))
+#                plt.ylim((180,220))
+                plt.show()    
+
                 
             # Make a radial profile, if requested
-        
             
             num_pts = 200
             
@@ -617,11 +639,13 @@ if (__name__ == '__main__'):
             y = dn[50:]            
             popt,pcov = curve_fit(gaus,x,y,p0=[9000,0,1000])
 
-            plt.plot(radius, dn, label = 'ORT4, backplaned, pole = (275,-56) deg')
+            plt.plot(radius, dn, label = 'Data')
             plt.plot(x,gaus(x,*popt),'ro:', marker = None, ls = '--', lw=0.5, 
                      label = f'Fit, radius={popt[1]:.0f} km, FWHM={2.35 * popt[2]:.0f} km')
             # FWHM = 2.35 * sigma: https://ned.ipac.caltech.edu/level5/Leo/Stats2_3.html
-            plt.ylim((-0.2,1))
+            
+            # plt.ylim((-0.2,1))
+
             plt.xlim((0, 20000))
             plt.xlabel('Radius [km]')
             plt.ylabel('DN')
@@ -629,15 +653,33 @@ if (__name__ == '__main__'):
             plt.title(f'Radial profile, superstack, backplane from frame {frame}')
             plt.show()
 
+            # Now check the dRA / dDec planes
             
-                        
-#            n = len(x)                          #the number of data
-#            mean = np.sum(x*y)/n                   #note this correction
-#            sigma = sum(y*(x-mean)**2)/n        #note this correction
-#            
+            column = 128
+            row    = 128
+            pixsize_horizontal_dRA_km = planes['dRA_km'][row,column] - planes['dRA_km'][row,column+1]
+            pixsize_vertical_dDec_km = planes['dDec_km'][row,column] - planes['dDec_km'][row+1,column]
             
+            dec = planes['Dec'][column,row]
+            cosdec = math.cos(dec)            
 
+            print(pixsize_vertical_dDec_km)
+            print(pixsize_horizontal_dRA_km)
  
-            plt.plot(x,y)
+            print(pixsize_vertical_dDec_km / cosdec)
+            print(pixsize_horizontal_dRA_km * cosdec)
+            
+            # Now check that dRA_pix_km is the same at the top and bottom of the frame
+            row=0
+            pixsize_horizontal_dRA_km_top = planes['dRA_km'][row,column] - planes['dRA_km'][row,column+1]
+            row=255
+            pixsize_horizontal_dRA_km_bot = planes['dRA_km'][row,column] - planes['dRA_km'][row,column+1]
+            
+            # These two numbers here should be the same
+            # In original version, they are -2223 and -2232
+            # In fixed version, they are -1945.550, -1945.5498
+            
+            print(pixsize_horizontal_dRA_km_top)
+            print(pixsize_horizontal_dRA_km_bot)
             
 #%%%
