@@ -427,6 +427,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
          
         # Now shift all of the planes that need fixing. The dRA_km and dDec_km are calculated before INRYPL()
         # is applied, so they do not need to be shifted. I have validated that by plotting them.
+        # 
+        # XXX NP.ROLL() is really not ideal. I should use a function that introduces NaN at the edge, not roll it.
         
         radius_arr   = np.roll(np.roll(radius_arr,   dy_int, axis=0), dx_int, axis=1)
         lon_arr      = np.roll(np.roll(lon_arr,      dy_int, axis=0), dx_int, axis=1)
