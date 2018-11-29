@@ -529,8 +529,22 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
 
     else:    
         return ra, dec # Return in radians
-      
 
+def list_kernels_loaded():
+    
+    """
+    Return a list of all loaded kernel files.
+    """
+    
+    num = sp.ktotal("ALL")
+    
+    l = []
+    for i in range(num):
+        str = sp.kdata(i, "ALL")[0]
+        l.append(str)
+        # print(f'{i:3} {str}')
+    return(l)
+    
 # =============================================================================
 # Normalize an array, to an optional max
 # =============================================================================
