@@ -24,6 +24,7 @@ from get_radial_profile_backplane import get_radial_profile_backplane
 # Create backplanes based on an image number. This is a stand-alone function, *not* a class or method.
 
 # SPICE is required here, but it is *not* initialized. It is assumed that that has already been done.
+# There is no kernel loaded. The user must do that beforehand. Auto-loading the kernels would be a bad idea.
 
 # For each pixel, do the followiung:
 # o Get its RA/Dec value from WCS
@@ -228,13 +229,18 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         # NB: The suffix _j2k indicates j2K frame. _frame indicates the frame of target (IAU_JUP, MU69_SUNFLOWER, etc)
                
         (st_target_sc_frame, lt) = sp.spkezr(name_observer, et, frame,   abcorr, name_target)
+        (st_sc_target_frame, lt) = sp.spkezr(name_target,   et, frame,   abcorr, name_observer)
         (st_target_sc_j2k, lt)   = sp.spkezr(name_observer, et, 'J2000', abcorr, name_target)     
+        (st_sc_target_j2k, lt)   = sp.spkezr(name_target,   et, 'J2000', abcorr, name_observer)
         
         vec_target_sc_frame = st_target_sc_frame[0:3]
+        vec_sc_target_frame = st_sc_target_frame[0:3]
         vec_target_sc_j2k   = st_target_sc_j2k[0:3]
+        vec_sc_target_j2k   = st_sc_target_j2k[0:3]
+        
         dist_target_sc      = sp.vnorm(vec_target_sc_j2k)   # Get target distance, in km
         
-        vec_sc_target_frame = -vec_target_sc_frame
+        # vec_sc_target_frame = -vec_target_sc_frame # ACTUALLY THIS IS NOT TRUE!! ONLY TRUE IF ABCORR=NONE.
         
         # Name this vector a 'point'. INRYPL requires a point argument.
             
@@ -242,14 +248,15 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     
         # Look up RA and Dec of target (from sc), in J2K 
         
-        (_, ra_sc_target, dec_sc_target) = sp.recrad(-vec_target_sc_j2k)
-        
+        (_, ra_sc_target, dec_sc_target) = sp.recrad(vec_sc_target_j2k)
+
         # Get vector from target to sun. We use this later for phase angle.
         
         (st_target_sun_frame, lt) = sp.spkezr('Sun', et, frame, abcorr, name_target) # From body to Sun, in body frame
         vec_target_sun_frame = st_target_sun_frame[0:3]
         
         # Create a 2D array of RA and Dec points
+        # These are made by WCS, so they are guaranteed to be right.
         
         xs = range(n_dx)
         ys = range(n_dy)
@@ -289,6 +296,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         
                 # Look up the vector direction of this single pixel, which is defined by an RA and Dec
                 # Vector is thru pixel to ring, in J2K. 
+                # RA and Dec grids are made by WCS, so they are guaranteed to be right.
         
                 vec_pix_j2k =  sp.radrec(1., ra_arr[i_y, i_x], dec_arr[i_y, i_x]) 
                 
@@ -310,7 +318,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 #    And it gives meaningful results in case of edge-on rings, where ring plane did not.
                 #    However, for normal rings (e.g., Jupiter), we should continue using the ring plane, not sky plane.
                 
-                do_sky_plane = False  # For ORT4, where we want to use euler angles, need to set this to False
+                do_sky_plane = True  # For ORT4, where we want to use euler angles, need to set this to False
                 
                 if do_sky_plane and ('MU69' in name_target):
                     plane_sky_frame = sp.nvp2pl(vec_sc_target_frame, [0,0,0])  # Frame normal to s/c vec, cntrd on MU69
@@ -367,7 +375,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                 vec_ring_sun_frame = -pt_intersect_frame + vec_target_sun_frame
                 
                 angle_phase = sp.vsep(-vec_pix_frame, vec_ring_sun_frame)
-
+                
                 # Save various derived quantities
                          
                 radius_arr[i_y, i_x] = radius_eq
@@ -390,6 +398,41 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                     ang_metis_arr[i_y, i_x]    = sp.vsep(vec_pix_j2k, vec_metis_j2k)
                     ang_amalthea_arr[i_y, i_x] = sp.vsep(vec_pix_j2k, vec_amalthea_j2k) 
 
+        # Now, fix a bug. The issue is that SP.INRYPL uses the actual location of the bodies (no aberration),
+        # while their position is calculated (as it should be) with abcorr=LT. This causes a small error in the 
+        # positions based on the INRYPL calculation. This should probably be fixed above, but it was not 
+        # obvious how. So, instead, I am fixing it here, by doing a small manual offset.
+        
+        # Calculate the shift required, by measuring the position of MU69 with abcorr=NONE, and comparing it to 
+        # the existing calculation, that uses abcorr=LT. This is brute force, but it works. For MU69 approach, 
+        # it is 0.75 LORRI 4x4 pixels (ie, 3 1X1 pixels). This is bafflingly huge (I mean, we are headed
+        # straight toward MU69, and it takes a month to move a pixel, and RTLT is only a few minutes). But I have
+        # confirmed the math and the magnitude, and it works.
+        
+        (st_sc_target_j2k_nolt, _)                 = sp.spkezr(name_target,   et, 'J2000', 'NONE', name_observer)
+        vec_sc_target_j2k_nolt                     = st_sc_target_j2k_nolt[0:3]
+        (_, ra_sc_target_nolt, dec_sc_target_nolt) = sp.recrad(vec_sc_target_j2k_nolt)
+
+        (x0,y0) = w.wcs_world2pix(ra_sc_target_nolt*hbt.r2d, dec_sc_target_nolt*hbt.r2d, 1)
+        (x1,y1) = w.wcs_world2pix(ra_sc_target     *hbt.r2d, dec_sc_target     *hbt.r2d, 1)
+        dx = x1-x0
+        dy = y1-y0
+        
+        # print(f'Pixel shift = {dx}, {dy}')
+
+        dx_int = int(round(dx))
+        dy_int = int(round(dy))
+        
+        # print(f'XXX Rolling by {dx_int}, {dy_int}')
+         
+        # Now shift all of the planes that need fixing. The dRA_km and dDec_km are calculated before INRYPL()
+        # is applied, so they do not need to be shifted. I have validated that by plotting them.
+        
+        radius_arr   = np.roll(np.roll(radius_arr,   dy_int, axis=0), dx_int, axis=1)
+        lon_arr      = np.roll(np.roll(lon_arr,      dy_int, axis=0), dx_int, axis=1)
+        phase_arr    = np.roll(np.roll(phase_arr,    dy_int, axis=0), dx_int, axis=1)
+        altitude_arr = np.roll(np.roll(altitude_arr, dy_int, axis=0), dx_int, axis=1)
+            
         # Assemble the results into a backplane
     
         backplane = {
@@ -531,6 +574,7 @@ if (__name__ == '__main__'):
         except:
             print("Can't unload")
     sp.furnsh(file_tm)
+    print(f'compute_backplanes: loaded {file_tm}')
         
     if (do_test_jupiter or do_test_mu69):
 
