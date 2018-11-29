@@ -77,8 +77,9 @@ from scatter_lambert                import scatter_lambert
 # Define a range. This is more useful than python's np.arange(), which doesn't allow for logarithmic steps.
 # Syntax is identical to HBT's IDL frange() function.
 ##########
-# NB: I could use np.linspace and np.logspace here... in fact, probably better. However, they use slightly different 
-# conventions for start and end locations, etc. so it's fine to just do it explicitly here like I do.
+# NB: I could use np.linspace and np.logspace here... in fact, probably better. However, they use 
+# slightly different conventions for start and end locations, etc. so it's fine to just do it 
+# explicitly here like I do.
 
 #def frange(start, end, linear=True, log=False, *args):
 def frange(start, end, *args, **kwargs):
@@ -126,34 +127,6 @@ def frange(start, end, *args, **kwargs):
     if (log):
         arr = start * ((end/(start * 1.))**(1./(num-1.))) ** np.array(range(num))
         return np.array(arr)
-
-#==============================================================================
-# Set font size for xlabel, title, legend, etc.
-#==============================================================================
-    
-def set_fontsize(size=15):
-    """
-    Set the matplotlib font size.
-    """
-    
-    font = {'family' : 'sans-serif',
-            'weight' : 'normal',
-            'size'   : size}
-
-    matplotlib.rc('font', **font)
-
-def fontsize(size):
-    """
-    Set the matplotilb font size.
-    
-    This is the revised and recommended version.
-    """
-        
-    font = {'family' : 'sans-serif',
-            'weight' : 'normal',
-            'size'   : size}
-
-    matplotlib.rc('font', **font)
         
 ##########
 # Get a single FITS image header
@@ -352,7 +325,8 @@ def write_to_clipboard(str):
         
 def remove_brightest(arr, frac_max, symmetric=False):
     """
-    Clips the brightest values in an array to the level specified; e.g., frac = 0.95 will clip brightest 5% of pixels).
+    Clips the brightest values in an array to the level specified; e.g., frac = 0.95 will clip brightest 
+    5% of pixels).
     If 'symmetric' set, will also clip same fraction from bottom.				
     """
 
@@ -789,6 +763,84 @@ def figsize_restore():
     
 #    print('Figsize = {}'.format(matplotlib.rcParams['figure.figsize']))
 
+
+#==============================================================================
+# Set font size for xlabel, title, legend, etc.
+#==============================================================================
+    
+def fontsize(size=None):
+    """
+    Set the matplotilb font size.
+
+    The previous value is saved. 
+    fontsize(val) sets size to val.
+    fontsize() returns font size to previous value.
+    
+    This is the revised and recommended version.
+    """
+        
+    font = {'family' : 'sans-serif',
+            'weight' : 'normal',
+            'size'   : size}
+
+    size_current = matplotlib.rcParams['font.size']
+ 
+    if size:
+        if hasattr(hbt.fontsize, 'saved'):
+            hbt.fontsize.saved.append(size_current)            # Add to list of saved values
+        else:
+            hbt.fontsize.saved = [size_current]                # If there is no list of saved values, init it.
+    
+        # Now set the actual size
+        
+        matplotlib.rc('font', **font)
+        
+        print(f'Fontsize set to {size}')
+    else:
+        hbt.fontsize_restore()
+        
+def fontsize_restore():
+
+    """
+    Restore the font size to the previous value.
+    
+    If the stack of saved previous values is exhausted, then a common default will be used.
+    
+    """
+    default = 12
+    
+    # saved = hbt.fontsize.saved
+    
+    # if saved:
+        # size = default
+    # else:
+        # size = saved
+
+    # default = 12
+    
+    saved = hbt.fontsize.saved
+    
+    if saved:
+        size = hbt.fontsize.saved.pop()
+    else:
+        size = default
+        
+    font = {'family' : 'sans-serif',
+            'weight' : 'normal',
+            'size'   : size}
+
+    matplotlib.rc('font', **font)
+
+    print(f'Fontsize = {size}')
+
+    
+def set_fontsize(**kwargs):
+    """
+    Just an alias for fontsize()
+    """
+    
+    hbt.fontsize(**kwargs)
+    
 def correct_stellab(radec, vel):
     """
 im    Corect for stellar aberration.
@@ -949,7 +1001,7 @@ def longest_common_substring(S,T):
     """
     Given two strings, returns the longest common substring as a set.
     """
-#    http://www.bogotobogo.com/python/python_longest_common_substring_lcs_algorithm_generalized_suffix_tree.php"
+# http://www.bogotobogo.com/python/python_longest_common_substring_lcs_algorithm_generalized_suffix_tree.php"
     m = len(S)
     n = len(T)
     counter = [[0]*(n+1) for x in range(m+1)]
@@ -1052,7 +1104,8 @@ def sfit(arr, degree=3, binning=16, mask=None):
 
     fit_p = astropy.modeling.fitting.LevMarLSQFitter()
 
-# astropy insists on warning me to use a linear filter if my coeffs are linear. This is stupid. Turn off that warning.
+# astropy insists on warning me to use a linear filter if my coeffs are linear. This is stupid.
+#  Turn off that warning.
 
     with warnings.catch_warnings():        
         warnings.simplefilter('ignore')
@@ -1288,7 +1341,8 @@ def remove_outliers(arr, sigma=3, replace=np.nan):
 
     # with warnings.catch_warnings():
         # warnings.simplefilter("ignore")
-    is_outlier = np.abs(arr - median) > sigma * np.nanstd(arr)  # NB: > is not nan-friendly, so it triggers warnings.
+    is_outlier = np.abs(arr - median) > sigma * np.nanstd(arr)  # NB: > is not nan-friendly,
+                                                                # so it triggers warnings.
     
     if np.sum(is_outlier):
         out[is_outlier] = np.nan
@@ -1308,7 +1362,8 @@ def plt_aspect(arr, extent):
     -----
     
     arr:    2D image array
-    extent: Array [left, right, bottom, top]. This is the position, in data coords, that the box will be plotted,
+    extent: Array [left, right, bottom, top]. This is the position, in data coords,
+                   that the box will be plotted,
             on top of the 'real' plot.
     
     """
@@ -1334,7 +1389,7 @@ def get_translation_images_bruteforce(im_a, im_b):
     range_dx = np.arange(-shift_max, shift_max+1)
         
     sum = np.zeros((hbt.sizex(range_dx), hbt.sizex(range_dy))) # Create the output array. 
-                                         # Each element here is the sum of (dist from star N to closest shifted star)
+     # Each element here is the sum of (dist from star N to closest shifted star)
     
     for j,dx in enumerate(range_dx):
         for k,dy in enumerate(range_dy):
