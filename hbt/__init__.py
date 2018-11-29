@@ -795,7 +795,6 @@ def fontsize(size=None):
         
         matplotlib.rc('font', **font)
         
-        print(f'Fontsize set to {size}')
     else:
         hbt.fontsize_restore()
         
@@ -807,16 +806,8 @@ def fontsize_restore():
     If the stack of saved previous values is exhausted, then a common default will be used.
     
     """
-    default = 12
-    
-    # saved = hbt.fontsize.saved
-    
-    # if saved:
-        # size = default
-    # else:
-        # size = saved
 
-    # default = 12
+    default = 12
     
     saved = hbt.fontsize.saved
     
@@ -831,9 +822,6 @@ def fontsize_restore():
 
     matplotlib.rc('font', **font)
 
-    print(f'Fontsize = {size}')
-
-    
 def set_fontsize(**kwargs):
     """
     Just an alias for fontsize()
