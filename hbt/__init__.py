@@ -837,12 +837,12 @@ def fontsize_restore():
 
     matplotlib.rc('font', **font)
 
-def set_fontsize(**kwargs):
+def set_fontsize(*args):
     """
     Just an alias for fontsize()
     """
     
-    hbt.fontsize(**kwargs)
+    hbt.fontsize(*args)
     
 def correct_stellab(radec, vel):
     """
