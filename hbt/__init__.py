@@ -507,7 +507,7 @@ def get_pos_bodies(et, name_bodies, units='radec', wcs=False,
 def list_kernels_loaded():
     
     """
-    Return a list of all loaded kernel files.
+    Return a list of all loaded SPICE kernel files.
     """
     
     num = sp.ktotal("ALL")
@@ -518,6 +518,21 @@ def list_kernels_loaded():
         l.append(str)
         # print(f'{i:3} {str}')
     return(l)
+
+def unload_kernels_all():
+
+    """
+    Unload all loaded SPICE kernel files.
+    """
+    
+    # This routine is overkill, since once a metakernel is unloaded, all of its contents are unloaded too.
+    # But, there is no risk in removing a kernel file which has already been removed, so no problem.
+    
+    kernels = list_kernels_loaded()
+    for kernel in kernels:
+        sp.unload(kernel)
+    return
+
     
 # =============================================================================
 # Normalize an array, to an optional max
