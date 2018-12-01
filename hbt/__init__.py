@@ -1521,7 +1521,7 @@ def ceilout(x):
     if (x > 0):
         return math.ceil(x)
     else:
-        return(math.ceil(x-1))
+        return(math.ceil(x-1 + 1e-6))  # Avoid a bug that ceilout(1) = 1, but ceilout(-1) = 2
    
 # =============================================================================
 # Roll an image
