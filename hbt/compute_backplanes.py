@@ -418,22 +418,27 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         dx = x1-x0
         dy = y1-y0
         
-        print(f'Pixel shift = {dx}, {dy}')
+        print(f'Compute backplanes: INRYPL pixel shift = {dx}, {dy}')
 
         dx_int = int(round(dx))
         dy_int = int(round(dy))
         
-        # print(f'XXX Rolling by {dx_int}, {dy_int}')
-         
-        # Now shift all of the planes that need fixing. The dRA_km and dDec_km are calculated before INRYPL()
-        # is applied, so they do not need to be shifted. I have validated that by plotting them.
-        # 
-        # XXX NP.ROLL() is really not ideal. I should use a function that introduces NaN at the edge, not roll it.
+        do_roll = False
         
-        radius_arr   = np.roll(np.roll(radius_arr,   dy_int, axis=0), dx_int, axis=1)
-        lon_arr      = np.roll(np.roll(lon_arr,      dy_int, axis=0), dx_int, axis=1)
-        phase_arr    = np.roll(np.roll(phase_arr,    dy_int, axis=0), dx_int, axis=1)
-        altitude_arr = np.roll(np.roll(altitude_arr, dy_int, axis=0), dx_int, axis=1)
+        if do_roll:
+            print(f'compute_backplanes: Rolling by {dx_int}, {dy_int} due to INRYPL')
+             
+            # Now shift all of the planes that need fixing. The dRA_km and dDec_km are calculated before INRYPL()
+            # is applied, so they do not need to be shifted. I have validated that by plotting them.
+            # 
+            # XXX NP.ROLL() is really not ideal. I should use a function that introduces NaN at the edge, not roll it.
+            
+            radius_arr   = np.roll(np.roll(radius_arr,   dy_int, axis=0), dx_int, axis=1)
+            lon_arr      = np.roll(np.roll(lon_arr,      dy_int, axis=0), dx_int, axis=1)
+            phase_arr    = np.roll(np.roll(phase_arr,    dy_int, axis=0), dx_int, axis=1)
+            altitude_arr = np.roll(np.roll(altitude_arr, dy_int, axis=0), dx_int, axis=1)
+        else:
+            print(f'compute_backplanes: Skipping roll due to INRYPL, based on do_roll={do_roll}')
             
         # Assemble the results into a backplane
     
