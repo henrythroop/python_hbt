@@ -418,7 +418,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         dx = x1-x0
         dy = y1-y0
         
-        # print(f'Pixel shift = {dx}, {dy}')
+        print(f'Pixel shift = {dx}, {dy}')
 
         dx_int = int(round(dx))
         dy_int = int(round(dy))
