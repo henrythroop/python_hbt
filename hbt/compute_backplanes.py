@@ -19,6 +19,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy import asarray as ar,exp
 
+from plot_img_wcs import plot_img_wcs
+
 from get_radial_profile_backplane import get_radial_profile_backplane
 
 # Create backplanes based on an image number. This is a stand-alone function, *not* a class or method.
@@ -423,7 +425,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         dx_int = int(round(dx))
         dy_int = int(round(dy))
         
-        do_roll = False
+        do_roll = True
         
         if do_roll:
             print(f'compute_backplanes: Rolling by {dx_int}, {dy_int} due to INRYPL')
@@ -507,6 +509,14 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
                  
     return (backplane, desc)
 
+# Define a gaussian function, for the fit
+
+def gaus(x,a,x0,sigma):
+    """
+    Define a gaussian function, for a function fit.
+    """
+    return a*exp(-(x-x0)**2/(2*sigma**2))
+    
 # =============================================================================
 # End of function
 # =============================================================================
@@ -519,12 +529,8 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
 if (__name__ == '__main__'):
 
 #%%%    
-    import  matplotlib.pyplot as plt
-
-    # Define a gaussian function, for the fit
     
-    def gaus(x,a,x0,sigma):
-        return a*exp(-(x-x0)**2/(2*sigma**2))
+    # Do main test
     
     do_test_jupiter = False
     do_test_mu69    = True
@@ -550,6 +556,10 @@ if (__name__ == '__main__'):
         file_in       = '/Users/throop/Data/ORT4/superstack_ORT4_z4_mean_wcs_sm_hbt.fits'
         file_in       = '/Users/throop/Data/MU69_Approach/' + \
                           'porter/KALR_MU69_OpNav_L4_2018287/lor_0401837398_0x633_pwcs2.fits'
+                          
+        file_in       = '/Users/throop/Data/MU69_Approach/' + \
+                          'porter/KALR_MU69_OpNav_L4_2018335/lor_0405944848_0x633_pwcs2.fits'
+                          
 #        file_in =      '/Users/throop/Data/ORT4/porter/pwcs_ort4/K1LR_HAZ04/lor_0406991172_0x633_pwcs.fits'
 
         if ('ORT3' in file_in):
@@ -560,27 +570,21 @@ if (__name__ == '__main__'):
             frame         = '2014_MU69_ORT4_1'    # Ring is tilted by 30 deg, and is not a sunflower!
         if ('MU69_Approach' in file_in):
             frame         = '2014_MU69_SUNFLOWER_ROT'    # Ring is tilted by 30 deg, and is not a sunflower!
+            frame         = '2014_MU69_TUNACAN_ROT'
                
-#        frame         = '2014_MU69_SUNFLOWER_ROT'   # Use this for ORT1 and ORT2
-#        frame         = '2014_MU69_TUNACAN_ROT'   # Use this for ORT1 and ORT2
-
         name_target   = 'MU69'
         name_observer = 'New Horizons'
         file_tm       = '/Users/throop/git/NH_rings/kernels_kem_prime.tm'  # SPICE metakernel
-   
     
+    file_in_short = os.path.basename(file_in)[0:14]
     stretch_percent = 90    
     stretch = astropy.visualization.PercentileInterval(stretch_percent) # PI(90) scales to 5th..95th %ile.
 
     # Start SPICE. Unload the existing kernel, if loaded, just for safety.
     
-    if sp.ktotal('ALL'):
-        try:
-            sp.unload(file_tm)
-#            break
-        except:
-            print("Can't unload")
+    hbt.unload_kernels_all()
     sp.furnsh(file_tm)
+
     print(f'compute_backplanes: loaded {file_tm}')
         
     if (do_test_jupiter or do_test_mu69):
@@ -593,6 +597,8 @@ if (__name__ == '__main__'):
                       angle3=00*hbt.d2r)  # Tilt right-left, from face-on
 
         print("Backplanes generated for {}".format(file_in))
+
+#%%%
         
 # =============================================================================
 # Plot the newly generated backplanes, if requested
@@ -602,6 +608,7 @@ if (__name__ == '__main__'):
 
             planes_contour = ['Radius_eq', 'Longitude_eq']
             
+            hbt.figsize((10,10))
             hbt.fontsize(8)
             nxy = math.ceil(math.sqrt(len(planes) + len(planes_contour)))  # Compute the grid size 
                                                                          # needed to plot all the planes to screen
@@ -612,7 +619,7 @@ if (__name__ == '__main__'):
             fig = plt.subplots()
             for key in planes.keys():
                 plt.subplot(nxy,nxy,i)
-                plt.imshow(planes[key])
+                plt.imshow(planes[key], origin='lower')
                 plt.title(key)
                 plt.colorbar()
                 i+=1
@@ -621,7 +628,7 @@ if (__name__ == '__main__'):
             
             for key in planes_contour:    
                 plt.subplot(nxy, nxy, i)
-                plt.contour(planes[key], aspect=1)
+                plt.contour(planes[key], origin='lower') # These plots are upside-down from the rest, alas.
                 plt.ylim((hbt.sizex(planes[key]), 0))
                 plt.gca().set_aspect('equal')
                 plt.title(key)
@@ -629,21 +636,26 @@ if (__name__ == '__main__'):
             
             plt.tight_layout()
             plt.show()
+
+#%%%            
+            # Plot the original image, with a backplane overlaid
             
-            # Plot the original image too
+            hdu = fits.open(file_in)
+            im = hdu['PRIMARY'].data
+            et = hdu['PRIMARY'].header['SPCSCET']
+            wcs = WCS(file_in)
+            hdu.close()
             
-            f = fits.open(file_in)
-            im = f['PRIMARY'].data
+            plt.set_cmap('Greys_r')
+            
             hbt.figsize((10,10))
-#            plt.imshow(stretch(im), origin='lower')
-
-            # In the case of a tunacan orbit, plot a tunacan from the backplane
-
-            if ('ORT3' in file_in):               
-                plt.imshow((np.abs(planes['Altitude_eq']) < 3000) &
-                           (planes['Radius_eq'] < 5000),
-                           alpha=0.5)
-            plt.show()    
+            hbt.fontsize(12)
+            
+            # Define the limits of 
+            
+            limit_vertical_km = 5000  # half-height of the tunacan, in km
+            limit_radial_km   = 10000 # halfwidth of the tunacan or sunflower, in km
+            dr_km             = 1000  # Radial width of the sunflower ring, in km
             
             if ('ORT4' in file_in):
 
@@ -654,83 +666,94 @@ if (__name__ == '__main__'):
                 plt.imshow(stretch(im), origin='lower')
                 plt.imshow((np.abs(radius_roll < 1000)) &
                            (np.abs(radius_roll < 3000)),
-                           alpha=0.5)
-#                plt.xlim((180,220))
-#                plt.ylim((180,220))
+                           alpha=0.5, origin='lower')
                 plt.show()    
 
  
             if ('MU69_Approach' in file_in):
 
-                dx = 0   # Positional error in MU69 position from WCS
-                dy = 0
-                radius_roll = np.roll(np.roll(planes['Radius_eq'], dx, axis=0), dy, axis=1)
+                # dx = 0   # Positional error in MU69 position from WCS
+                # dy = 0
+                # radius_roll = np.roll(np.roll(planes['Radius_eq'], dx, axis=0), dy, axis=1)
                 
-                plt.imshow(stretch(im), origin='lower')
-                plt.imshow((np.abs(radius_roll < 1000)) &
-                           (np.abs(radius_roll < 3000)),
-                           alpha=0.5)
-#                plt.xlim((180,220))
-#                plt.ylim((180,220))
+                radius_eq   = planes['Radius_eq']
+                altitude_eq = planes['Altitude_eq']
+                
+                plot_img_wcs(stretch(im), wcs, width=50, do_show=False,
+                             et = et, name_observer='New Horizons', name_target = 'MU69')
+
+                if 'SUNFLOWER' in frame:                                  
+                    plt.imshow((np.abs(radius_eq > (limit_radial_km-dr_km))) &
+                               (np.abs(radius_eq <  limit_radial_km)),
+                               alpha=0.2, origin='lower', cmap = 'plasma')
+                    title = f'Sunflower, 10000 km, {file_in_short}'
+                    
+
+                if 'TUNACAN' in frame:
+                    plt.imshow((np.abs(radius_eq) < limit_radial_km) &
+                               (np.abs(altitude_eq) < limit_vertical_km),
+                               alpha=0.2, origin='lower', cmap = 'plasma')
+                    title = f'Tunacan, {limit_vertical_km} km x {limit_radial_km} km [half], {file_in_short}'
+                
+                plt.title(title)
                 plt.show()    
 
-                
-            # Make a radial profile, if requested
+#%%%
+            # Measure and plot a radial profile
+
+            # If we are using a tunacan, then we want to bin by radius, but also limit to some reasonable 
+            # midplane distance. 
             
-            num_pts = 200
+            dist_midplane = 20000  # Midplane distance to limit to, in km
+            
+            num_pts = 100          # Number of radial points to use
+            
+            if 'TUNACAN' in frame:
+                is_good = (np.abs(altitude_eq) < dist_midplane)
+                im_masked = im * is_good
+                im_masked[is_good == 0] = np.nan    # Set all pixel > vertical altitude to NaN
+            
+            # If we are using SUNFLOWER or other orbit, no need to limit by distance
+            
+            else:
+                im_masked = im
+            
+            # Take the radial profile
+            
+            (radius, dn) = get_radial_profile_backplane(im_masked,
+                                             radius_eq, num_pts=num_pts)
             
             hbt.figsize(8,5)
-            (radius, dn) = get_radial_profile_backplane(im, 
-                                         radius_roll, num_pts=300)
+            hbt.fontsize(12)
+
+            do_fit_profile = False
             
+            if do_fit_profile:
+                
             # Fit a gaussian to the radial profile, if requested
             # ** This code works here, but for production, use radial profiles from superstack routines.
             
-            x = radius[50:]
-            y = dn[50:]            
-            popt,pcov = curve_fit(gaus,x,y,p0=[9000,0,1000])
+                x = radius[50:]
+                y = dn[50:]            
+                popt,pcov = curve_fit(gaus,x,y,p0=[9000,0,1000])
+
+                plt.plot(x,gaus(x,*popt),'ro:', marker = None, ls = '--', lw=0.5, 
+                         label = f'Fit, radius={popt[1]:.0f} km, FWHM={2.35 * popt[2]:.0f} km')
+                # FWHM = 2.35 * sigma: https://ned.ipac.caltech.edu/level5/Leo/Stats2_3.html
 
             plt.plot(radius, dn, label = 'Data')
-            plt.plot(x,gaus(x,*popt),'ro:', marker = None, ls = '--', lw=0.5, 
-                     label = f'Fit, radius={popt[1]:.0f} km, FWHM={2.35 * popt[2]:.0f} km')
-            # FWHM = 2.35 * sigma: https://ned.ipac.caltech.edu/level5/Leo/Stats2_3.html
             
             # plt.ylim((-0.2,1))
 
             plt.xlim((0, 20000))
             plt.xlabel('Radius [km]')
             plt.ylabel('DN')
-            plt.legend()
-            plt.title(f'Radial profile, superstack, backplane from frame {frame}')
+            plt.title(f'Radial profile, superstack, {frame}')
+            
+            if do_fit_profile:   # Only do the legend, if there are multiple lines
+                plt.legend()
+            
             plt.show()
-
-            # Now check the dRA / dDec planes
             
-            column = 128
-            row    = 128
-            pixsize_horizontal_dRA_km = planes['dRA_km'][row,column] - planes['dRA_km'][row,column+1]
-            pixsize_vertical_dDec_km = planes['dDec_km'][row,column] - planes['dDec_km'][row+1,column]
-            
-            dec = planes['Dec'][column,row]
-            cosdec = math.cos(dec)            
-
-            print(pixsize_vertical_dDec_km)
-            print(pixsize_horizontal_dRA_km)
- 
-            print(pixsize_vertical_dDec_km / cosdec)
-            print(pixsize_horizontal_dRA_km * cosdec)
-            
-            # Now check that dRA_pix_km is the same at the top and bottom of the frame
-            row=0
-            pixsize_horizontal_dRA_km_top = planes['dRA_km'][row,column] - planes['dRA_km'][row,column+1]
-            row=255
-            pixsize_horizontal_dRA_km_bot = planes['dRA_km'][row,column] - planes['dRA_km'][row,column+1]
-            
-            # These two numbers here should be the same
-            # In original version, they are -2223 and -2232
-            # In fixed version, they are -1945.550, -1945.5498
-            
-            print(pixsize_horizontal_dRA_km_top)
-            print(pixsize_horizontal_dRA_km_bot)
             
 #%%%
