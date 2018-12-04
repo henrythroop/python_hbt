@@ -68,7 +68,7 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
         String. Input filename, for FITS file.
     frame:
         String. Reference frame of the target body. 'IAU_JUPITER', 'IAU_MU69', '2014_MU69_SUNFLOWER_ROT', etc.
-                This is the frame that the Radius_eq and Longitude_eq are computed in.
+        This is the frame that the Radius_eq and Longitude_eq are computed in.
     name_target:
         String. Name of the central body. All geometry is referenced relative to this (e.g., radius, azimuth, etc)
     name_observer:
@@ -78,18 +78,23 @@ def compute_backplanes(file, name_target, frame, name_observer, angle1=0, angle2
     ----
     
     angle{1,2,3}:
+        **NOT REALLY TESTED. THE BETTER WAY TO CHANGE THE ROTATION IS TO USE A DIFFERENT FRAME.**
+
         Rotation angles which are applied when defining the plane in space that the backplane will be generated for.
         These are applied in the order 1, 2, 3. Angles are in radians. Nominal values are 0.
-        
+       
         This allows the simulation of (e.g.) a ring system inclined relative to the nominal body equatorial plane.
         
         For MU69 sunflower rings, the following descriptions are roughly accurate, becuase the +Y axis points
         sunward, which is *almost* toward the observer. But it is better to experiment and find the 
         appropriate angle that way, than rely on this ad hoc description. These are close for starting with.
  
-                      `angle1` = Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
-                      `angle2` = Rotation angle, if tilted front-back. 
-                      `angle3` = Tilt right-left, from face-on.
+                      - `angle1` = Tilt front-back, from face-on. Or rotation angle, if tilted right-left.
+                      - `angle2` = Rotation angle, if tilted front-back. 
+                      - `angle3` = Tilt right-left, from face-on.
+    
+    do_fast:
+        Boolean. If set, generate only an abbreviated set of backplanes. **NOT CURRENTLY IMPLEMENTED.**
         
     Output
     ----
