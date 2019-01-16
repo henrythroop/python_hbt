@@ -1225,7 +1225,7 @@ def find_stars(im, num=-1, do_flux=False, sigma=3.0, iters=5, fwhm=5.0, threshol
     from   astropy.stats import sigma_clipped_stats
 #    from   photutils import daofind # Deprecated
 
-    mean, median, std = sigma_clipped_stats(im, sigma=sigma, iters=iters)
+    mean, median, std = sigma_clipped_stats(im, sigma=sigma, maxiters=iters)
     
     find_func = photutils.DAOStarFinder(threshold, fwhm)
     sources = find_func(im - median)
