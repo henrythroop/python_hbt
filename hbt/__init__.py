@@ -61,6 +61,7 @@ from calc_offset_points             import calc_offset_points
 from navigate_image_stellar         import navigate_image_stellar
 from scatter_mie_ensemble           import scatter_mie_ensemble
 from scatter_lambert                import scatter_lambert
+from scatter_isotropic              import scatter_isotropic
 
 # We want to define these as functions, not classes
 # They are all general-purpose functions.
