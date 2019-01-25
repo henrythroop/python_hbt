@@ -1439,7 +1439,39 @@ def nanlogical_or(m1,m2):
     out[np.isnan(m2)] = np.nan
     
     return(out)
+
+#==============================================================================
+# wrapper to np.nanmedian, but with warnings suppressed
+#==============================================================================
     
+def nanmedian(*args, **kwargs):
+
+    """
+    Identical to np.nanmedian(), but with warnings suppressed. The most common warning
+    is one triggered by np.nanmedian([np.nan, np.nan]) which returns nan, but also triggers a warning.
+    This is stupid -- it is doing exactly like I want it to!
+    """
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return(np.nanmedian(*args, **kwargs))
+    
+#==============================================================================
+# wrapper to np.nanmean, but with warnings suppressed
+#==============================================================================
+    
+def nanmean(*args, **kwargs):
+
+    """
+    Identical to np.nanmean(), but with warnings suppressed. The most common warning
+    is one triggered by np.nanmean([np.nan, np.nan]) which returns nan, but also triggers a warning.
+    This is stupid -- it is doing exactly like I want it to!
+    """
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return(np.nanmean(*args, **kwargs))
+
 #==============================================================================
 # Function to remove some vertical striping from LORRI images.
 #==============================================================================
