@@ -25,6 +25,7 @@ import importlib  # So I can do importlib.reload(module)
 from   photutils import DAOStarFinder
 import photutils
 from   astropy import units as u           # Units library
+import scipy.ndimage
 
 from   scipy.optimize import curve_fit
 from   astropy.convolution import Box1DKernel, Gaussian1DKernel, convolve
@@ -1530,6 +1531,41 @@ def trim_image(img, val_bg = 0):
     mask = (img != val_bg)
     return img[np.ix_(mask.any(1),mask.any(0))] 
 
+# =============================================================================
+# Crop an array, leaving the center
+# =============================================================================
+
+def crop(arr, dim):
+
+    """
+    Crop an array. Output is the central region of the input,
+    
+    Parameters
+    -----
+    
+    arr:
+        Input array
+    
+    dim:
+        Dimension of the output. Tuple.
+        
+        
+    """
+    
+    s = np.shape(arr)
+    dx = s[0]
+    dy = s[1]
+    
+    dx_out = dim[0]
+    dy_out = dim[1]
+    
+    center_x = int(dx/2)
+    center_y = int(dy/2)
+    
+    out = arr[int(center_x - dx_out/2):int(center_x+dx_out/2), int(center_y - dx_out/2):int(center_y+dy_out/2)]
+    
+    return(out)
+    
 #==============================================================================
 # Function to round outward.
 #==============================================================================
@@ -1738,6 +1774,71 @@ def nanresize(arr, fac_zoom, val=0):
     arr_resize[mask_resize==1]    = np.nan
    
     return arr_resize
+
+# =============================================================================
+# Function to do centering of an array based on center-of mass (ie, centroid)
+# =============================================================================
+
+def center_array_by_mass(img, boxwidth = None):
+    """
+    Centers an array on its center-of-mass.
+    i.e, if the array has one star, then the centroid will be calculated, and then array 
+    rolled until that object is at the center.
+    
+    There is a simple attempt at background removal done, but it is not sophisticated.
+    
+    Sometimes this will require multiple iterations to converge.
+    
+    img:
+        Array with image. Usually square.
+        
+    boxwidth:
+        Width of the sub-array used for centering, if any. If the input array is thousands of pixels,
+        and the object is near the center, try using width=100. Then the centroid will be calculated using
+        just these central 100x100 pixels. 
+        
+    Output
+    -----
+
+    (out,shift):
+       out: the shifted array
+       shift: the array of pixel shifts, for axis 0 and 1.
+    
+    """
+    
+    if boxwidth is not None:
+        xcenter = np.shape(img)[0]/2
+        ycenter = np.shape(img)[1]/2
+        dx_center = boxwidth
+        dy_center = boxwidth
+        img_crop = img[int(xcenter-dx_center/2):int(xcenter+dx_center/2), 
+                       int(ycenter-dy_center/2):int(ycenter+dy_center/2)].copy()
+    else:
+        # width = np.shape(img)[0]
+        img_crop = img.copy()
+        
+    xcenter = int(np.shape(img_crop)[0]/2)
+    ycenter = int(np.shape(img_crop)[1]/2)
+
+    # Do a very simple background removal: set to zero any pixels that are at (median + stdev), or below.
+    
+    std = np.nanstd(img_crop)
+    med = np.nanmedian(img_crop)
+    img_crop[img_crop < (med + std)] = 0
+    
+    centers = scipy.ndimage.measurements.center_of_mass(img_crop)
+    
+    # plt.imshow(img_crop)
+    # plt.show()
+    
+    shift = -(np.array(centers)-np.array([xcenter, ycenter])).astype(int)
+    out      = np.roll(img,      shift, axis=[0,1])
+    out_crop = np.roll(img_crop, shift, axis=[0,1])
+
+    # plt.imshow(out_crop)
+    # plt.show()
+    
+    return((out,shift))
             
 # =============================================================================
 # Function to do linear fit, but as one paramter, not two.
