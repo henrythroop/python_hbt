@@ -88,7 +88,24 @@ def get_all_captions(files):
 #        print(f'Added caption {caption_i}')
         
     return captions
-        
+
+def get_all_captions_old(files):
+    """
+    Read in captions from the captions.txt file. Don't usually use this.
+    """
+
+    captions = []
+    lun = open("captions.txt", "r")
+    captions = lun.readlines()
+    lun.close()
+    captions_fixed = captions[0:-1:2]  # Alternate lines are blank
+    captions_fixed.append(captions[-1])
+    for i in range(len(captions_fixed)):
+        captions_fixed[i] = captions_fixed[i].rstrip()
+        print(f'{i}. {captions_fixed[i]} using OLD')
+    
+    return captions_fixed
+
 def make_gallery_item(caption, basename, type = 'span'):
     """
     Return an HTML line for the gallery.
@@ -170,9 +187,20 @@ def photo2web():
     
     header_txt = []
     
-    captions = get_all_captions(files_original)
+    # Get captions from the EXIF info
+    # If the flag is set, then read from captions.txt file, instead of from EXIF headers. This is usually just 
+    # if I'm reprocessing an old gallery.
+    
+    DO_CAPTIONS_TXT = True
+    
+    if DO_CAPTIONS_TXT:
+        captions = get_all_captions_old(files_original)
+    else:
+        captions = get_all_captions(files_original)
     
     print(f'Read {len(captions)} captions')
+    for caption in captions:
+        print(caption)
     
     # Read text header
             
