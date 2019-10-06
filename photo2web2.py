@@ -191,16 +191,21 @@ def photo2web():
     # If the flag is set, then read from captions.txt file, instead of from EXIF headers. This is usually just 
     # if I'm reprocessing an old gallery.
     
-    DO_CAPTIONS_TXT = True
+    DO_CAPTIONS_TXT = False
     
     if DO_CAPTIONS_TXT:
         captions = get_all_captions_old(files_original)
+        print('Warning: Reading from captions.txt file, not from EXIF info. See flag DO_CAPTIONS_TXT')
     else:
         captions = get_all_captions(files_original)
     
     print(f'Read {len(captions)} captions')
-    for caption in captions:
-        print(caption)
+    
+    DO_PRINT_CAPTIONS = False
+    
+    if DO_PRINT_CAPTIONS:
+        for caption in captions:
+            print(caption)
     
     # Read text header
             
@@ -245,12 +250,33 @@ def photo2web():
     
     j = 0
     
+    ## Make a list of sections here.
+    
+    lun.write('<FONT SIZE=+0></B><br>Jump to section:<br></FONT></B>\n')
+    lun.write('<ul>')
+    
+    for i,file in enumerate(files_original):
+    
+        caption = captions[i]
+    
+        # If this image starts a new section, then create the HTML for that
+    
+        if  '##' in captions[i]:
+            caption, section = caption.split('##')
+            lun.write(f'<li><a href=#{j+1}>{section}</a><br>\n')
+            # print(f'Section = {section}<br>')
+            j+=1
+                                             
+    lun.write('</ul>')
+    
     # Print a link to the old-style gallery
 
-    lun.write("<p><a href=show_old.html><b>Slideshow (old-style, all photos on one long page)</b></a><br><p>\n")
+    lun.write("<p><a href=show_old.html><b>Slideshow (blog-style, all photos on one long page, with captions)</b></a><br><p>\n")
     lun.write("<p><a href='..'><img src='../icons/info.gif' border=0><b>Return to list of galleries</b></a><p>\n")
     
     # Loop and print the entry for each image
+    
+    j = 0
     
     for i,file in enumerate(files_original):
     
