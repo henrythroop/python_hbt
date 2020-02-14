@@ -67,9 +67,16 @@ def get_all_captions(files):
     Given a list of files, returns a list of captions.
     This uses 'sips', which is far faster than exiftool.
     It does not depend on using a captions.txt file.
+    
+    NB: I used to use .decode('utf-8'). But this caused some error, and using ISO-8859-1 seems to fix that.
+    
+    NB: Looks like sips --getProperty description has a bug. If the length is > 1024 characters, then it returns 
+    junk. No warning, and no way to detect this, except by seeing junk in the output.
+    
     """
     
-    captions_all = subprocess.check_output(['sips', '--getProperty', 'description'] + files).decode("utf-8")
+    captions_all = subprocess.check_output(['sips', '--getProperty', 'description'] + files).decode("ISO-8859-1")
+    
     
     captions = []
     for i in range(len(files)):
@@ -85,7 +92,7 @@ def get_all_captions(files):
         caption_i = caption_i[:-1]  # Remove final \n
         caption_i = caption_i.replace('<nil>', '')  # Remove <nil>
         captions.append(caption_i)
-#        print(f'Added caption {caption_i}')
+        # print(f'Added caption {i}: {caption_i}')
         
     return captions
 
