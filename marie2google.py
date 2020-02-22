@@ -9,12 +9,15 @@ Created on Wed Feb 12 22:22:10 2020
 import numpy as np
 import xlrd as xlrd
 
-import hbt
+#import hbt
 import re
 
 def abbreviate(s):
 
     a = [
+            
+## Abbreviate institution names
+            
     ('Johns Hopkins University/Applied Physics Laboratory', 'JHU-APL'),
     ('SETI Institute', 'SETI'),
     ('Jet Propulsion Laboratory', 'JPL'),
@@ -41,11 +44,41 @@ def abbreviate(s):
     ('University of Western Ontario', 'U Western Ontario'),
     ('Planetary Science Institute', 'PSI'),
     ('Auburn University', 'Auburn'),
-    ('State University', 'State'),
-    ('Corporation', ''),
+    ('Catholic University of America', 'Catholic'),
+    ('University of Central Florida', 'UCF'),
+    ('NASA Goddard Space Flight Center', 'NASA GSFC'),
+    ('US Naval Academy', 'Naval Acad'),
+    ('University of California, Berkeley', 'Berkeley'),
+    ('University Of Alaska, Fairbanks', 'U Alaska'),
+    ('California Institute of Technology', 'Caltech'),
+    ('Princeton University', 'Princeton'),
+    ('Cornell University', 'Cornell'),
+    ('Trinity University', 'Trinity'),
+    ('Naval Research Lab', 'NRL'),
+    ('Imperial College Of Science Technology & Medicine', 'Imperial College'),
+    ('Brigham Young University', 'BYU'),
+    ('Massachusetts Institute of Technology', 'MIT'),
+    ('Northern Arizona University', 'NAU'),
+    ('NASA Marshall Space Flight Center', 'NASA MSFC'),
+    ('Institute For Advanced Study', 'Princeton-IAS'),
+    ('CTRE NAT DE LA RECHERCHE SCIENTIFIQUE', 'CNRS France'),
+    ('University of California, ', 'UC '),
+
+## Abbreviate a few common phrases
     
+    ('Corporation', ''),
+    ('State University', 'State'),
     (', LLC', ''),
-    ('Imperial College Of Science Technology & Medicine', 'Imperial College')]
+    ('University Of ', 'U '),
+    
+## Abbreviate the roles
+    
+    ('Collaborator', 'Collab'),
+    ('Science PI', 'Sci-PI'),
+    ('Graduate/Undergraduate Student', 'Student'),
+    ('(non-US organization only)', 'sFOREIGN'),
+    ('Postdoctoral Associate', 'Postdoc'),
+    ]
 
     for t in a:
         insensitive = re.compile(t[0], re.IGNORECASE)
@@ -54,25 +87,25 @@ def abbreviate(s):
         
     return s
 
-file_xl = '/Users/throop/HQ/python/Panel_Compilation_ImpactProcesses.xls'
+file_xl = '/Users/hthroop/Downloads/Dynamics_II.xls'
 
 workbook = xlrd.open_workbook(file_xl)
 sheet_names = workbook.sheet_names()
 print('Sheet Names', sheet_names)
 
 num_proposals = len(sheet_names)-3
-sheet_proposals = workbook.sheet_propoals
+#sheet_proposals = workbook.sheet_proposals
 
 for i in range(num_proposals):
     sheet = workbook.sheet_by_index(i+3)
     num_investigators = sheet.nrows-1
 
+    print(sheet_names[i+3])
+    print('------')
     for j in range(num_investigators):
         
         role = sheet.cell_value(j+1,0)  # row (1st row is 0), column (1st col is A)
-        role = role.replace('Collaborator', 'Collab').replace('Science PI', 'Sci-PI')
-        role = role.replace('Graduate/Undergraduate Student', 'Student')
-        # Add another line for Postdoctoral Scholar
+        role = abbreviate(role)
         
         name_last = sheet.cell_value(j+1,3)
         name_first = sheet.cell_value(j+1,4)
@@ -85,7 +118,6 @@ for i in range(num_proposals):
         # print(f'Shortened {institution} to {institution_short}')
         
         # XXX Add a line to print the proposal number and title here.
-        
         line = (f'{role} {name_first} {name_last} / {institution_short}')
         print(line)
     print()
