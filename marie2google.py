@@ -29,6 +29,7 @@ def abbreviate(s):
     ('NASA Johnson Space Center', 'NASA JSC'),
     ('University Of Colorado, Boulder', 'U Colorado'),
     ('Southwest Research Institute', 'SwRI'),
+    ('Space Science Institute', 'SSI'),
     ('Arizona State University', 'ASU'),
     ('University of New Mexico', 'UNM'),
     ('University Of California, Santa Cruz', 'UCSC'),
@@ -62,7 +63,39 @@ def abbreviate(s):
     ('NASA Marshall Space Flight Center', 'NASA MSFC'),
     ('Institute For Advanced Study', 'Princeton-IAS'),
     ('CTRE NAT DE LA RECHERCHE SCIENTIFIQUE', 'CNRS France'),
+    ('Centre National de la Recherche Scientifique', 'CNRS France'),
+    ('Embry-Riddle Aeronautical University, Inc.', 'Embry-Riddle'),
     ('University of California, ', 'UC '),
+    ('University of Michigan', 'U Mich'),
+    ('Georgia Tech Research', 'GA Tech'),
+    ('North Carolina State', 'NC State'),
+    ('THE REGENTS OF THE UNIVERSITY OF CALIFORNIA', 'UC'),
+    ('Smithsonian Institution', 'Smithsonian'),
+    ('University of Texas, El Paso', 'UTEP'),
+    ('University of Tennessee, Knoxville', 'UTK'),
+    ('Universities Space Research Association, Columbia', 'LPI'),
+    ('Rutgers University', 'Rutgers'),
+    ('University of Texas, San Antonio', 'UTSA'),
+    ('University of New Hampshire', 'UNH'),
+    ('University of Arkansas, Fayetteville', 'U Ark'),
+    ('Hampton University', 'Hampton'),
+    ('President and Fellows of Harvard College', 'Harvard'),
+    ('American University', 'American U'),
+    ('Lockheed Martin Inc.', 'Lockheed'),
+    ('University of Wisconsin, Madison', 'U Wisc'),
+    
+    (', THE (INC)', ''),
+    (', Iowa City', ''),
+    (', Ann Arbor', ''),
+    (', Austin', ''),
+    (', Lafayette', ''),
+    (', Athens', ''),
+    (', Durham', ''),
+    (', New Brunswick', ''),
+    (' DR14', ''),
+    (' Flagstaff', ''),
+    (' and A&M College', ''),
+    
 
 ## Abbreviate a few common phrases
     
@@ -76,7 +109,7 @@ def abbreviate(s):
     ('Collaborator', 'Collab'),
     ('Science PI', 'Sci-PI'),
     ('Graduate/Undergraduate Student', 'Student'),
-    ('(non-US organization only)', 'sFOREIGN'),
+    ('(non-US organization only)', 'FOREIGN'),
     ('Postdoctoral Associate', 'Postdoc'),
     ]
 
@@ -87,7 +120,8 @@ def abbreviate(s):
         
     return s
 
-file_xl = '/Users/hthroop/Downloads/Dynamics_II.xls'
+file_xl = '/Users/hthroop/Downloads/SSW_Volcanism.xls'
+file_xl = '/Users/hthroop/Downloads/SSW_ATM-SCD2.xls'
 
 workbook = xlrd.open_workbook(file_xl)
 sheet_names = workbook.sheet_names()
