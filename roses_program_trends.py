@@ -43,6 +43,9 @@ def extract_vote_original(record, column):
     """
     out = str(record[column]).split(' ')[0] 
     
+    if (out == 'n/a'):
+        out = 'nan'
+        
     if len(out) == 0:  # Return 'nan' not '', since np.array.astype(float) won't choke on nan
         out = 'nan'
         
@@ -77,6 +80,10 @@ NumberProposal = []
 TitleProposal = []
 NameInstitution = []
 NameSubpanel = []
+Notes = []
+NumberWeek = []
+NameSubpanel = []
+Year = []
 
 ScoreMeritMean = []
 ScoreMeritMedian = []
@@ -104,6 +111,7 @@ column_ScoreMeritMedian  = 10
 column_ScoreCostMedian   = 12
 column_ScoreRelevanceMedian = 11
 column_ScorePMEMedian  = 13
+column_Notes           = 14   # In SSW19, we have 'Descope' and 'no PME' here as tags.
 
 # Read in all the data
 
@@ -122,6 +130,8 @@ for i in range(num_years):
             TitleProposal.append(     record[column_TitleProposal])
             NumberProposal.append(    record[column_NumberProposal])
             NameInstitution.append(   record[column_NameInstitution])
+            Notes.append(             record[column_Notes])
+            NumberWeek.append(              record[column_NumberWeek])
             
             ScoreMeritMean.append(extract_vote_original(     record, column_ScoreMeritMean))
             ScoreCostMean.append(extract_vote_original(      record, column_ScoreCostMean))
@@ -144,10 +154,38 @@ ScoreRelevanceMedian = np.array(ScoreRelevanceMedian).astype(float)
 ScoreMeritMedian = np.array(ScoreMeritMedian).astype(float)
 
 NamePI = np.array(NamePI)
+NameLastPI = np.array(NamePI)
 NameInstitution = np.array(NameInstitution)
-NameSubpanel = np.array(NameSubpanel)
+NameSubpanel = np.array(NameSubpanel)  # Volcanism
+NameSubpanelLong = np.array(NameSubpanel)  # 'SSW19 W3 Volcanism'
 TitleProposal = np.array(TitleProposal)
 NumberProposal = np.array(NumberProposal)
+Notes = np.array(Notes)
+NumberWeek = np.array(NumberWeek).astype(int)
+NameSubpanel = np.array(NameSubpanel)
+
+num_proposals = len(NamePI)
+
+Year = np.zeros(num_proposals).astype(int)
+
+
+### Extract just the PI last names, since SSW19 doesn't have first names
+
+for i in range(len(NameLastPI)):
+    s = NameLastPI[i]
+    if ',' in s:
+        s = s.split(',')[0]
+        NameLastPI[i] = s
+
+### Extract the year. This is the ROSES year, not the CY or FY
+        
+for i in range(num_proposals):
+    Year[i] = NumberProposal[i][0:2]
+
+# Make a long and unique string for each sub-panel, and tag it. 'SSW19 W4 Volcanism', for instance.
+
+for i in range(num_proposals):
+    NameSubpanelLong[i] = f'SSW{Year[i]} W{NumberWeek[i]} {NameSubpanel[i]}'
 
 ### Now time to make some plots!
 
@@ -171,44 +209,68 @@ num_proposals = len(TitleProposal)
 SimilarityTitle = np.zeros([num_proposals, num_proposals])
 SimilarityPI    = np.zeros([num_proposals, num_proposals])
 
-# Loop through and calculate similarity for every pair of proposals
+# Loop through and calculate similarity for every pair of proposals. 
+# Save these similarity metrics, but do not save the actual matches themselves, so we can change the criteria as needed.
+# This is a slow process, so save the results to disk.,m                                                     
+# (It is faster if I install a native package python-Levenshtein, but that requires gcc.
+#   I can't install gcc, because *that* requires having Catalina, which *I don't on NASA Mac.)
 
 file_pkl = f'{name_program}_{num_proposals}.pkl'
 
 if os.path.exists(file_pkl):
-     (SimilarTitle, SimilarityPI) = pickle.load(open(file_pkl, "rb"))
+     (SimilarityTitle, SimilarityPI) = pickle.load(open(file_pkl, "rb"))
      print(f'Loaded: {file_pkl}')
 else:     
      
     for i in range(num_proposals):
         for j in range(num_proposals):
             SimilarityTitle[i,j] = fuzz.ratio(TitleProposal[i], TitleProposal[j])
-            SimilarityPI[i,j]    = fuzz.ratio(NamePI[i],    NamePI[j])
+            SimilarityPI[i,j]    = fuzz.ratio(NameLastPI[i],    NameLastPI[j])
             
         print(f'Done with {i}/{num_proposals}')
     print(f'Saving: {file_pkl}')
     pickle.dump( (SimilarityTitle, SimilarityPI), open( file_pkl, "wb" ) )
 
-CriteriaSimilarity = 75  # This is kind of arbitrary. 75 seems good.
+CriteriaSimilarityTitle = 75  # This is kind of arbitrary. 75 seems good.
+CriteriaSimilarityPI    = 75  # SSW19 has surnames only, so relax matching here. 
 
 # Now go through and search for matches.
 # We end up with a list called 'matches', which indicates each proposal which matches the indicated one.
 # Reversals are excluded (ie, if i == j, then j == i is excluded).
+# Since some proposal ID's are listed twice, then explicitly count those as a non-match (e.g., main proposal, and PME).
+# Also, exclude any that have PME, or descopes, or anything in the NOTES column.
 
 matches = []
+
+FILTER_STRING = 'SSW19'   # Matches anything on the string output
+
+print('Searching for matches...')
+
+## After matching a proposal, we need to take it out of the running. Don't double-count AB, AC, and CB.
+
+AlreadyUsed = np.zeros(num_proposals).astype(bool)
+AlreadyUsed[:] = False
 
 for i in range(num_proposals):
 
     matches_i = [] 
     for j in range(num_proposals):
         if j > i:
-            if (SimilarityTitle[i,j] > CriteriaSimilarity) and (SimilarityPI[i,j] > CriteriaSimilarity):
+            if ((SimilarityTitle[i,j] > CriteriaSimilarityTitle) and (SimilarityPI[i,j] > CriteriaSimilarityPI)
+                and (NumberProposal[i] != NumberProposal[j]) 
+                and (Notes[i] == '') 
+                and (Notes[j] == '') 
+#                and ( (FILTER_STRING in NumberProposal[j]) + (FILTER_STRING in NumberProposal[i]) )
+                and not(AlreadyUsed[j])
+                ):
                 matches_i.append(j)        # Add the j element to list (ie, the 2nd, 3rd, 4th etc proposal)
+                AlreadyUsed[j] = True      # Take it out of the running
                 if len(matches_i) == 1:
                     matches_i.insert(0,i)  # Add the i element to list (ie, the 1st proposal)
                     print()
                     print("Matched!")
-                print(f'{NumberProposal[j]} {NamePI[j]} {TitleProposal[j]}')
+                print(f'{j:5} Ti: {SimilarityTitle[i,j]} {NumberProposal[j]:16} {NamePI[j]} {TitleProposal[j]}')
+                print(f'{i:5} PI: {SimilarityPI[i,j]} {NumberProposal[i]:16} {NamePI[i]} {TitleProposal[i]}')
                 print(f'Merit Mean: {ScoreMeritMean[matches_i]}')
                 print()
 
@@ -228,13 +290,43 @@ ScoreMeritMedian_Y1 = []
 ScoreMeritMean_Y2   = []        
 ScoreMeritMedian_Y2 = []        
 
+
+num_singles = 0                 # Number of proposals that were only submitted once
+num_multiple_titles = 0         # Number of multiple-submits, counting each multiple only once
+num_multiple_proposals = 0      # Number of multiple-submits, counting each individual submission
+
+for prop in matches:
+  if len(prop) > 0:
+      num_multiple_titles += 1
+      num_multiple_proposals += len(prop)
+num_singles = len(matches) - num_multiple_proposals
+
+print(f'{num_proposals} total proposals.')
+print(f'  Single proposals: {num_singles}')
+print(f'  Multiples, counting each multiple once: {num_multiple_titles}')
+print(f'  Multiples, counting each individual submission: {num_multiple_proposals}')
+print()
+
+if FILTER_STRING:
+    print(f'Listing proposals matching {FILTER_STRING}:')
+    print()
+      
 for i in range(num_proposals):
     m = matches[i]
     if len(m) > 0:
-        print(f'{i}')
-        for j in range(len(m)):
-            print(f'{NumberProposal[m[j]]:15} / {NamePI[m[j]]:25} / {ScoreMeritMean[m[j]]:5} /   {TitleProposal[m[j]]}')
-        print()
+#        print(f'{i}')
+        out = ''
+        for j in reversed(range(len(m))):
+            delta = ScoreMeritMean[m[j]] - ScoreMeritMean[m[-1]]
+            delta_str = f'{delta:+5.2f}'
+            if '0.00' in delta_str:
+                delta_str = '     '
+            out = out + f'{NumberProposal[m[j]]:15} / W{NumberWeek[m[j]]:1} {NameSubpanel[m[j]][:20]:20}' + \
+                  f'/ {NamePI[m[j]][:25]:25} ' + \
+                  f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / {TitleProposal[m[j]][:90]}\n'
+        if FILTER_STRING in out:
+            print(out)
+#        print()
         
         scores_y1 = ScoreMeritMean[m[0:-1]]
         scores_y2 = ScoreMeritMean[m[1:]]
@@ -255,7 +347,7 @@ plt.ylim([0,5])
 plt.xlim([0,5])
 plt.xlabel('Year 1')
 plt.ylabel('Year 2')
-plt.title('SSW Merit Mean, 2014-2018')
+plt.title('SSW Merit Mean, 2014-2019')
 plt.plot([1,5],[1,5])
 plt.gca().set_aspect('equal')
 plt.show()
@@ -268,10 +360,12 @@ num_pairs = len(ScoreMeritMean_Y1)
 ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean, k=num_pairs))[0:-1]
 ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean, k=num_pairs))[0:-1]
 delta_s = ScoreMeritMean_Y1_s - ScoreMeritMean_Y2_s
-plt.hist(delta_s, bins=20)
+
+plt.hist(delta_s, bins=20, color = 'pink', alpha = 0.6)
 plt.xlabel('Change in Synthetic Mean Merit')
 plt.ylabel('Number')
-plt.title(f'SSW2014-2018. Delta mean = {np.nanmean(delta_s):4.2}; Stdev = {np.nanstd(delta_s):4.2}; N={num_pairs} resubmits')  
+plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' + 
+                                        f'Stdev = {np.nanstd(delta_s):4.2}; N={num_pairs} resubmits')  
 plt.axvline(0, color='red', alpha=0.2)
 plt.show()  
 
@@ -282,41 +376,84 @@ plt.hist(delta, bins=20, label = 'Actual')
 plt.hist(delta_s, bins=20, alpha=0.6, color='pink', label = 'Random')
 plt.xlabel('Change in Mean Merit')
 plt.ylabel('Number')
-plt.title(f'SSW2014-2018. Delta mean = {np.mean(delta):4.2}; Stdev = {np.nanstd(delta):4.2}; N={num_pairs} resubmits')  
+plt.title(f'SSW2014-2019. Delta mean = {np.mean(delta):4.2}; ' + 
+                                        f'Stdev = {np.nanstd(delta):4.2}; N={num_pairs} resubmits')  
 plt.axvline(0, color='red', alpha=0.2)
 plt.legend()
 plt.show()    
 
 # See what the most common institutions are
 
-institution = np.unique(NameInstitution) # Get a raw list of institutions. N = 179
-num_institutions = len(institution)
+DO_LIST_INSTITUTIONS = False
 
-indices_institution = []
-count_institution = []
-
-for i,inst in enumerate(list(institution)):
-    indices_institution.append(np.where(inst == NameInstitution)[0])
-    count_institution.append(len(indices_institution[-1]))
-count_institution = np.array(count_institution)
-indices_institution = np.array(indices_institution)
-
-# Make an ordered list of institutions, most popular at top
-
-order = np.argsort(count_institution)[::-1]  
-
-# Loop over all inst's, from top to bottom
-
-for i in range(num_institutions):
-    inst_i = institution[order[i]]
-    mean = np.nanmean(ScoreMeritMean[indices_institution[order[i]]])
-    stdev = np.nanstd(ScoreMeritMean[indices_institution[order[i]]])
+if DO_LIST_INSTITUTIONS:
+    institution = np.unique(NameInstitution) # Get a raw list of institutions. N = 179
+    num_institutions = len(institution)
     
-    print(f'{i+1:3}. {inst_i}')
-    print(f' N = {count_institution[order[i]]}. Mean = {mean:4.3} +- {stdev:4.3}')
+    indices_institution = []
+    count_institution = []
     
-    print()
+    for i,inst in enumerate(list(institution)):
+        indices_institution.append(np.where(inst == NameInstitution)[0])
+        count_institution.append(len(indices_institution[-1]))
+    count_institution = np.array(count_institution)
+    indices_institution = np.array(indices_institution)
+    
+    # Make an ordered list of institutions, most popular at top
+    
+    order = np.argsort(count_institution)[::-1]  
+    
+    # Loop over all inst's, from top to bottom
+    
+    
+    for i in range(num_institutions):
+        inst_i = institution[order[i]]
+        mean = np.nanmean(ScoreMeritMean[indices_institution[order[i]]])
+        stdev = np.nanstd(ScoreMeritMean[indices_institution[order[i]]])
+        
+        print(f'{i+1:3}. {inst_i}')
+        print(f' N = {count_institution[order[i]]}. Mean = {mean:4.3} +- {stdev:4.3}')
+        
+        print()
     
 # See who the most busy PI's are
 
+DO_LIST_PIS = True
 
+if DO_LIST_PIS:
+    PI = np.unique(NamePI) # Get a raw list of institutions. N = 179
+    num_pis = len(PI)
+    
+    indices_pi = []
+    count_pi = []
+    
+    for i,pi in enumerate(list(PI)):
+        indices_pi.append(np.where(pi == NamePI)[0])
+        count_pi.append(len(indices_pi[-1]))
+        
+    count_pi = np.array(count_pi)
+    indices_pi = np.array(indices_pi)
+
+# Make an ordered list of PI's, most popular at top
+
+    order_pi = np.argsort(count_pi)[::-1]  
+    
+    # Loop over all inst's, from top to bottom
+    
+    for i in range(10):
+        pi_i = PI[order_pi[i]]
+        mean = np.nanmean(ScoreMeritMean[indices_pi[order_pi[i]]])
+        stdev = np.nanstd(ScoreMeritMean[indices_pi[order_pi[i]]])
+        
+        print(f'{i+1:3}. {pi_i}')
+        print(f' N = {count_pi[order_pi[i]]}. Mean = {mean:4.3} +- {stdev:4.3}')
+        print()
+
+DO_LIST_PANELS = True
+
+# Get a list of all of the panels
+
+RankOrder = {}   # Dictionary. So RankOrder['SSW19 Volcanism'] will return [223, 112, 2070, 1], etc.
+
+    
+        
