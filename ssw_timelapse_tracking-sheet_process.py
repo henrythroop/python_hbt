@@ -15,10 +15,10 @@ import datetime
 from PIL import Image 
 from PIL.ImageStat import Stat
 
-dir_images_in = '/Users/throop/Desktop/ssw_tracking/in/'
-list_files = sorted(glob.glob(dir_images_in + '*'))
+dir_in = '/Users/throop/Desktop/screenshots_ssw_w4/in/'
+list_files = sorted(glob.glob(dir_in + '*'))
 
-dir_out = '/Users/throop/Desktop/ssw_tracking_out'
+# dir_out = dir_in.replace('/in/', '/out/')
 
 # list_files = list_files[0:10]
 i = 0
