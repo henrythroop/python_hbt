@@ -453,7 +453,15 @@ DO_LIST_PANELS = True
 
 # Get a list of all of the panels
 
-RankOrder = {}   # Dictionary. So RankOrder['SSW19 Volcanism'] will return [223, 112, 2070, 1], etc.
+Panel_RankOrder = {}   # Dictionary. So RankOrder['SSW19 Volcanism'] will return [223, 112, 2070, 1], etc.
+Panel_Mean = {}
 
+NamesSubpanelLong = np.unique(NameSubpanelLong)
+
+for panel in NamesSubpanelLong:
+    w = np.where(panel == NameSubpanelLong)[0]
+    print(f'{panel:40} {len(w):3} {np.nanmean(ScoreMeritMean[w]):5.2f}')
+    
+    
     
         
