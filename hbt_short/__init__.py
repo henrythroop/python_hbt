@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 "Standard HBT function library"
-" SHORT VERSION! This version is identical to main version, but 
-" DOES NOT INCLUDE SPICE. Used for NASA Mac, where SPICE is not allowed.
+" SHORT VERSION! This version is identical to main version, but "
+" DOES NOT INCLUDE SPICE. Used for NASA Mac, where SPICE is not allowed."
 
 # Created on Wed Nov  5 20:59:35 2014
 

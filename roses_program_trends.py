@@ -32,6 +32,7 @@ def has_revote(record, column_min, column_max):
     s2 = ' '.join(convert_first_to_generator)
     
     # Look for a paren, such as in "4.25 (4.57)", which indicates a revote
+    # In the 2019 data, this is not present -- the original vote is not output.
     
     result = ('(' in s2) or (')' in s2)
     
@@ -81,7 +82,7 @@ TitleProposal = []
 NameInstitution = []
 NameSubpanel = []
 Notes = []
-NumberWeek = []
+Week = []
 NameSubpanel = []
 Year = []
 
@@ -98,7 +99,7 @@ ScorePMEMean = []
 ScorePMEMedian = []
 
 column_NameSubpanel    = 0
-column_NumberWeek      = 1
+column_Week      = 1
 column_NumberProposal  = 2
 column_NamePI          = 3
 column_TitleProposal   = 4
@@ -131,7 +132,7 @@ for i in range(num_years):
             NumberProposal.append(    record[column_NumberProposal])
             NameInstitution.append(   record[column_NameInstitution])
             Notes.append(             record[column_Notes])
-            NumberWeek.append(              record[column_NumberWeek])
+            Week.append(              record[column_Week])
             
             ScoreMeritMean.append(extract_vote_original(     record, column_ScoreMeritMean))
             ScoreCostMean.append(extract_vote_original(      record, column_ScoreCostMean))
@@ -161,7 +162,7 @@ NameSubpanelLong = np.array(NameSubpanel)  # 'SSW19 W3 Volcanism'
 TitleProposal = np.array(TitleProposal)
 NumberProposal = np.array(NumberProposal)
 Notes = np.array(Notes)
-NumberWeek = np.array(NumberWeek).astype(int)
+Week = np.array(Week).astype(int)
 NameSubpanel = np.array(NameSubpanel)
 
 num_proposals = len(NamePI)
@@ -185,7 +186,7 @@ for i in range(num_proposals):
 # Make a long and unique string for each sub-panel, and tag it. 'SSW19 W4 Volcanism', for instance.
 
 for i in range(num_proposals):
-    NameSubpanelLong[i] = f'SSW{Year[i]} W{NumberWeek[i]} {NameSubpanel[i]}'
+    NameSubpanelLong[i] = f'SSW{Year[i]} W{Week[i]} {NameSubpanel[i]}'
 
 ### Now time to make some plots!
 
@@ -321,7 +322,7 @@ for i in range(num_proposals):
             delta_str = f'{delta:+5.2f}'
             if '0.00' in delta_str:
                 delta_str = '     '
-            out = out + f'{NumberProposal[m[j]]:15} / W{NumberWeek[m[j]]:1} {NameSubpanel[m[j]][:20]:20}' + \
+            out = out + f'{NumberProposal[m[j]]:15} / W{Week[m[j]]:1} {NameSubpanel[m[j]][:20]:20}' + \
                   f'/ {NamePI[m[j]][:25]:25} ' + \
                   f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / {TitleProposal[m[j]][:90]}\n'
         if FILTER_STRING in out:
@@ -452,16 +453,31 @@ if DO_LIST_PIS:
 DO_LIST_PANELS = True
 
 # Get a list of all of the panels
+# Make a plot of the mean score on each panel
 
 Panel_RankOrder = {}   # Dictionary. So RankOrder['SSW19 Volcanism'] will return [223, 112, 2070, 1], etc.
 Panel_Mean = {}
 
 NamesSubpanelLong = np.unique(NameSubpanelLong)
+ScoreSubpanelMean = []
 
 for panel in NamesSubpanelLong:
     w = np.where(panel == NameSubpanelLong)[0]
-    print(f'{panel:40} {len(w):3} {np.nanmean(ScoreMeritMean[w]):5.2f}')
+    m = np.nanmean(ScoreMeritMean[w])
+    ScoreSubpanelMean.append(m)
     
+    print(f'{panel:40} {len(w):3} {m:5.2f}')
+ScoreSubpanelMean = np.array(ScoreSubpanelMean)
+
+hbt.fontsize(24)
+plt.hist(ScoreSubpanelMean,bins=20)
+plt.xlabel(f'Subpanel Average of Mean Merit')
+plt.ylabel('Number of Subpanels')
+plt.title(f'Subpanel Mean; N = {len(NamesSubpanelLong)} SSW Subpanels')
+plt.ylim([0,24])
+plt.show()
+    
+# Calculate the rank and percentile rank of each proposal, on its respective panel
     
     
         
