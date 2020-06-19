@@ -18,7 +18,7 @@ import pickle
 
 import random
 
-#import hbt
+import hbt_short as hbt
 
 import re
 
