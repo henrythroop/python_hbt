@@ -18,6 +18,8 @@ import pickle
 
 import random
 
+from scipy.stats.stats import pearsonr
+
 import hbt_short as hbt
 
 import re
@@ -169,7 +171,6 @@ num_proposals = len(NamePI)
 
 Year = np.zeros(num_proposals).astype(int)
 
-
 ### Extract just the PI last names, since SSW19 doesn't have first names
 
 for i in range(len(NameLastPI)):
@@ -278,6 +279,109 @@ for i in range(num_proposals):
 # Now need to sort matches_i (in chronological order: 2014, then 2015, etc)
     order = np.argsort(matches_i)[::-1]   # Get the proper order            
     matches.append(list(np.array(matches_i)[order]))  # Add these new items to the list
+
+
+DO_LIST_PANELS = True
+
+# Get a list of all of the panels
+# Make a plot of the mean score on each panel
+
+Panel_RankOrder = {}   # Dictionary. So RankOrder['SSW19 Volcanism'] will return [223, 112, 2070, 1], etc.
+Panel_Mean = {}
+
+NamesSubpanelLong = np.unique(NameSubpanelLong)
+ScoreSubpanelMean = []                          # Mean score on this subpanel 
+ScoreSubpanelMin  = []                          # Mean score on this subpanel 
+ScoreSubpanelMax  = []                          # Mean score on this subpanel 
+CountSubpanel     = []                          # Number of proposals on this sub-panel
+
+for panel in NamesSubpanelLong:
+    w = np.where(panel == NameSubpanelLong)[0]
+
+    ScoreSubpanelMean.append(np.nanmean(ScoreMeritMean[w]))
+    ScoreSubpanelMin.append(np.nanmin(ScoreMeritMean[w]))
+    ScoreSubpanelMax.append(np.nanmax(ScoreMeritMean[w]))
+                            
+    CountSubpanel.append(len(w))
+    
+    # print(f'{panel:40} {len(w):3} {m:5.2f}')
+    
+ScoreSubpanelMean = np.array(ScoreSubpanelMean)
+ScoreSubpanelMin = np.array(ScoreSubpanelMin)
+ScoreSubpanelMax = np.array(ScoreSubpanelMax)
+CountSubpanel     = np.array(CountSubpanel)
+
+hbt.fontsize(24)
+plt.hist(ScoreSubpanelMean,bins=20)
+plt.xlabel(f'Subpanel Average of Mean Merit')
+plt.ylabel('Number of Subpanels')
+plt.title(f'Subpanel Mean; N = {len(NamesSubpanelLong)} SSW Subpanels')
+plt.ylim([0,24])
+plt.show()
+
+# Make a 'Normalized Merit Score' for each proposal. 
+# To do this, divide the proposal's score by the panel mean, then mult x5.
+#
+# My guess is that this could be important. If we find a proper mapping from score
+# to normalized score, we might be able to de-bias the score, and do well.
+
+ScoreMeritMeanNorm = np.zeros(num_proposals)
+
+for i in range(num_proposals):
+    panel = NameSubpanelLong[i]
+    mean_subpanel = ScoreSubpanelMean[np.where(NamesSubpanelLong == panel)[0]][0]
+    max_subpanel = ScoreSubpanelMax[np.where(NamesSubpanelLong == panel)[0]][0]
+    min_subpanel = ScoreSubpanelMin[np.where(NamesSubpanelLong == panel)[0]][0]
+    
+    score_norm = ScoreMeritMean[i] / mean_subpanel * 5  # This is one possible metric. Scale by panel mean.
+    score_norm = 1 + ((ScoreMeritMean[i] - min_subpanel) / (max_subpanel-min_subpanel) * 4) # Another: scale pnl range 1 .. 5
+
+    ScoreMeritMeanNorm[i] = score_norm # This is some sort of normalized merit score
+
+plt.plot(ScoreMeritMean, ScoreMeritMeanNorm, marker='.', ls='none')
+plt.xlabel('Merit Mean [raw]')
+plt.ylabel('Merit Mean [normalized]')
+plt.show()
+    
+# Calculate the rank and percentile rank of each proposal, on its respective panel
+
+RankOnSubpanel = np.zeros(num_proposals).astype(int)
+PercentileOnSubpanel = np.zeros(num_proposals).astype(int)
+
+for panel in NamesSubpanelLong:
+    w = np.where(panel == NameSubpanelLong)[0]  # Get all the proposals on this subpanel
+    o = np.argsort(ScoreMeritMean[w])
+    r = o.argsort()
+    r = np.amax(r) - r   # Reverse it, so rank is from top down]
+    PercentileOnSubpanel[w] = 100 - r / np.max(r) * 100
+    RankOnSubpanel[w] = r+1
+
+# List the proposals on each subpanel, by score / rank / %ile
+    
+for panel in NamesSubpanelLong:
+    w = np.where(panel == NameSubpanelLong)[0]  # Get all the proposals on this subpanel
+    o = np.argsort(ScoreMeritMean[w])[::-1]
+    print(f'{panel}')
+    for  i in w[o]:
+        print(f'{i:4} {RankOnSubpanel[i]:3} {PercentileOnSubpanel[i]:4}  {ScoreMeritMean[i]:6}' + \
+              f'  {NamePI[i][0:12]:12}  {TitleProposal[i]} ')
+    print()    
+
+    plt.hist(ScoreMeritMean[w])
+    plt.title(panel)
+    plt.xlim([1,5])
+    plt.ylim([0,7])
+    plt.show()
+
+plt.plot(ScoreMeritMean, RankOnSubpanel, marker='.', ls='none')
+plt.xlabel('Score Merit Mean')
+plt.ylabel('Rank on Panel') 
+plt.show()  
+
+plt.plot(ScoreMeritMean, PercentileOnSubpanel, marker='.', ls='none')
+plt.xlabel('Score Merit Mean')
+plt.ylabel('Percentile on Panel') 
+plt.show()  
         
 # Now make a pretty list of all of the matched proposals
 
@@ -289,8 +393,12 @@ for i in range(num_proposals):
 ScoreMeritMean_Y1   = []        
 ScoreMeritMedian_Y1 = []        
 ScoreMeritMean_Y2   = []        
-ScoreMeritMedian_Y2 = []        
+ScoreMeritMedian_Y2 = []
+PercentileOnSubpanel_Y1 = []
+PercentileOnSubpanel_Y2 = []
 
+ScoreMeritMeanNorm_Y1 = []
+ScoreMeritMeanNorm_Y2 = []
 
 num_singles = 0                 # Number of proposals that were only submitted once
 num_multiple_titles = 0         # Number of multiple-submits, counting each multiple only once
@@ -324,32 +432,67 @@ for i in range(num_proposals):
                 delta_str = '     '
             out = out + f'{NumberProposal[m[j]]:15} / W{Week[m[j]]:1} {NameSubpanel[m[j]][:20]:20}' + \
                   f'/ {NamePI[m[j]][:25]:25} ' + \
-                  f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / {TitleProposal[m[j]][:90]}\n'
+                  f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / ' + \
+                  f' / {RankOnSubpanel[m[j]]:3} = {PercentileOnSubpanel[m[j]]:3}% / ' + \
+                  f'{TitleProposal[m[j]][:90]}\n'
         if FILTER_STRING in out:
             print(out)
 #        print()
         
-        scores_y1 = ScoreMeritMean[m[0:-1]]
-        scores_y2 = ScoreMeritMean[m[1:]]
-        
         ScoreMeritMean_Y1.extend(ScoreMeritMean[m[0:-1]])
         ScoreMeritMean_Y2.extend(ScoreMeritMean[m[1:  ]])
+        
+        ScoreMeritMeanNorm_Y1.extend(ScoreMeritMeanNorm[m[0:-1]])
+        ScoreMeritMeanNorm_Y2.extend(ScoreMeritMeanNorm[m[1:  ]])
         
         ScoreMeritMedian_Y1.extend(ScoreMeritMedian[m[0:-1]])
         ScoreMeritMedian_Y2.extend(ScoreMeritMedian[m[1:  ]])
 
+        PercentileOnSubpanel_Y1.extend(PercentileOnSubpanel[m[0:-1]])
+        PercentileOnSubpanel_Y2.extend(PercentileOnSubpanel[m[1:]])
+    
 # And finally, make a plot!
 
 ScoreMeritMean_Y1 = np.array(ScoreMeritMean_Y1)
 ScoreMeritMean_Y2 = np.array(ScoreMeritMean_Y2)
 
 plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2, ls='none', marker = '.', ms = 20, alpha=0.2)
-plt.ylim([0,5])
-plt.xlim([0,5])
-plt.xlabel('Year 1')
-plt.ylabel('Year 2')
-plt.title('SSW Merit Mean, 2014-2019')
+r = pearsonr(ScoreMeritMean_Y1, ScoreMeritMean_Y2)[0]
+plt.ylim([0.9,5.1])
+plt.xlim([0.9,5.1])
+plt.xlabel('Merit Score, Year 1')
+plt.ylabel('Merit Score, Year 2')
+plt.title(f'SSW Merit Mean, 2014-2019, R={r:4.2}')
 plt.plot([1,5],[1,5])
+plt.gca().set_aspect('equal')
+plt.show()
+
+# Plot Normalized score: Y1 vs. Y2
+
+plt.plot(ScoreMeritMeanNorm_Y1, ScoreMeritMeanNorm_Y2, ls='none', marker = '.', ms = 20, alpha=0.2)
+r = pearsonr(ScoreMeritMeanNorm_Y1, ScoreMeritMeanNorm_Y2)[0]
+plt.ylim([0.9, 5.1])
+plt.xlim([0.9, 5.1])
+plt.xlabel('Merit %ile, Year 1')
+plt.ylabel('Merit %ile, Year 2')
+plt.title(f'SSW Merit Mean Normalized (1-5), 2014-2019, R = {r:4.2}')
+plt.plot([1,100],[1,100])
+plt.gca().set_aspect('equal')
+plt.show()
+
+
+# Plot Y1 %ile vs. Y2 %ile
+# Conclusion: I thought this would be useful, but it's totally not.
+# I thought it would bounce around a bit, but a proposal near the top would stay near the top. Nope!
+
+plt.plot(PercentileOnSubpanel_Y1, PercentileOnSubpanel_Y2, ls='none', marker = '.', ms = 20, alpha=0.2)
+r = pearsonr(PercentileOnSubpanel_Y1, PercentileOnSubpanel_Y2)[0]
+plt.ylim([-5,105])
+plt.xlim([-5,105])
+plt.xlabel('Merit %ile, Year 1')
+plt.ylabel('Merit %ile, Year 2')
+plt.title(f'SSW Merit Mean, %ile on Subpanel, 2014-2019, R={r:4.2}')
+plt.plot([1,100],[1,100])
 plt.gca().set_aspect('equal')
 plt.show()
 
@@ -450,34 +593,3 @@ if DO_LIST_PIS:
         print(f' N = {count_pi[order_pi[i]]}. Mean = {mean:4.3} +- {stdev:4.3}')
         print()
 
-DO_LIST_PANELS = True
-
-# Get a list of all of the panels
-# Make a plot of the mean score on each panel
-
-Panel_RankOrder = {}   # Dictionary. So RankOrder['SSW19 Volcanism'] will return [223, 112, 2070, 1], etc.
-Panel_Mean = {}
-
-NamesSubpanelLong = np.unique(NameSubpanelLong)
-ScoreSubpanelMean = []
-
-for panel in NamesSubpanelLong:
-    w = np.where(panel == NameSubpanelLong)[0]
-    m = np.nanmean(ScoreMeritMean[w])
-    ScoreSubpanelMean.append(m)
-    
-    print(f'{panel:40} {len(w):3} {m:5.2f}')
-ScoreSubpanelMean = np.array(ScoreSubpanelMean)
-
-hbt.fontsize(24)
-plt.hist(ScoreSubpanelMean,bins=20)
-plt.xlabel(f'Subpanel Average of Mean Merit')
-plt.ylabel('Number of Subpanels')
-plt.title(f'Subpanel Mean; N = {len(NamesSubpanelLong)} SSW Subpanels')
-plt.ylim([0,24])
-plt.show()
-    
-# Calculate the rank and percentile rank of each proposal, on its respective panel
-    
-    
-        
