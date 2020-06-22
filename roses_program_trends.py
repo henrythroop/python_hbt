@@ -17,6 +17,7 @@ import os.path
 import pickle
 
 import random
+import csv
 
 from scipy.stats.stats import pearsonr
 
@@ -67,12 +68,15 @@ def get_jaccard_sim(str1, str2):
     b = set(str2.split())
     c = a.intersection(b)
     return float(len(c)) / (len(a) + len(b) - len(c))
-    
-file_xl = '/Users/hthroop/Downloads/SSW Trends.xls'
+
+path_base = '/Users/hthroop/Documents/HQ/SSW/'    
+file_xl = 'SSW Trends.xls'
+file_selections = 'Selections_SSW.csv'
 
 name_program = 'SSW'  # Search for this in the proposal number
 
-workbook = xlrd.open_workbook(file_xl)
+workbook = xlrd.open_workbook(os.path.join(path_base, file_xl))
+
 sheet_names = workbook.sheet_names()
 print('Sheet Names', sheet_names)
 
@@ -171,6 +175,8 @@ num_proposals = len(NamePI)
 
 Year = np.zeros(num_proposals).astype(int)
 
+IsSelected = np.zeros(num_proposals).astype(bool)
+
 ### Extract just the PI last names, since SSW19 doesn't have first names
 
 for i in range(len(NameLastPI)):
@@ -184,6 +190,24 @@ for i in range(len(NameLastPI)):
 for i in range(num_proposals):
     Year[i] = NumberProposal[i][0:2]
 
+### Read in the list of selections (i.e., select vs. decline)
+### The only hitch here is we need to change format from SSW19-100 to SSW19-0100 (ugh...)    
+    
+file_selections = os.path.join(path_base, file_selections)
+with open(file_selections, newline='') as csvfile:
+    lines = csv.reader(csvfile, delimiter=',', quotechar='"') 
+    for line in lines:
+        if 'Select' in line[1]:
+            proposal = line[0]
+            parts = proposal.split('-')
+            proposal2 = f'{parts[0]}-{parts[1]}-{int(parts[2]):04d}'
+            proposal = proposal2
+            i = np.where(NumberProposal == proposal)[0]
+            IsSelected[i] = True
+            # print(f'{NumberProposal[i]} Selected***, proposal={proposal}, i={i}')
+        # else:
+            # print(f'{NumberProposal[i]} Declined, i={i}')
+           
 # Make a long and unique string for each sub-panel, and tag it. 'SSW19 W4 Volcanism', for instance.
 
 for i in range(num_proposals):
@@ -244,7 +268,7 @@ CriteriaSimilarityPI    = 75  # SSW19 has surnames only, so relax matching here.
 
 matches = []
 
-FILTER_STRING = 'SSW19'   # Matches anything on the string output
+FILTER_STRING = 'SSW'   # Matches anything on the string output
 
 print('Searching for matches...')
 
@@ -400,6 +424,8 @@ PercentileOnSubpanel_Y2 = []
 ScoreMeritMeanNorm_Y1 = []
 ScoreMeritMeanNorm_Y2 = []
 
+IsSelected_Y2 = []
+
 num_singles = 0                 # Number of proposals that were only submitted once
 num_multiple_titles = 0         # Number of multiple-submits, counting each multiple only once
 num_multiple_proposals = 0      # Number of multiple-submits, counting each individual submission
@@ -425,14 +451,18 @@ for i in range(num_proposals):
     if len(m) > 0:
 #        print(f'{i}')
         out = ''
-        for j in reversed(range(len(m))):
+        for j in reversed(range(len(m))):   # Now loop over all proposals in the match
             delta = ScoreMeritMean[m[j]] - ScoreMeritMean[m[-1]]
             delta_str = f'{delta:+5.2f}'
-            if '0.00' in delta_str:
+            if '0.00' in delta_str:  # Skip the delta for the first proposal in a match
                 delta_str = '     '
+            if IsSelected[m[j]]:
+                select_str = 'Select'
+            else:
+                select_str = ''
             out = out + f'{NumberProposal[m[j]]:15} / W{Week[m[j]]:1} {NameSubpanel[m[j]][:20]:20}' + \
                   f'/ {NamePI[m[j]][:25]:25} ' + \
-                  f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / ' + \
+                  f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / {select_str:8} ' + \
                   f' / {RankOnSubpanel[m[j]]:3} = {PercentileOnSubpanel[m[j]]:3}% / ' + \
                   f'{TitleProposal[m[j]][:90]}\n'
         if FILTER_STRING in out:
@@ -450,13 +480,28 @@ for i in range(num_proposals):
 
         PercentileOnSubpanel_Y1.extend(PercentileOnSubpanel[m[0:-1]])
         PercentileOnSubpanel_Y2.extend(PercentileOnSubpanel[m[1:]])
+        
+        IsSelected_Y2.extend(IsSelected[m[1:]])
+
+IsSelected_Y2 = np.array(IsSelected_Y2)
+ScoreMeritMedian_Y1 = np.array(ScoreMeritMedian_Y1)
+ScoreMeritMedian_Y2 = np.array(ScoreMeritMedian_Y2)
+ScoreMeritMean_Y1 = np.array(ScoreMeritMean_Y1)
+ScoreMeritMean_Y2 = np.array(ScoreMeritMean_Y2)
     
 # And finally, make a plot!
+
+color_decline = 'red'
+color_select = 'green'
 
 ScoreMeritMean_Y1 = np.array(ScoreMeritMean_Y1)
 ScoreMeritMean_Y2 = np.array(ScoreMeritMean_Y2)
 
-plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2, ls='none', marker = '.', ms = 20, alpha=0.2)
+plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2, ls='none', marker = '.', ms = 20, 
+         alpha=0.2, color=color_decline)
+plt.plot(ScoreMeritMean_Y1[IsSelected_Y2], ScoreMeritMean_Y2[IsSelected_Y2], 
+         ls='none', marker = '.', ms = 20, alpha=1, color=color_select)
+
 r = pearsonr(ScoreMeritMean_Y1, ScoreMeritMean_Y2)[0]
 plt.ylim([0.9,5.1])
 plt.xlim([0.9,5.1])
