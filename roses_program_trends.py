@@ -207,26 +207,13 @@ with open(file_selections, newline='') as csvfile:
             # print(f'{NumberProposal[i]} Selected***, proposal={proposal}, i={i}')
         # else:
             # print(f'{NumberProposal[i]} Declined, i={i}')
+
+IsDeclined = np.logical_not(IsSelected)
            
 # Make a long and unique string for each sub-panel, and tag it. 'SSW19 W4 Volcanism', for instance.
 
 for i in range(num_proposals):
     NameSubpanelLong[i] = f'SSW{Year[i]} W{Week[i]} {NameSubpanel[i]}'
-
-### Now time to make some plots!
-
-bins_hist = np.arange(0, 5.15, 0.15)
-plt.hist(ScoreMeritMedian,bins=bins_hist, label = 'Median')
-plt.hist(ScoreMeritMean,bins=bins_hist, label = 'Mean', alpha=0.7)
-plt.xlim([0.9, 5.1])
-plt.xlabel('Merit Score')
-plt.ylabel('# of Proposals')
-plt.title(f'SSW14-18, N = {len(ScoreCostMean)} proposals')
-plt.legend()
-plt.show()
-
-plt.plot(ScoreMeritMean, linestyle = 'none', marker='.', ms=1)
-plt.show()
 
 ### And finally, now search for duplicate titles
 
@@ -268,7 +255,7 @@ CriteriaSimilarityPI    = 75  # SSW19 has surnames only, so relax matching here.
 
 matches = []
 
-FILTER_STRING = 'SSW'   # Matches anything on the string output
+FILTER_STRING = ''   # Matches anything on the string output
 
 print('Searching for matches...')
 
@@ -304,6 +291,64 @@ for i in range(num_proposals):
     order = np.argsort(matches_i)[::-1]   # Get the proper order            
     matches.append(list(np.array(matches_i)[order]))  # Add these new items to the list
 
+################################
+### Now time to make some plots!
+################################
+
+color_decline = 'red'
+color_select = 'green'
+
+hbt.fontsize(12)
+
+bins_hist = np.arange(0, 5.15, 0.15)
+plt.hist(ScoreMeritMedian,bins=bins_hist, label = 'Median')
+plt.hist(ScoreMeritMean,bins=bins_hist, label = 'Mean', alpha=0.7)
+plt.xlim([0.9, 5.1])
+plt.xlabel('Merit Score')
+plt.ylabel('# of Proposals')
+plt.title(f'SSW14-18, N = {len(ScoreCostMean)} proposals')
+plt.legend()
+plt.show()
+
+# Make a histogram of Select and Decline
+
+plt.hist(ScoreMeritMean[IsSelected],bins=bins_hist, label = 'Select', color=color_select, alpha=0.5)
+plt.hist(ScoreMeritMean[np.logical_not(IsSelected)],bins=bins_hist, label = 'Decline', color=color_decline, alpha=0.2)
+plt.xlim([0.9, 5.1])
+plt.xlabel('Merit Score')
+plt.ylabel('# of Proposals')
+plt.title(f'SSW14-18, N = {len(ScoreCostMean)} proposals')
+plt.legend()
+plt.show()
+
+n = np.arange(num_proposals)
+
+plt.plot(n[IsDeclined], ScoreMeritMean[IsDeclined], linestyle = 'none', marker='.', ms=3, color=color_decline, alpha=0.7)
+plt.plot(n[IsSelected], ScoreMeritMean[IsSelected], linestyle = 'none', marker='.', ms=5, color=color_select, alpha=0.7)
+plt.xlabel('Sequential Proposal Number [since 2014]')
+plt.ylabel('Merit Score, Mean')
+plt.show()
+
+plt.plot(n[IsDeclined], ScoreMeritMedian[IsDeclined], linestyle = 'none', marker='.', ms=3, color=color_decline, alpha=0.7)
+plt.plot(n[IsSelected], ScoreMeritMedian[IsSelected], linestyle = 'none', marker='.', ms=5, color=color_select, alpha=0.7)
+plt.xlabel('Sequential Proposal Number [since 2014]')
+plt.ylabel('Merit Score, Median')
+plt.show()
+
+plt.plot(ScoreMeritMean[IsDeclined], ScoreMeritMedian[IsDeclined], linestyle = 'none', marker='.', ms=10, 
+         color=color_decline, alpha=0.3)
+plt.plot(ScoreMeritMean[IsSelected], ScoreMeritMedian[IsSelected], linestyle = 'none', marker='.', ms=10, 
+         color=color_select, alpha=0.3)
+plt.title('Mean vs. Median')
+plt.xlabel('Merit Score, Mean')
+plt.ylabel('Merit Score, Median')
+plt.plot([0,4],[4,4], alpha=0.1, color='black')
+plt.plot([4,4],[0,4], alpha=0.1, color='black')
+plt.gca().set_aspect('equal')
+plt.xlim([0.9,5.2])
+plt.ylim([0.9,5.2])
+plt.show()
+
 
 DO_LIST_PANELS = True
 
@@ -335,7 +380,6 @@ ScoreSubpanelMin = np.array(ScoreSubpanelMin)
 ScoreSubpanelMax = np.array(ScoreSubpanelMax)
 CountSubpanel     = np.array(CountSubpanel)
 
-hbt.fontsize(24)
 plt.hist(ScoreSubpanelMean,bins=20)
 plt.xlabel(f'Subpanel Average of Mean Merit')
 plt.ylabel('Number of Subpanels')
@@ -366,6 +410,16 @@ plt.plot(ScoreMeritMean, ScoreMeritMeanNorm, marker='.', ls='none')
 plt.xlabel('Merit Mean [raw]')
 plt.ylabel('Merit Mean [normalized]')
 plt.show()
+
+
+plt.plot(ScoreMeritMean[IsDeclined], ScoreMeritMeanNorm[IsDeclined], marker='.', ls='none', 
+         label='Declined', color=color_decline, alpha=0.2)
+plt.plot(ScoreMeritMean[IsSelected], ScoreMeritMeanNorm[IsSelected], marker='.', ls='none', 
+         label='Selected', color=color_select, alpha=0.2)
+plt.xlabel('Merit Mean [raw]')
+plt.ylabel('Merit Mean [normalized]')
+plt.legend()
+plt.show()
     
 # Calculate the rank and percentile rank of each proposal, on its respective panel
 
@@ -381,31 +435,64 @@ for panel in NamesSubpanelLong:
     RankOnSubpanel[w] = r+1
 
 # List the proposals on each subpanel, by score / rank / %ile
-    
+
+DO_HIST_EVERY_SUBPANEL = True
+
+hbt.fontsize(15)    
 for panel in NamesSubpanelLong:
     w = np.where(panel == NameSubpanelLong)[0]  # Get all the proposals on this subpanel
     o = np.argsort(ScoreMeritMean[w])[::-1]
     print(f'{panel}')
     for  i in w[o]:
-        print(f'{i:4} {RankOnSubpanel[i]:3} {PercentileOnSubpanel[i]:4}  {ScoreMeritMean[i]:6}' + \
+        star = np.array([" ","*"])[1*IsSelected[i]]
+        print(f'{i:4} {RankOnSubpanel[i]:3} {PercentileOnSubpanel[i]:4} {star}' +\
+              f'{ScoreMeritMean[i]:6}' + \
               f'  {NamePI[i][0:12]:12}  {TitleProposal[i]} ')
     print()    
 
-    plt.hist(ScoreMeritMean[w])
-    plt.title(panel)
-    plt.xlim([1,5])
-    plt.ylim([0,7])
-    plt.show()
+    if DO_HIST_EVERY_SUBPANEL:
+        # plt.hist(ScoreMeritMean[w])
+        # plt.title(panel)
+        # plt.xlim([1,5])
+        # plt.ylim([0,7])
+        # plt.show()
+        
+        indices_selected = w * IsSelected[w]
+        indices_declined = w * IsDeclined[w]
+        indices_selected = indices_selected[indices_selected > 0]
+        indices_declined = indices_declined[indices_declined > 0]
+        
+        bins = np.arange(0, 5, 0.5)
+        # plt.hist(ScoreMeritMean[indices_selected], color=color_select, alpha=0.5, bins=bins)
+        plt.hist(ScoreMeritMean[indices_selected], color=color_select, alpha=0.7, bins=bins)
+        plt.hist(ScoreMeritMean[indices_declined], color=color_decline, alpha=0.1, bins=bins)
+        plt.title(panel)
+        plt.xlim([1,5])
+        plt.ylim([0,9])
+        plt.show()
+         
+hbt.fontsize(12)
 
 plt.plot(ScoreMeritMean, RankOnSubpanel, marker='.', ls='none')
 plt.xlabel('Score Merit Mean')
 plt.ylabel('Rank on Panel') 
 plt.show()  
 
+# Plot %ile on panel
+
 plt.plot(ScoreMeritMean, PercentileOnSubpanel, marker='.', ls='none')
 plt.xlabel('Score Merit Mean')
 plt.ylabel('Percentile on Panel') 
 plt.show()  
+
+plt.plot(ScoreMeritMean[IsSelected], PercentileOnSubpanel[IsSelected], 
+         label = 'Selected', marker='.', ls='none',color=color_select, alpha=0.2)
+plt.plot(ScoreMeritMean[IsDeclined], PercentileOnSubpanel[IsDeclined], 
+         label = 'Declined', marker='.', ls='none',color=color_decline, alpha=0.2)
+plt.legend()
+plt.xlabel('Score Merit Mean')
+plt.ylabel('Percentile on Panel') 
+plt.show() 
         
 # Now make a pretty list of all of the matched proposals
 
@@ -467,40 +554,44 @@ for i in range(num_proposals):
                   f'{TitleProposal[m[j]][:90]}\n'
         if FILTER_STRING in out:
             print(out)
-#        print()
         
-        ScoreMeritMean_Y1.extend(ScoreMeritMean[m[0:-1]])
-        ScoreMeritMean_Y2.extend(ScoreMeritMean[m[1:  ]])
+        ScoreMeritMean_Y2.extend(ScoreMeritMean[m[0:-1]])
+        ScoreMeritMean_Y1.extend(ScoreMeritMean[m[1:  ]])
         
-        ScoreMeritMeanNorm_Y1.extend(ScoreMeritMeanNorm[m[0:-1]])
-        ScoreMeritMeanNorm_Y2.extend(ScoreMeritMeanNorm[m[1:  ]])
+        ScoreMeritMeanNorm_Y2.extend(ScoreMeritMeanNorm[m[0:-1]])
+        ScoreMeritMeanNorm_Y1.extend(ScoreMeritMeanNorm[m[1:  ]])
         
-        ScoreMeritMedian_Y1.extend(ScoreMeritMedian[m[0:-1]])
-        ScoreMeritMedian_Y2.extend(ScoreMeritMedian[m[1:  ]])
+        ScoreMeritMedian_Y2.extend(ScoreMeritMedian[m[0:-1]])
+        ScoreMeritMedian_Y1.extend(ScoreMeritMedian[m[1:  ]])
 
-        PercentileOnSubpanel_Y1.extend(PercentileOnSubpanel[m[0:-1]])
-        PercentileOnSubpanel_Y2.extend(PercentileOnSubpanel[m[1:]])
+        PercentileOnSubpanel_Y2.extend(PercentileOnSubpanel[m[0:-1]])
+        PercentileOnSubpanel_Y1.extend(PercentileOnSubpanel[m[1:]])
         
-        IsSelected_Y2.extend(IsSelected[m[1:]])
+        IsSelected_Y2.extend( IsSelected[m[0:-1]] )
 
 IsSelected_Y2 = np.array(IsSelected_Y2)
+IsDeclined_Y2 = np.logical_not(IsSelected_Y2)
+
 ScoreMeritMedian_Y1 = np.array(ScoreMeritMedian_Y1)
 ScoreMeritMedian_Y2 = np.array(ScoreMeritMedian_Y2)
 ScoreMeritMean_Y1 = np.array(ScoreMeritMean_Y1)
 ScoreMeritMean_Y2 = np.array(ScoreMeritMean_Y2)
+ScoreMeritMeanNorm_Y1 = np.array(ScoreMeritMeanNorm_Y1)
+ScoreMeritMeanNorm_Y2 = np.array(ScoreMeritMeanNorm_Y2)
+PercentileOnSubpanel_Y1 = np.array(PercentileOnSubpanel_Y1)
+PercentileOnSubpanel_Y2 = np.array(PercentileOnSubpanel_Y2)
     
 # And finally, make a plot!
-
-color_decline = 'red'
-color_select = 'green'
 
 ScoreMeritMean_Y1 = np.array(ScoreMeritMean_Y1)
 ScoreMeritMean_Y2 = np.array(ScoreMeritMean_Y2)
 
-plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2, ls='none', marker = '.', ms = 20, 
+plt.plot(ScoreMeritMean_Y1[IsDeclined_Y2], ScoreMeritMean_Y2[IsDeclined_Y2], 
+         ls='none', marker = '.', ms = 20, 
          alpha=0.2, color=color_decline)
+
 plt.plot(ScoreMeritMean_Y1[IsSelected_Y2], ScoreMeritMean_Y2[IsSelected_Y2], 
-         ls='none', marker = '.', ms = 20, alpha=1, color=color_select)
+         ls='none', marker = '.', ms = 15, alpha=0.3, color=color_select)
 
 r = pearsonr(ScoreMeritMean_Y1, ScoreMeritMean_Y2)[0]
 plt.ylim([0.9,5.1])
@@ -514,7 +605,11 @@ plt.show()
 
 # Plot Normalized score: Y1 vs. Y2
 
-plt.plot(ScoreMeritMeanNorm_Y1, ScoreMeritMeanNorm_Y2, ls='none', marker = '.', ms = 20, alpha=0.2)
+plt.plot(ScoreMeritMeanNorm_Y1[IsDeclined_Y2], ScoreMeritMeanNorm_Y2[IsDeclined_Y2], 
+         ls='none', marker = '.', ms = 20, alpha=0.2, color=color_decline)
+plt.plot(ScoreMeritMeanNorm_Y1[IsSelected_Y2], ScoreMeritMeanNorm_Y2[IsSelected_Y2], 
+         ls='none', marker = '.', ms = 20, alpha=0.2, color=color_select)
+
 r = pearsonr(ScoreMeritMeanNorm_Y1, ScoreMeritMeanNorm_Y2)[0]
 plt.ylim([0.9, 5.1])
 plt.xlim([0.9, 5.1])
@@ -530,7 +625,11 @@ plt.show()
 # Conclusion: I thought this would be useful, but it's totally not.
 # I thought it would bounce around a bit, but a proposal near the top would stay near the top. Nope!
 
-plt.plot(PercentileOnSubpanel_Y1, PercentileOnSubpanel_Y2, ls='none', marker = '.', ms = 20, alpha=0.2)
+plt.plot(PercentileOnSubpanel_Y1[IsSelected_Y2], PercentileOnSubpanel_Y2[IsSelected_Y2], ls='none', 
+         marker = '.', ms = 20, alpha=0.2, color=color_select, label = 'Select')
+plt.plot(PercentileOnSubpanel_Y1[IsDeclined_Y2], PercentileOnSubpanel_Y2[IsDeclined_Y2], ls='none', 
+         marker = '.', ms = 20, alpha=0.2, color=color_decline, label = 'Decline')
+
 r = pearsonr(PercentileOnSubpanel_Y1, PercentileOnSubpanel_Y2)[0]
 plt.ylim([-5,105])
 plt.xlim([-5,105])
@@ -544,13 +643,15 @@ plt.show()
 # See what the change would be if we just assigned Merit scores at random!
 # This will change every time we run the code.
 
+bins = np.arange(-4, 4, 0.25)
+
 num_pairs = len(ScoreMeritMean_Y1)
 
 ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean, k=num_pairs))[0:-1]
 ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean, k=num_pairs))[0:-1]
 delta_s = ScoreMeritMean_Y1_s - ScoreMeritMean_Y2_s
 
-plt.hist(delta_s, bins=20, color = 'pink', alpha = 0.6)
+plt.hist(delta_s, bins=bins, color = 'pink', alpha = 0.6)
 plt.xlabel('Change in Synthetic Mean Merit')
 plt.ylabel('Number')
 plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' + 
@@ -558,11 +659,13 @@ plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' +
 plt.axvline(0, color='red', alpha=0.2)
 plt.show()  
 
+
 # Plot a histogram of the change
 
+
 delta = ScoreMeritMean_Y2 - ScoreMeritMean_Y1
-plt.hist(delta, bins=20, label = 'Actual')
-plt.hist(delta_s, bins=20, alpha=0.6, color='pink', label = 'Random')
+plt.hist(delta, label = 'Actual', bins=bins)
+plt.hist(delta_s, alpha=0.6, color='pink', label = 'Random', bins=bins)
 plt.xlabel('Change in Mean Merit')
 plt.ylabel('Number')
 plt.title(f'SSW2014-2019. Delta mean = {np.mean(delta):4.2}; ' + 
@@ -570,6 +673,18 @@ plt.title(f'SSW2014-2019. Delta mean = {np.mean(delta):4.2}; ' +
 plt.axvline(0, color='red', alpha=0.2)
 plt.legend()
 plt.show()    
+
+# Plot a histogram of the change, color-coded for select v decline
+
+plt.hist(delta[IsDeclined_Y2], color = color_decline, label='Decline', alpha = 0.6, bins=bins)
+plt.hist(delta[IsSelected_Y2], color = color_select, label='Select', alpha = 0.6, bins=bins)
+plt.legend()
+plt.xlabel('Change in Mean Merit')
+plt.ylabel('Number')
+plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' + 
+                                        f'Stdev = {np.nanstd(delta_s):4.2}; N={num_pairs} resubmits')  
+plt.axvline(0, color='red', alpha=0.2)
+plt.show()  
 
 # See what the most common institutions are
 
