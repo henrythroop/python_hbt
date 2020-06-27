@@ -121,7 +121,7 @@ def abbreviate(s):
     return s
 
 file_xl = '/Users/hthroop/Downloads/SSW_Volcanism.xls'
-file_xl = '/Users/hthroop/Downloads/SSW_ATM-SCD2.xls'
+file_xl = '/Users/hthroop/Downloads/CDAP20_ATM.xls'
 
 workbook = xlrd.open_workbook(file_xl)
 sheet_names = workbook.sheet_names()
