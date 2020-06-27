@@ -18,6 +18,7 @@ import pickle
 
 import random
 import csv
+from scipy import stats   # For lin regress
 
 from scipy.stats.stats import pearsonr
 
@@ -291,6 +292,30 @@ for i in range(num_proposals):
     order = np.argsort(matches_i)[::-1]   # Get the proper order            
     matches.append(list(np.array(matches_i)[order]))  # Add these new items to the list
 
+# Extract the sequence number of each proposal (-0001, etc)
+# This lets us see if there is a trend front start to end.    
+# Also, get the %ile (i.e., 1.0 = final proposal submitted)
+    
+NumberProposalSequential = []
+NumberProposalSequentialPercentile = []
+
+for id in NumberProposal:
+    (y,_,s) = id.split('-')
+    s = int(s)
+    y = int(y)
+    NumberProposalSequential.append(s)
+    p = s / np.sum(Year == y)
+NumberProposalSequential = np.array(NumberProposalSequential).astype(int)   
+
+for id in NumberProposal:
+    (y,_,s) = id.split('-')
+    s = int(s)
+    y = int(y)
+    p = s / np.max(NumberProposalSequential[Year == y])
+    NumberProposalSequentialPercentile.append(p)
+NumberProposalSequentialPercentile = np.array(NumberProposalSequentialPercentile)  
+
+
 ################################
 ### Now time to make some plots!
 ################################
@@ -436,7 +461,7 @@ for panel in NamesSubpanelLong:
 
 # List the proposals on each subpanel, by score / rank / %ile
 
-DO_HIST_EVERY_SUBPANEL = True
+DO_HIST_EVERY_SUBPANEL = False
 
 hbt.fontsize(15)    
 for panel in NamesSubpanelLong:
@@ -603,6 +628,7 @@ plt.plot([1,5],[1,5])
 plt.gca().set_aspect('equal')
 plt.show()
 
+
 # Plot Normalized score: Y1 vs. Y2
 
 plt.plot(ScoreMeritMeanNorm_Y1[IsDeclined_Y2], ScoreMeritMeanNorm_Y2[IsDeclined_Y2], 
@@ -645,11 +671,13 @@ plt.show()
 
 bins = np.arange(-4, 4, 0.25)
 
-num_pairs = len(ScoreMeritMean_Y1)
+num_pairs = len(ScoreMeritMean_Y1)-2
+pool_nonan = ScoreMeritMean_Y1.copy()
 
-ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean, k=num_pairs))[0:-1]
-ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean, k=num_pairs))[0:-1]
-delta_s = ScoreMeritMean_Y1_s - ScoreMeritMean_Y2_s
+
+ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean_Y1, k=len(ScoreMeritMean_Y1)))
+ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean_Y2, k=len(ScoreMeritMean_Y2)))
+delta_s = ScoreMeritMean_Y2_s - ScoreMeritMean_Y1_s
 
 plt.hist(delta_s, bins=bins, color = 'pink', alpha = 0.6)
 plt.xlabel('Change in Synthetic Mean Merit')
@@ -659,9 +687,29 @@ plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' +
 plt.axvline(0, color='red', alpha=0.2)
 plt.show()  
 
+# Make side-by-side plots of scores vs. randomized scores
+
+plt.subplot(1, 2, 1)
+plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2, ls='none', marker='.', 
+         alpha=0.20, ms=10)
+plt.ylim([0.5,5.1])
+plt.xlim([0.5,5.1])
+plt.xlabel('Y1 Merit')
+plt.ylabel('Y2 Merit [Actual]')
+plt.gca().set_aspect('equal')
+plt.subplot(1,2,2)
+plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2_s, ls='none', marker='.', 
+         alpha=0.20, ms=10)
+plt.ylim([0.9,5.1])
+plt.xlim([0.9,5.1])
+plt.xlabel('Y1 Merit')
+plt.ylabel('Y2 Merit [Randomized]')
+plt.gca().set_aspect('equal')
+plt.tight_layout()
+plt.show()
+
 
 # Plot a histogram of the change
-
 
 delta = ScoreMeritMean_Y2 - ScoreMeritMean_Y1
 plt.hist(delta, label = 'Actual', bins=bins)
@@ -673,6 +721,52 @@ plt.title(f'SSW2014-2019. Delta mean = {np.mean(delta):4.2}; ' +
 plt.axvline(0, color='red', alpha=0.2)
 plt.legend()
 plt.show()    
+
+# As per suggestion by MB, plot score, vs. expected change in score.
+
+slope, intercept, r_value, p_value, std_err = stats.linregress(ScoreMeritMean_Y1, delta)
+x = np.arange(1, 6, 1)
+y = slope*x + intercept
+
+plt.plot(ScoreMeritMean_Y1, delta, ls='none', marker='.', label = 'SSW Data')
+plt.xlabel('Y1 Merit Score')
+plt.ylabel('Change in Merit, Y2-Y1')
+plt.plot(x, y, color='orange', label = 'Best Fit')
+plt.plot([1,5],[0,0], color='black', alpha=0.3, label = 'No Change')
+mm = np.nanmean(ScoreMeritMean_Y1)
+# plt.plot([mm,mm], [-3,3], color='black', alpha=0.3)
+plt.ylim([-3,3])
+plt.xlim([0.9, 5.1])
+plt.legend()
+plt.show()
+
+# Do the same, but for the synthetic data set
+
+delta_s = ScoreMeritMean_Y2_s - ScoreMeritMean_Y1
+slope, intercept, r_value, p_value, std_err = stats.linregress(ScoreMeritMean_Y1, delta_s)
+x = np.arange(1, 6, 1)
+y = slope*x + intercept
+
+plt.plot(ScoreMeritMean_Y1, delta_s, ls='none', marker='.', label = 'SSW')
+plt.xlabel('Y1 Merit Score [Actual]')
+plt.ylabel('Change in Merit, Y2-Y1 [Randomly Drawn]')
+plt.plot(x, y, color='orange', label = 'Best Fit')
+plt.plot([1,5],[0,0], color='black', alpha=0.3, label = 'No Change')
+mm = np.nanmean(ScoreMeritMean_Y1)
+# plt.plot([mm,mm], [-3,3], color='black', alpha=0.3)
+plt.ylim([-3,3])
+plt.xlim([0.9, 5.1])
+plt.legend()
+plt.show()
+ 
+# Make a plot of Score vs. Submission Order
+
+plt.plot(NumberProposalSequentialPercentile, ScoreMeritMean, ls='none', marker='.', alpha = 0.5)
+plt.xlabel('Submission Order in Year (0 = First    1 = Last)')
+plt.ylabel('Merit Mean Score')
+plt.show()
+
+# Make a plot of change in score, vs. score.
 
 # Plot a histogram of the change, color-coded for select v decline
 
@@ -721,6 +815,8 @@ if DO_LIST_INSTITUTIONS:
         print()
     
 # See who the most busy PI's are
+# This does not use robust PI-matching, so it's not really totally useful.
+# e.g., Sven Simon shows up with three different names.
 
 DO_LIST_PIS = True
 
@@ -744,12 +840,17 @@ if DO_LIST_PIS:
     
     # Loop over all inst's, from top to bottom
     
-    for i in range(10):
+    for i in range(300):
         pi_i = PI[order_pi[i]]
         mean = np.nanmean(ScoreMeritMean[indices_pi[order_pi[i]]])
         stdev = np.nanstd(ScoreMeritMean[indices_pi[order_pi[i]]])
+        n_select = np.sum(IsSelected[indices_pi[order_pi[i]]])
         
-        print(f'{i+1:3}. {pi_i}')
-        print(f' N = {count_pi[order_pi[i]]}. Mean = {mean:4.3} +- {stdev:4.3}')
-        print()
+        print(f'{i+1:3}. {pi_i:25} N = {n_select} / {count_pi[order_pi[i]]} = ' + \
+              f'{100*n_select / count_pi[order_pi[i]]:3.0f}%.   Mean = {mean:4.3} +- {stdev:4.3}' )
 
+# Make a plot of quartile vs. quartile
+            
+# Make a plot of Y1 vs. Y2 for each year. So, for 2014 vs. 2015, 18-19, etc. This will not be as large, but
+# will identify any changdes in the program (e.g., Mary Voytek → Delia).
+            
