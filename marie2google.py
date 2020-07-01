@@ -9,7 +9,7 @@ Created on Wed Feb 12 22:22:10 2020
 import numpy as np
 import xlrd as xlrd
 
-#import hbt
+#import hbtshort
 import re
 
 def abbreviate(s):
