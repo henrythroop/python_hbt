@@ -26,6 +26,8 @@ import random
 import csv
 from scipy import stats   # For lin regress
 
+from astropy.table import Table
+
 from scipy.stats.stats import pearsonr
 
 import hbt_short as hbt
@@ -34,19 +36,15 @@ import re
 import glob
 
 path_base = '/Users/hthroop/Downloads'
-files_xl = glob.glob(path_base + '/*-out.xls')
+files_xl = glob.glob(path_base + '/SSW*-out.xls')
 # file_xl = 'SSW19-out.xls'
 files_xl = np.sort(files_xl)[::1]
 ii = 1
 
-hbt.fontsize(18)
+def read_excel_nspires(file):
 
-hbt.figsize(20,15)
+    """Read an excel file from NSPIRES"""
 
-for file in files_xl:
- 
-    plt.subplot(2,3,ii)
-    
     workbook = xlrd.open_workbook(os.path.join(path_base, file))
     
     sheet_names = workbook.sheet_names()    
@@ -63,11 +61,31 @@ for file in files_xl:
     for i,name_column in enumerate(name_columns):
         vals = sheet.col_values(i)
         vals = vals[1:] # Remove the header row
-        if ('udget' in name_column): 
-        # or ('Amount' in name_column):
+        if ('udget' in name_column) or ('Proposed Amount Total' in name_column):
             data[name_column] = np.array(vals).astype(int)  # Convert to int, if possible
         else:    
             data[name_column] = np.array(vals)
+
+    return (data, np.array(list(data.keys())))
+
+##########
+# Start main code
+########## 
+
+# Damn! CDAP06 data breaks this. Its columns are not aligned with the data properly. Corruption on 
+# NSPIRES side.    
+           
+hbt.fontsize(18)
+
+hbt.figsize(20,15)
+
+for file in files_xl:
+ 
+    (data, name_columns) = read_excel_nspires(file)
+    
+    t = Table(data)  # For fun, make an Astropy table. Not used yet.
+    
+    plt.subplot(4,4,ii)
     
     # We seem to have an entry for every selection document (tech eval, letter, etc).
     # Remove most of these, leaving just one per proposal.
@@ -81,10 +99,15 @@ for file in files_xl:
     bins = np.arange(0,500000,25000)/1000
     where_selected = np.where(data['Selection Status'] == 'Selected')
     
+    num_proposals = len(data[name_column])
+    num_selected  = len(data[name_column][where_selected])
+    
     mean_y1 = np.nanmean(data['Proposed Budget Amount(by Year) 1'])
     median_y1 = np.nanmedian(data['Proposed Budget Amount(by Year) 1'])
     mean_y1_sel = np.nanmean(data['Proposed Budget Amount(by Year) 1'][where_selected])
     median_y1_sel = np.nanmedian(data['Proposed Budget Amount(by Year) 1'][where_selected])
+    tot_all = np.nansum(data['Proposed Amount Total'])
+    tot_all_sel = np.nansum(data['Proposed Amount Total'][where_selected])
     
     plt.hist(data['Proposed Budget Amount(by Year) 1']/1000, bins,
              alpha = 0.5,
@@ -93,15 +116,18 @@ for file in files_xl:
              alpha = 0.5, color='green',
              label = f'Selected, mean=${mean_y1_sel/1000:.0f}K')
     plt.legend()
-    plt.title(name_program)
+    plt.title(f'{name_program}, N = {num_selected}/{num_proposals} = {100*num_selected/num_proposals:.0f}%')
     plt.xlabel('Proposed Y1 Budget [$K]')
     plt.ylabel('Number')
     plt.tight_layout()
     # plt.show()
     
     print(f'{name_program}')
-    print(f' Y1          Mean, Median: ${mean_y1/1000:.0f}K, ${median_y1/1000:.0f}K')
-    print(f' Y1 Selected Mean, Median: ${mean_y1_sel/1000:.0f}K, ${median_y1_sel/1000:.0f}K')
+    print(f' Y1            Mean, Median: ${mean_y1/1000:.0f}K, ${median_y1/1000:.0f}K')
+    print(f' Y1 Selected   Mean, Median: ${mean_y1_sel/1000:.0f}K, ${median_y1_sel/1000:.0f}K')
+    print(f' Y1-3          Total:        ${tot_all/1e6:.0f}M')
+    print(f' Y1-3 Selected Total:        ${tot_all_sel/1e6:.0f}M')
+    
     print()
     ii+=1
 

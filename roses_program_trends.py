@@ -74,6 +74,9 @@ path_base = '/Users/hthroop/Documents/HQ/SSW/'
 file_xl = 'SSW Trends.xls'
 file_selections = 'Selections_SSW.csv'
 
+hbt.fontsize(12)
+hbt.figsize(7,5)
+
 name_program = 'SSW'  # Search for this in the proposal number
 
 workbook = xlrd.open_workbook(os.path.join(path_base, file_xl))
@@ -728,7 +731,10 @@ slope, intercept, r_value, p_value, std_err = stats.linregress(ScoreMeritMean_Y1
 x = np.arange(1, 6, 1)
 y = slope*x + intercept
 
-plt.plot(ScoreMeritMean_Y1, delta, ls='none', marker='.', label = 'SSW Data')
+plt.plot(ScoreMeritMean_Y1[IsDeclined_Y2], delta[IsDeclined_Y2], ls='none', marker='.', 
+         label = 'Declined', color=color_decline)
+plt.plot(ScoreMeritMean_Y1[IsSelected_Y2], delta[IsSelected_Y2], ls='none', marker='.', 
+         label = 'Selected', color=color_select)
 plt.xlabel('Y1 Merit Score')
 plt.ylabel('Change in Merit, Y2-Y1')
 plt.plot(x, y, color='orange', label = 'Best Fit')
