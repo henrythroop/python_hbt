@@ -91,7 +91,6 @@ def abbreviate(s):
     (', Lafayette', ''),
     (', Athens', ''),
     (', Durham', ''),
-    ('TEST', 'TEST'),
     (', New Brunswick', ''),
     (' DR14', ''),
     (' Flagstaff', ''),
