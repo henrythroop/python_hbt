@@ -21,6 +21,7 @@ def caesar(plaintext, shift):
     table = str.maketrans(alphabet, shifted_alphabet)
     return plaintext.translate(table)
 
+# VIGENERE CIPHER. This is actually what Brainchase is using.
 # From https://github.com/deed02392/vigenere/blob/master/vigenere.py
 
 # The minimum and maximum valid char, ascii table defined order
@@ -60,35 +61,40 @@ def vigenere(phrase, key, direction = 'D'):
 
 if __name__ == "__main__":
     # phrase = 'HELLOIAMHERE'
-    phrases = ['ALKEGJW', 'AOHUNUSK', 'GROXIVE', 'JMRHMX', 'KWWCZAKOAFW', 'LWTCIGPKTAUGDB','AAAAAA']
+    # phrases = ['ALKEGJW', 'AOHUNUSK', 'GROXIVE', 'JMRHMX', 'KWWCZAKOAFW', 'LWTCIGPKTAUGDB','AAAAAA']
     
-    # phrases = ['LMWPEV', 'KIWXG', 'MXC']
+    phrases = ['LMWPEV', 'KIWXG', 'MXC']
 
-    keys = ['SHAKESPEARE', 'MISSING', 'BARD', 'TOBEORNOTTOBE', 'TAMINGOFTHESHREW', 'ROMEO', 'JULIET', 'AAAA']
+    # keys = ['SHAKESPEARE', 'MISSING', 'BARD', 'TOBEORNOTTOBE', 'TAMINGOFTHESHREW', 'ROMEO', 'JULIET', 'AAAA']
     
-    keys = ['OKTEA', 'SUNSTONE', 'THATSMISSING', 'WESTOLE']
-    keys = ['PSYLLA']
-    keys = ['KEY', 'VERONA', 'TATEGREYSON']
-    keys = ['TURKEY']
-    keys = ['ISTANBUL']
-    keys = ['COMEDY', 'TRAGEDY']
-    keys = ['WILLIAM', 'HAMLET']
-    keys = ['CORTEZ', 'ENGLAND']
-    keys = ['GOLD']
+    keys = ['SHAKESPEARE']
+    # keys = ['OKTEA', 'SUNSTONE', 'THATSMISSING', 'WESTOLE']
+    # keys = ['PSYLLA']
+    # keys = ['KEY', 'VERONA', 'TATEGREYSON']
+    # keys = ['TURKEY']
+    # keys = ['ISTANBUL']
+    # keys = ['COMEDY', 'TRAGEDY']
+    # keys = ['WILLIAM', 'HAMLET']
+    # keys = ['CORTEZ', 'ENGLAND']
+    # keys = ['GOLD']
+    # keys = ['THOMAS','CARLYLE']
+    # keys = ['IAMBIC']
+    # keys = ['REFLECTION']
+    keys = ['TREASURE', 'BOOK']
     
-    DO_REVERSE = False
     
     for phrase in phrases:
         for key in keys:        
-            if DO_REVERSE:
-                key = key[::-1]
             if len(key.strip()) > 0:
                 encoded, with_key = vigenere(phrase, key.strip(), 'E')
                 decoded, with_key = vigenere(phrase, key.strip(), 'D')
+                encoded_r, with_key = vigenere(phrase, key.strip()[::-1], 'E')
+                decoded_r, with_key = vigenere(phrase, key.strip()[::-1], 'D')
                 print(f'Key   = {key}')
                 print(f'In    = {phrase}')
                 print()
                 print(f' ENC      = {encoded}')
                 print(f' DEC      = {decoded}')
-        
+                print(f' ENC r    = {encoded_r}')
+                print(f' DEC r    = {decoded_r}')       
                 print("---")
