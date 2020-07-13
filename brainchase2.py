@@ -61,13 +61,14 @@ def vigenere(phrase, key, direction = 'D'):
 
 if __name__ == "__main__":
     # phrase = 'HELLOIAMHERE'
-    # phrases = ['ALKEGJW', 'AOHUNUSK', 'GROXIVE', 'JMRHMX', 'KWWCZAKOAFW', 'LWTCIGPKTAUGDB','AAAAAA']
-    
-    phrases = ['LMWPEV', 'KIWXG', 'MXC']
+    phrases = ['ALKEGJW', 'AOHUNUSK', 'GROXIVE', 'JMRHMX', 'KWWCZAKOAFW', 'LWTCIGPKTAUGDB',
+               'LMWPEV', 'KIWXG', 'MXC']
+
+    # phrases = ['HELLOWORLD']
 
     # keys = ['SHAKESPEARE', 'MISSING', 'BARD', 'TOBEORNOTTOBE', 'TAMINGOFTHESHREW', 'ROMEO', 'JULIET', 'AAAA']
     
-    keys = ['SHAKESPEARE']
+    # keys = ['AAAABBBBZZZZ']
     # keys = ['OKTEA', 'SUNSTONE', 'THATSMISSING', 'WESTOLE']
     # keys = ['PSYLLA']
     # keys = ['KEY', 'VERONA', 'TATEGREYSON']
@@ -80,7 +81,8 @@ if __name__ == "__main__":
     # keys = ['THOMAS','CARLYLE']
     # keys = ['IAMBIC']
     # keys = ['REFLECTION']
-    keys = ['TREASURE', 'BOOK']
+    # keys = ['TREASURE', 'BOOK']
+    keys = ['BALCONY', 'KEYBOARD']
     
     
     for phrase in phrases:
@@ -88,7 +90,7 @@ if __name__ == "__main__":
             if len(key.strip()) > 0:
                 encoded, with_key = vigenere(phrase, key.strip(), 'E')
                 decoded, with_key = vigenere(phrase, key.strip(), 'D')
-                encoded_r, with_key = vigenere(phrase, key.strip()[::-1], 'E')
+                encoded_r, with_key = vigenere(phrase, key.strip()[::-1], 'E') # Reverse the key
                 decoded_r, with_key = vigenere(phrase, key.strip()[::-1], 'D')
                 print(f'Key   = {key}')
                 print(f'In    = {phrase}')
