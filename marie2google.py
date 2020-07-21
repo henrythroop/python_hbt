@@ -11,6 +11,7 @@ import xlrd as xlrd
 
 #import hbtshort
 import re
+import glob
 
 def abbreviate(s):
 
@@ -83,6 +84,12 @@ def abbreviate(s):
     ('American University', 'American U'),
     ('Lockheed Martin Inc.', 'Lockheed'),
     ('University of Wisconsin, Madison', 'U Wisc'),
+    ('Lawrence Berkeley National Laboratory', 'Lawrence Berkeley NL'),
+    ('Los Alamos National Security', 'LANL'),
+    ('Dartmouth College', 'Dartmouth'),
+    ('University Of Maryland Baltimore County', 'UMD - Baltimore'),
+    ('University Potsdam, Institute of physics and astronomy, Germany', 'U Potsdam, Germany'),
+    ('New Mexico Institute Of Mining And Technology', 'NM Tech'),
     
     (', THE (INC)', ''),
     (', Iowa City', ''),
@@ -103,6 +110,9 @@ def abbreviate(s):
     ('State University', 'State'),
     (', LLC', ''),
     ('University Of ', 'U '),
+    ('National Laboratory', ''),
+    ('Research Center', ''),
+    (', Inc.', ''),
     
 ## Abbreviate the roles
     
@@ -123,35 +133,61 @@ def abbreviate(s):
 file_xl = '/Users/hthroop/Downloads/SSW_Volcanism.xls'
 file_xl = '/Users/hthroop/Downloads/CDAP20_ATM.xls'
 
-workbook = xlrd.open_workbook(file_xl)
-sheet_names = workbook.sheet_names()
-print('Sheet Names', sheet_names)
+files_xl = glob.glob('/Users/hthroop/Documents/HQ/CDAP20/MaRIE/Panel_Compilation*xls')
 
-num_proposals = len(sheet_names)-3
-#sheet_proposals = workbook.sheet_proposals
+for file_xl in files_xl:
 
-for i in range(num_proposals):
-    sheet = workbook.sheet_by_index(i+3)
-    num_investigators = sheet.nrows-1
+    print('------------------------')
+    print(f'{file_xl}')
+    print('------------------------')
+    print('')
+    
+    workbook = xlrd.open_workbook(file_xl)
+    sheet_names = workbook.sheet_names()
+    # print('Sheet Names', sheet_names)
+    
+    num_proposals = len(sheet_names)-3
+    #sheet_proposals = workbook.sheet_proposals
+    
+    institutions = np.zeros(num_proposals).astype(set)
+    
+    for i in range(num_proposals):
+        
+        # institutions[i] = {}  # A set, which is unordered, and does not allow duplicates
+        
+        sheet = workbook.sheet_by_index(i+3)
+        num_investigators = sheet.nrows-1
+    
+        print(sheet_names[i+3])
+        print('------')
+        institutions[i] = {}  # blank set
+        
+        for j in range(num_investigators):
+            
+            role = sheet.cell_value(j+1,0)  # row (1st row is 0), column (1st col is A)
+            role = abbreviate(role)
+            
+            name_last = sheet.cell_value(j+1,3)
+            name_first = sheet.cell_value(j+1,4)
+            
+            if (role == 'PI'):
+                institution = sheet.cell_value(j+1,7)
+                # institutions[i].add(institution)
+            else:
+                if (role == 'Co-I'):
+                    institution = sheet.cell_value(j+1,6)
+                    # institutions[i].add(institution)            
+                else:
+                    institution = sheet.cell_value(j+1,6)
+            
+            institution_short = abbreviate(institution)
+            # print(f'Shortened {institution} to {institution_short}')
+            
+            # XXX Add a line to print the proposal number and title here.
+            line = (f'{role} {name_first} {name_last} / {institution_short}')
+            print(line)
+        print()
+        
+    # Now print a list of the most conflicted institutions on this panel    
 
-    print(sheet_names[i+3])
-    print('------')
-    for j in range(num_investigators):
-        
-        role = sheet.cell_value(j+1,0)  # row (1st row is 0), column (1st col is A)
-        role = abbreviate(role)
-        
-        name_last = sheet.cell_value(j+1,3)
-        name_first = sheet.cell_value(j+1,4)
-        if (role == 'PI'):
-            institution = sheet.cell_value(j+1,7)
-        else:
-            institution = sheet.cell_value(j+1,6)
-        
-        institution_short = abbreviate(institution)
-        # print(f'Shortened {institution} to {institution_short}')
-        
-        # XXX Add a line to print the proposal number and title here.
-        line = (f'{role} {name_first} {name_last} / {institution_short}')
-        print(line)
-    print()
+    
