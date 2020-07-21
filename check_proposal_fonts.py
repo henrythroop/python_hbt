@@ -15,6 +15,8 @@ from termcolor import colored
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.patches import Rectangle
+
 
 # ============== Define Functions ===============
 
@@ -53,6 +55,9 @@ def get_pages(d, pl):
     ### GET NUMBER OF PAGES
     pn = d.pageCount
 
+    check_words = ["contents", "c o n t e n t s", "budget", "cost", "costs",
+                   "submitted to", "purposely left blank", "restrictive notice"]
+
     ### LOOP THROUGH PDF PAGES
     ps = 0
     for i, val in enumerate(np.arange(pn)):
@@ -63,19 +68,60 @@ def get_pages(d, pl):
         
         ### FIND PROPOSAL START USING END OF SECTION X
         if ('SECTION X - Budget' in t1) & ('SECTION X - Budget' not in t2):
-            
-            ### PROPOSAL USUALLY STARTS 2 PAGES AFTER (I.E., INCLDUES TOC)
-            ps += val + 2
-            
+
+            ### set start page
+            ps = val + 1
+
+            ### ATTEMPT TO CORRECT FOR (ASSUMED-TO-BE SHORT) COVER PAGES
+            if len(t2) < 500:
+                ps += 1
+                t2 = get_text(d, val + 2)
+
+            ### ACCOUNT FOR TOC OR SUMMARIES
+            if any([x in t2.lower() for x in check_words]):
+                ps += 1
+
             ### ASSUMES AUTHORS USED FULL PAGE LIMIT
-            pe  = ps + (pl - 1)
-            
+            pe  = ps + (pl - 1) 
+                        
         ### EXIT LOOP IF START PAGE FOUND
         if ps != 0:
             break 
 
+    ### ATTEMPT TO CORRECT FOR TOC > 1 PAGE OR SUMMARIES
+    if any([x in get_text(d, ps).lower() for x in check_words]):
+        ps += 1
+        pe += 1
+
+    ### CHECK THAT PAGE AFTER LAST IS REFERENCES
+    Ref_Words = ['references', 'bibliography', "r e f e r e n c e s", "b i b l i o g r a p h y"]
+
+    if not any([x in get_text(d, pe + 1).lower() for x in Ref_Words]):
+
+        ### IF NOT, TRY NEXT PAGE (OR TWO) AND UPDATED LAST PAGE NUMBER
+        if any([x in get_text(d, pe + 2).lower() for x in Ref_Words]):
+            pe += 1
+        elif any([x in get_text(d, pe + 3).lower() for x in Ref_Words]):
+            pe += 2
+
+        ### CHECK THEY DIDN'T GO UNDER THE PAGE LIMIT
+        if any([x in get_text(d, pe).lower() for x in Ref_Words]):
+            pe -= 1
+        elif any([x in get_text(d, pe - 1).lower() for x in Ref_Words]):
+            pe -= 2
+        elif any([x in get_text(d, pe - 2).lower() for x in Ref_Words]):
+            pe -= 3
+        elif any([x in get_text(d, pe - 3).lower() for x in Ref_Words]):
+            pe -= 4
+
     ### PRINT TO SCREEN (ACCOUNTING FOR ZERO-INDEXING)
     print("\n\tTotal pages = {},  Start page = {},   End page = {}".format(pn, ps + 1, pe + 1))
+
+    ### PRINT IF WENT OVER PAGE LIMIT
+    if pe - ps > 14:
+        print(colored("\n\t!!!!! PAGE LIMIT WARNING -- OVER !!!!!", 'blue'))
+    if pe - ps < 13:
+        print(colored("\n\t!!!!! PAGE LIMIT WARNING -- UNDER !!!!!", 'blue'))
 
     return pn, ps, pe
 
@@ -109,7 +155,7 @@ def get_fonts(doc, pn):
 # ====================== Set Inputs =======================
 
 PDF_Path  = '/Users/hthroop/Documents/HQ/CDAP20/PDFs'                         # PATH TO PROPOSAL PDFs
-Out_Path  = '/Users/hthroop/Documents/HQ/CDAP20/PDFs/out'                             # PATH TO OUTPUT
+Out_Path  = os.path.join(PDF_Path, 'out')                             # PATH TO OUTPUT
 Page_Lim  = 15                                          # PROPOSAL PAGE LIMIT
 
 # ====================== Main Code ========================
@@ -120,12 +166,10 @@ for p, pval in enumerate(PDF_Files):
 
     ### OPEN PDF FILE
     Prop_Name = (pval.split('/')[-1]).split('.pdf')[0]
-    # if Prop_Name != "20-EW20_2-0141-Umurhan":
-    #     continue
     Doc = fitz.open(pval)
     print(colored("\n\n\n\t" + Prop_Name, 'green', attrs=['bold']))
 
-    ### GET PAGES OF PROPOSAL
+    ### GET PAGES OF PROPOSAL (DOES NOT ACCOUNT FOR ZERO INDEXING; NEED TO ADD 1 WHEN PRINTING)
     try:
         Page_Num, Page_Start, Page_End = get_pages(Doc, Page_Lim)
     except RuntimeError:
@@ -136,12 +180,9 @@ for p, pval in enumerate(PDF_Files):
 
     ### GET TEXT OF FIRST PAGE TO CHECK
     print("\n\tSample of first page:\t" + textwrap.shorten((get_text(Doc, Page_Start)[100:130]), 40))
-
-    if Prop_Name != "20-EXO20-0016-Planavsky":
-
-        print("\tSample of mid page:\t"     + textwrap.shorten((get_text(Doc, Page_Start + 8)[100:130]), 40))
-        print("\tSample of last page:\t"    + textwrap.shorten((get_text(Doc, Page_End)[100:130]), 40))
-        
+    print("\tSample of mid page:\t"     + textwrap.shorten((get_text(Doc, Page_Start + 8)[100:130]), 40))
+    print("\tSample of last page:\t"    + textwrap.shorten((get_text(Doc, Page_End)[100:130]), 40))
+            
     ### GRAB FONT SIZE & CPI
     cpi = []
     for i, val in enumerate(np.arange(Page_Start, Page_End)):
@@ -154,15 +195,16 @@ for p, pval in enumerate(PDF_Files):
 
     ### PRINT WARNINGS IF NEEDED (typical text font < 11.8 or CPI > 15.5 on > 1 page)
     CMF = Counter(df['Font'].values).most_common(1)[0][0]
-    MFS = round(np.median(df[df['Text'].apply(lambda x: len(x) > 50)]["Size"]), 1)  ## only use text > 10 characters (excludes figure caption text)
-    CPC, CPI = len(cpi[cpi > 15.5]), [round(x, 2) for x in cpi[cpi > 15.5]]
+    MFS = round(np.median(df[df['Text'].apply(lambda x: len(x) > 50)]["Size"]), 1)  ## only use text > 50 characters (excludes random smaller text; see histograms for all)
+    CPC, CPI = len(cpi[cpi > 15.5]), [round(x, 1) for x in cpi[cpi > 15.5]]
     print("\n\tMost common font:\t" + CMF)
     if MFS <= 11.8:
         print("\tMedian font size:\t", colored(str(MFS), 'yellow'))
     else:
         print("\tMedian font size:\t" + str(MFS))
     if CPC > 1:
-        print("\tPages with CPI > 15.5:\t", textwrap.shorten(colored([np.arange(Page_Start, Page_End)[cpi > 15.5], CPI], 'yellow'), 70))
+        print("\tPages with CPI > 15.5:\t", textwrap.shorten(colored((np.arange(Page_Start, Page_End)[cpi > 15.5] + 1).tolist(), 'yellow'), 70))
+        print("\t\t\t\t", textwrap.shorten(colored(CPI, 'yellow'), 70))
     if (MFS <= 11.8) | (CPC > 1):
         print(colored("\n\t!!!!! COMPLIANCE WARNING!!!!!", 'red'))
 
@@ -177,9 +219,10 @@ for p, pval in enumerate(PDF_Files):
     mpl.rc('lines', markersize=5)
     fig = plt.figure(figsize=(6, 4))
     ax = fig.add_subplot(111)
-    ax.set_title(Prop_Name + "   Size = " + str(round(np.median(df["Size"]), 1)) + "   CPI = " + str(round(np.median(cpi[cpi > 8]), 1)), size=12)
+    ax.set_title(Prop_Name + "   Median Font = " + str(MFS) + "pt    CPI = " + str(round(np.median(cpi[cpi > 8]), 1)), size=11)
     ax.set_xlabel('Font Size', size=10)
     ax.set_ylabel('Density', size=10)
-    ax.hist(df["Size"], bins=np.arange(6, 16, 0.5), density=True)
+    ax.axvspan(11.8, 12.2, alpha=0.5, color='gray')
+    ax.hist(df["Size"], bins=np.arange(5.4, 18, 0.4), density=True)
     fig.savefig(os.path.join(Out_Path, 'fc_' + pval.split('/')[-1]), bbox_inches='tight', dpi=100, alpha=True, rasterized=True)
     plt.close('all')
