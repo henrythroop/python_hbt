@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.patches import Rectangle
 
+fitz.TOOLS.mupdf_display_errors(False)
 
 # ============== Define Functions ===============
 
@@ -129,7 +130,7 @@ def get_pages(d, pl):
 def get_fonts(doc, pn):
 
     ### LOAD PAGE
-    page = doc.loadPage(int(30))
+    page = doc.loadPage(int(pn))
 
     ### READ PAGE TEXT AS DICTIONARY
     blocks = page.getText("dict", flags=11)["blocks"]

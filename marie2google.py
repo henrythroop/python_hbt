@@ -12,6 +12,7 @@ import xlrd as xlrd
 #import hbtshort
 import re
 import glob
+import os
 
 def abbreviate(s):
 
@@ -87,9 +88,21 @@ def abbreviate(s):
     ('Lawrence Berkeley National Laboratory', 'Lawrence Berkeley NL'),
     ('Los Alamos National Security', 'LANL'),
     ('Dartmouth College', 'Dartmouth'),
-    ('University Of Maryland Baltimore County', 'UMD - Baltimore'),
+    ('University Of Maryland Baltimore County', 'UMD, Baltimore'),
     ('University Potsdam, Institute of physics and astronomy, Germany', 'U Potsdam, Germany'),
     ('New Mexico Institute Of Mining And Technology', 'NM Tech'),
+    ('Spece Environmen Technologies', 'Space Env Tech'),
+    ('LESIA, Paris Observatory, France', 'LESIA, France'),
+    ('ISTITUTO NAZIONALE DI ASTROFISICA INAF', 'INAF Italy'),
+    ('University of Virginia, Charlottesville', 'UVA'),
+    ('The Pinhead', 'Pinhead'),
+
+# Change some styles
+    
+    ('SELF', 'Self'),
+    ('OXFORD', 'Oxford'),
+
+# Remove some campus names, for the main campus
     
     (', THE (INC)', ''),
     (', Iowa City', ''),
@@ -110,7 +123,9 @@ def abbreviate(s):
     ('State University', 'State'),
     (', LLC', ''),
     ('University Of ', 'U '),
-    ('National Laboratory', ''),
+    ('University', 'U'),
+    ('Universitaet', 'U'),
+    ('National Laboratory', 'NL'),
     ('Research Center', ''),
     (', Inc.', ''),
     
@@ -135,12 +150,16 @@ file_xl = '/Users/hthroop/Downloads/CDAP20_ATM.xls'
 
 files_xl = glob.glob('/Users/hthroop/Documents/HQ/CDAP20/MaRIE/Panel_Compilation*xls')
 
+DO_LIST_FOR_GOOGLE = True
+DO_LIST_FOR_NICY = not(DO_LIST_FOR_GOOGLE)
+
 for file_xl in files_xl:
 
+    name_panel = os.path.basename(file_xl).replace('Panel_Compilation_','').replace('.xls', '')
+    
     print('------------------------')
-    print(f'{file_xl}')
+    print(f'{name_panel}')
     print('------------------------')
-    print('')
     
     workbook = xlrd.open_workbook(file_xl)
     sheet_names = workbook.sheet_names()
@@ -157,9 +176,13 @@ for file_xl in files_xl:
         
         sheet = workbook.sheet_by_index(i+3)
         num_investigators = sheet.nrows-1
-    
-        print(sheet_names[i+3])
-        print('------')
+
+        num_proposal = sheet_names[i+3]
+
+        if DO_LIST_FOR_GOOGLE:                    
+            print(num_proposal)
+            print('------')
+        
         institutions[i] = {}  # blank set
         
         for j in range(num_investigators):
@@ -181,12 +204,19 @@ for file_xl in files_xl:
                     institution = sheet.cell_value(j+1,6)
             
             institution_short = abbreviate(institution)
-            # print(f'Shortened {institution} to {institution_short}')
             
             # XXX Add a line to print the proposal number and title here.
+
             line = (f'{role} {name_first} {name_last} / {institution_short}')
-            print(line)
-        print()
+            if DO_LIST_FOR_GOOGLE:
+                print(line)
+            if DO_LIST_FOR_NICY:
+                if (role == 'PI'):
+                    print(f'{num_proposal} : {name_last} / {institution_short}')
+
+        if DO_LIST_FOR_GOOGLE:
+            print()
+    print()
         
     # Now print a list of the most conflicted institutions on this panel    
 
