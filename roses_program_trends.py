@@ -395,13 +395,15 @@ CountSubpanel     = []                          # Number of proposals on this su
 for panel in NamesSubpanelLong:
     w = np.where(panel == NameSubpanelLong)[0]
 
+    m = np.nanmean(ScoreMeritMean[w])
+    
     ScoreSubpanelMean.append(np.nanmean(ScoreMeritMean[w]))
     ScoreSubpanelMin.append(np.nanmin(ScoreMeritMean[w]))
     ScoreSubpanelMax.append(np.nanmax(ScoreMeritMean[w]))
                             
     CountSubpanel.append(len(w))
     
-    # print(f'{panel:40} {len(w):3} {m:5.2f}')
+    print(f'{panel:40} {len(w):3} {m:5.2f}')
     
 ScoreSubpanelMean = np.array(ScoreSubpanelMean)
 ScoreSubpanelMin = np.array(ScoreSubpanelMin)
@@ -619,6 +621,9 @@ PercentileOnSubpanel_Y2 = np.array(PercentileOnSubpanel_Y2)
     
 # And finally, make a plot!
 
+color_select = 'blue'
+color_decline = 'blue'
+
 ScoreMeritMean_Y1 = np.array(ScoreMeritMean_Y1)
 ScoreMeritMean_Y2 = np.array(ScoreMeritMean_Y2)
 
@@ -634,7 +639,7 @@ plt.ylim([0.9,5.1])
 plt.xlim([0.9,5.1])
 plt.xlabel('Merit Score, Year 1')
 plt.ylabel('Merit Score, Year 2')
-plt.title(f'SSW Merit Mean, 2014-2019, R={r:4.2}')
+plt.title(f'SSW Merit Mean, 2014-2019')
 plt.plot([1,5],[1,5])
 plt.gca().set_aspect('equal')
 plt.show()
@@ -776,7 +781,7 @@ plt.show()
 # Make a plot of Score vs. Submission Order
 
 plt.plot(NumberProposalSequentialPercentile, ScoreMeritMean, ls='none', marker='.', alpha = 0.5)
-plt.xlabel('Submission Order in Year (0 = First    1 = Last)')
+plt.xlabel('Submission Order Within Program Year (0 = First    1 = Last)')
 plt.ylabel('Merit Mean Score')
 plt.show()
 
@@ -869,6 +874,7 @@ if DO_LIST_PIS:
 # will identify any changdes in the program (e.g., Mary Voytek → Delia).
             
 DO_ANNUAL_TABLE = True
+DO_INCLUDE_RESUBMITS = False
 
 i = 1
 for y in np.unique(Year):
@@ -878,13 +884,15 @@ for y in np.unique(Year):
     plt.hist(ScoreMeritMean[indices], bins=bins, label='Total')
     
     indices2 = np.where( np.logical_and(Year==y, IsResubmit == True))[0]
-    
-    plt.hist(ScoreMeritMean[indices2], label='Resubmit', alpha=0.5, bins=bins)
+
     plt.title(f'SSW{y}, N={len(indices)}')
-    plt.ylabel('N')
-    plt.xlabel('Score')
-    if (y == min(Year)):
-        plt.legend()
+    
+    if DO_INCLUDE_RESUBMITS:
+        plt.hist(ScoreMeritMean[indices2], label='Resubmit', alpha=0.5, bins=bins)
+        plt.ylabel('N')
+        plt.xlabel('Score')
+        if (y == min(Year)):
+            plt.legend()
     plt.tight_layout()
     i += 1
     
@@ -905,13 +913,13 @@ indices = np.where( IsResubmit == True)[0]
 
 plt.hist(ScoreMeritMean, label=f'Total, $N$={num_proposals}', bins=bins)
 
+if DO_INCLUDE_RESUBMITS:
+    plt.hist(ScoreMeritMean[indices], label=f'Resubmit, $N_r$={len(indices)}', alpha=0.5, bins=bins)
+    plt.legend()
 
-plt.hist(ScoreMeritMean[indices], label=f'Resubmit, $N_r$={len(indices)}', alpha=0.5, bins=bins)
-
-plt.title(f'SSW14-19')
+plt.title(f'SSW14-19, N={num_proposals}')
 plt.ylabel('N')
 plt.xlabel('Merit Mean')
-plt.legend()
 
 plt.tight_layout()
 
@@ -921,5 +929,6 @@ frac = len(indices) / num_proposals
 
 print(f'SSW{np.amin(Year)}-{np.amax(Year)}: N={num_proposals:3}  N_r={len(indices):3} ({frac*100:2.0f}%)' +
       f'  Mean={m:5.3}  Mean_r={m_r:5.3}')
+plt.show()
             
             
