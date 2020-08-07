@@ -563,12 +563,16 @@ print()
 if FILTER_STRING:
     print(f'Listing proposals matching {FILTER_STRING}:')
     print()
-      
+
+trends = []  # Set up a list of score trends. This is just an array of arrays.
+
+# FILTER_STRING = 'Dela'      
 for i in range(num_proposals):
     m = matches[i]
     if len(m) > 0:
 #        print(f'{i}')
         out = ''
+        trend = []
         for j in reversed(range(len(m))):   # Now loop over all proposals in the match
             if j == len(m)-1:
                 delta = 0  # List the delta from the previous score, except for the first one
@@ -589,6 +593,9 @@ for i in range(num_proposals):
                   f' / {ScoreMeritMean[m[j]]:5.2f} {delta_str} / {select_str:8} ' + \
                   f' / {RankOnSubpanel[m[j]]:3} = {PercentileOnSubpanel[m[j]]:3}% / ' + \
                   f'{TitleProposal[m[j]][:90]}\n'
+            trend.append(ScoreMeritMean[m[j]])
+        trends.append(trend)
+        
         if FILTER_STRING in out:
             print(out)
         
@@ -682,26 +689,91 @@ plt.plot([1,100],[1,100])
 plt.gca().set_aspect('equal')
 plt.show()
 
+#%%
+# Plot the trends -- one 'squiggle' line for each individual proposal and its resubmits
+
+num_trends = len(trends)
+num_columns = 6
+width_column = 5
+lines_per_column = int(num_trends / num_columns)
+alpha = 0.85
+
+for i,t in enumerate(trends):
+    
+    delta = t[1] - t[0]
+    
+    if (delta > 0):
+        color = 'PaleGreen'
+    if (delta > 1):
+        color = 'Lime'
+    if (delta > 2):
+        color = 'Green'
+    if (delta < 0):
+        color = 'Orange'
+    if (delta < -1):
+        color = 'Red'
+    if (delta < -2):
+        color = 'Crimson'
+    if np.abs(delta) < 0.5:
+        color = 'Grey'
+        
+    colnum = int(num_columns * i/num_trends)
+    x0 = np.arange(len(t)) + colnum*width_column
+    y0 = np.mod(i,lines_per_column)
+    plt.plot(x0, np.array(t)+y0, color=color, alpha=alpha)
+    plt.xlim([-5,num_columns*(width_column)+2])
+    plt.ylim([0,lines_per_column+5])
+    plt.title('Year-To-Year Score Trend for Every SSW Resubmitted Proposal')
+
+# Manually build a legend, showing how the slope of each line indicates its score change.
+    
+x0 = -4
+x1 = -3
+
+for i,delta in enumerate([-3, -2, -1, 0, 1, 2, 3]):
+    y0 = lines_per_column/2 + i
+    y1 = y0 + delta
+
+    color=['Crimson', 'Red', 'Orange', 'Grey', 'PaleGreen', 'Lime', 'Green'][i]
+
+    plt.plot([x0,x1], [y0, y1], color=color, alpha=alpha)
+    plt.text(x1+0.25, y1, f'{delta:+}', fontsize=7, color='black')
+    
+    print(f'i={i}, delta={delta}, color={color}')
+
+plt.gca().get_xaxis().set_visible(False)
+plt.gca().get_yaxis().set_visible(False)
+plt.show()
+
+#%%
+    
 # See what the change would be if we just assigned Merit scores at random!
 # This will change every time we run the code.
 
 bins = np.arange(-4, 4, 0.25)
 
+FACTOR = 1000 # When we are making the random distribution, increase the # of drawings by this much, to get a smooth curve.
+
 num_pairs = len(ScoreMeritMean_Y1)-2
 pool_nonan = ScoreMeritMean_Y1.copy()
 
-
-ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean_Y1, k=len(ScoreMeritMean_Y1)))
-ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean_Y2, k=len(ScoreMeritMean_Y2)))
+ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean_Y1, k=FACTOR*len(ScoreMeritMean_Y1)))
+ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean_Y2, k=FACTOR*len(ScoreMeritMean_Y2)))
 delta_s = ScoreMeritMean_Y2_s - ScoreMeritMean_Y1_s
 
-plt.hist(delta_s, bins=bins, color = 'pink', alpha = 0.6)
+(n, bins, patches) = plt.hist(delta_s, bins=bins, color = 'pink', alpha = 0.6) # Do not actually plot this!
+n /= FACTOR
+
+plt.bar(bins[0:-1], n)
+
 plt.xlabel('Change in Synthetic Mean Merit')
 plt.ylabel('Number')
 plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' + 
                                         f'Stdev = {np.nanstd(delta_s):4.2}; N={num_pairs} resubmits')  
 plt.axvline(0, color='red', alpha=0.2)
 plt.show()  
+
+#%%
 
 # Make side-by-side plots of scores vs. randomized scores
 
