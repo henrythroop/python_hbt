@@ -540,6 +540,7 @@ ScoreMeritMeanNorm_Y1 = []
 ScoreMeritMeanNorm_Y2 = []
 
 IsSelected_Y2 = []
+IsResubmit = np.zeros(num_proposals).astype(bool)
 
 num_singles = 0                 # Number of proposals that were only submitted once
 num_multiple_titles = 0         # Number of multiple-submits, counting each multiple only once
@@ -567,10 +568,16 @@ for i in range(num_proposals):
 #        print(f'{i}')
         out = ''
         for j in reversed(range(len(m))):   # Now loop over all proposals in the match
-            delta = ScoreMeritMean[m[j]] - ScoreMeritMean[m[-1]]
+            if j == len(m)-1:
+                delta = 0  # List the delta from the previous score, except for the first one
+            else:    
+                delta = ScoreMeritMean[m[j]] - ScoreMeritMean[m[j-1]]
             delta_str = f'{delta:+5.2f}'
             if '0.00' in delta_str:  # Skip the delta for the first proposal in a match
                 delta_str = '     '
+            else:
+                IsResubmit[m[j]] = True # If this is a resubmit, flag as so
+                
             if IsSelected[m[j]]:
                 select_str = 'Select'
             else:
@@ -608,6 +615,7 @@ ScoreMeritMeanNorm_Y1 = np.array(ScoreMeritMeanNorm_Y1)
 ScoreMeritMeanNorm_Y2 = np.array(ScoreMeritMeanNorm_Y2)
 PercentileOnSubpanel_Y1 = np.array(PercentileOnSubpanel_Y1)
 PercentileOnSubpanel_Y2 = np.array(PercentileOnSubpanel_Y2)
+
     
 # And finally, make a plot!
 
@@ -859,4 +867,59 @@ if DO_LIST_PIS:
             
 # Make a plot of Y1 vs. Y2 for each year. So, for 2014 vs. 2015, 18-19, etc. This will not be as large, but
 # will identify any changdes in the program (e.g., Mary Voytek → Delia).
+            
+DO_ANNUAL_TABLE = True
+
+i = 1
+for y in np.unique(Year):
+    plt.subplot(2,3,i)
+    bins = np.arange(1-0.25/2, 5.2, 0.25)
+    indices = np.where(Year == y)[0]
+    plt.hist(ScoreMeritMean[indices], bins=bins, label='Total')
+    
+    indices2 = np.where( np.logical_and(Year==y, IsResubmit == True))[0]
+    
+    plt.hist(ScoreMeritMean[indices2], label='Resubmit', alpha=0.5, bins=bins)
+    plt.title(f'SSW{y}, N={len(indices)}')
+    plt.ylabel('N')
+    plt.xlabel('Score')
+    if (y == min(Year)):
+        plt.legend()
+    plt.tight_layout()
+    i += 1
+    
+    m = np.nanmean(ScoreMeritMean[indices])
+    m_r = np.nanmean(ScoreMeritMean[indices2])
+    frac = len(indices2) / len(indices)
+    
+    print(f'SSW{y}: N={len(indices):3}  N_r={len(indices2):3} ({frac*100:2.0f}%)' +
+          f'  Mean={m:5.3}  Mean_r={m_r:5.3}')
+
+plt.show()    
+           
+# Make a histogram of all submits vs. totals
+
+bins = np.arange(1-0.25/2, 5.2, 0.25)
+
+indices = np.where( IsResubmit == True)[0]
+
+plt.hist(ScoreMeritMean, label=f'Total, $N$={num_proposals}', bins=bins)
+
+
+plt.hist(ScoreMeritMean[indices], label=f'Resubmit, $N_r$={len(indices)}', alpha=0.5, bins=bins)
+
+plt.title(f'SSW14-19')
+plt.ylabel('N')
+plt.xlabel('Merit Mean')
+plt.legend()
+
+plt.tight_layout()
+
+m = np.nanmean(ScoreMeritMean)
+m_r = np.nanmean(ScoreMeritMean[indices])
+frac = len(indices) / num_proposals
+
+print(f'SSW{np.amin(Year)}-{np.amax(Year)}: N={num_proposals:3}  N_r={len(indices):3} ({frac*100:2.0f}%)' +
+      f'  Mean={m:5.3}  Mean_r={m_r:5.3}')
+            
             
