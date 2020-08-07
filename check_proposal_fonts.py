@@ -155,13 +155,15 @@ def get_fonts(doc, pn):
 
 # ====================== Set Inputs =======================
 
-PDF_Path  = '/Users/hthroop/Documents/HQ/CDAP20/PDFs'                         # PATH TO PROPOSAL PDFs
+PDF_Path  = '/Users/hthroop/Documents/HQ/CDAP20/PDFs' 
+PDF_Path = '/Users/hthroop/Desktop/'   # PATH TO PROPOSAL PDFs
 Out_Path  = os.path.join(PDF_Path, 'out')                             # PATH TO OUTPUT
 Page_Lim  = 15                                          # PROPOSAL PAGE LIMIT
 
 # ====================== Main Code ========================
 
 PDF_Files = np.sort(glob.glob(os.path.join(PDF_Path, '*.pdf')))
+PDF_Files = PDF_Path + '/FontTestHBT.pdf'
 Files_Skipped, Files_Font = [], []
 for p, pval in enumerate(PDF_Files):
 
