@@ -662,9 +662,11 @@ plt.plot(ScoreMeritMeanNorm_Y1[IsSelected_Y2], ScoreMeritMeanNorm_Y2[IsSelected_
 r = pearsonr(ScoreMeritMeanNorm_Y1, ScoreMeritMeanNorm_Y2)[0]
 plt.ylim([0.9, 5.1])
 plt.xlim([0.9, 5.1])
-plt.xlabel('Merit %ile, Year 1')
-plt.ylabel('Merit %ile, Year 2')
-plt.title(f'SSW Merit Mean Normalized (1-5), 2014-2019, R = {r:4.2}')
+plt.xlabel('Merit Score, Year 1')
+plt.ylabel('Merit Score, Year 2')
+plt.xticks([1, 2, 3, 4, 5])
+plt.yticks([1, 2, 3, 4, 5])
+plt.title(f'SSW Merit Mean Normalized (1-5), SSW14-19')
 plt.plot([1,100],[1,100])
 plt.gca().set_aspect('equal')
 plt.show()
@@ -684,7 +686,7 @@ plt.ylim([-5,105])
 plt.xlim([-5,105])
 plt.xlabel('Merit %ile, Year 1')
 plt.ylabel('Merit %ile, Year 2')
-plt.title(f'SSW Merit Mean, %ile on Subpanel, 2014-2019, R={r:4.2}')
+plt.title(f'SSW Merit Mean, %ile on Subpanel, SSW14-19')
 plt.plot([1,100],[1,100])
 plt.gca().set_aspect('equal')
 plt.show()
@@ -745,10 +747,14 @@ plt.gca().get_xaxis().set_visible(False)
 plt.gca().get_yaxis().set_visible(False)
 plt.show()
 
+
 #%%
     
 # See what the change would be if we just assigned Merit scores at random!
 # This will change every time we run the code.
+
+# _s = extension for SYNTHETIC (i.e., random) Y2 values
+# _l = extension for LONG Y2 values (ie, more cases than actual)
 
 bins = np.arange(-4, 4, 0.25)
 
@@ -757,25 +763,32 @@ FACTOR = 1000 # When we are making the random distribution, increase the # of dr
 num_pairs = len(ScoreMeritMean_Y1)-2
 pool_nonan = ScoreMeritMean_Y1.copy()
 
-ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean_Y1, k=FACTOR*len(ScoreMeritMean_Y1)))
-ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean_Y2, k=FACTOR*len(ScoreMeritMean_Y2)))
+# Make the random 'synthetic' values (normal length)
+ScoreMeritMean_Y1_s = np.array(random.choices(ScoreMeritMean_Y1, k=len(ScoreMeritMean_Y1)))
+ScoreMeritMean_Y2_s = np.array(random.choices(ScoreMeritMean_Y2, k=len(ScoreMeritMean_Y2)))
 delta_s = ScoreMeritMean_Y2_s - ScoreMeritMean_Y1_s
 
-(n, bins, patches) = plt.hist(delta_s, bins=bins, color = 'pink', alpha = 0.6) # Do not actually plot this!
-n /= FACTOR
+# Make the 'long' synthetic values, which give better statistics
 
-plt.bar(bins[0:-1], n)
+ScoreMeritMean_Y1_sl = np.array(random.choices(ScoreMeritMean_Y1, k=FACTOR*len(ScoreMeritMean_Y1)))
+ScoreMeritMean_Y2_sl = np.array(random.choices(ScoreMeritMean_Y2, k=FACTOR*len(ScoreMeritMean_Y2)))
+delta_sl = ScoreMeritMean_Y2_sl - ScoreMeritMean_Y1_sl
+
+(hist_n, hist_bins, hist_patches) = plt.hist(delta_sl, bins=bins, color = 'pink', alpha = 0.6) # Do not actually plot this!
+hist_n /= FACTOR
+
+plt.bar(hist_bins[0:-1], hist_n)
 
 plt.xlabel('Change in Synthetic Mean Merit')
 plt.ylabel('Number')
-plt.title(f'SSW2014-2019. Delta mean = {np.nanmean(delta_s):4.2}; ' + 
+plt.title(f'SSW14-19. Delta mean = {np.nanmean(delta_s):4.2}; ' + 
                                         f'Stdev = {np.nanstd(delta_s):4.2}; N={num_pairs} resubmits')  
 plt.axvline(0, color='red', alpha=0.2)
 plt.show()  
 
 #%%
 
-# Make side-by-side plots of scores vs. randomized scores
+# Now that we have generated the random scores, make a side-by-side scatter plot of scores vs. randomized scores
 
 plt.subplot(1, 2, 1)
 plt.plot(ScoreMeritMean_Y1, ScoreMeritMean_Y2, ls='none', marker='.', 
@@ -796,19 +809,31 @@ plt.gca().set_aspect('equal')
 plt.tight_layout()
 plt.show()
 
+#%%
 
 # Plot a histogram of the change
 
 delta = ScoreMeritMean_Y2 - ScoreMeritMean_Y1
-plt.hist(delta, label = 'Actual', bins=bins)
-plt.hist(delta_s, alpha=0.6, color='pink', label = 'Random', bins=bins)
-plt.xlabel('Change in Mean Merit')
+
+dev    = np.nanstd(delta)
+dev_sl = np.nanstd(delta_sl)
+m      = np.nanmean(delta)
+m_sl   = np.nanmean(delta_sl)
+
+# plt.bar(hist_bins[0:-1], hist_n, alpha=0.5, color='pink', label='Randomized scores', width=0.25)
+plt.hist(delta, label = f'Actual scores, N={num_pairs}', bins=bins, alpha=0.25, color='blue')
+
+plt.xlabel('Change in Merit Score')
 plt.ylabel('Number')
-plt.title(f'SSW2014-2019. Delta mean = {np.mean(delta):4.2}; ' + 
-                                        f'Stdev = {np.nanstd(delta):4.2}; N={num_pairs} resubmits')  
+plt.title(f'SSW14-19. Score change for resubmitted proposal')  
 plt.axvline(0, color='red', alpha=0.2)
 plt.legend()
 plt.show()    
+
+print(f'Actual     scores: Expected change = {m:5.2f} +- {dev:5.2f}')
+print(f'Randomized scores: Expected change = {m_sl:5.2f} +- {dev_sl:5.2f}')
+
+#%%
 
 # As per suggestion by MB, plot score, vs. expected change in score.
 
@@ -940,15 +965,22 @@ if DO_LIST_PIS:
         print(f'{i+1:3}. {pi_i:25} N = {n_select} / {count_pi[order_pi[i]]} = ' + \
               f'{100*n_select / count_pi[order_pi[i]]:3.0f}%.   Mean = {mean:4.3} +- {stdev:4.3}' )
 
+#%%
+            
 # Make a plot of quartile vs. quartile
+
+#%%
             
 # Make a plot of Y1 vs. Y2 for each year. So, for 2014 vs. 2015, 18-19, etc. This will not be as large, but
 # will identify any changdes in the program (e.g., Mary Voytek → Delia).
+# Any year-by-year statistical info we should put here, too.
             
 DO_ANNUAL_TABLE = True
-DO_INCLUDE_RESUBMITS = False
+DO_INCLUDE_RESUBMITS = False  # Include these in the plot? Always included in table.
 
 i = 1
+print('Program  N    N_Resub  (%)     N_select  (%)    N_Select_of_Resub (%)  Mean  Mean_of_Resub')
+
 for y in np.unique(Year):
     plt.subplot(2,3,i)
     bins = np.arange(1-0.25/2, 5.2, 0.25)
@@ -957,8 +989,14 @@ for y in np.unique(Year):
     
     indices2 = np.where( np.logical_and(Year==y, IsResubmit == True))[0]
 
-    plt.title(f'SSW{y}, N={len(indices)}')
+    num_sub      = np.sum(Year == y)
+    num_sub_r    = np.sum(np.logical_and( (Year == y), (IsResubmit==True)))
+    num_select   = np.sum(np.logical_and( (Year == y), (IsSelected == True)))
+    num_select_r = np.sum(np.logical_and( (Year == y), np.logical_and((IsSelected == True), (IsResubmit==True))))
     
+    plt.title(f'SSW{y}, N={len(indices)}')
+    plt.xticks([1, 2, 3, 4, 5])
+
     if DO_INCLUDE_RESUBMITS:
         plt.hist(ScoreMeritMean[indices2], label='Resubmit', alpha=0.5, bins=bins)
         plt.ylabel('N')
@@ -973,10 +1011,12 @@ for y in np.unique(Year):
     frac = len(indices2) / len(indices)
     
     print(f'SSW{y}: N={len(indices):3}  N_r={len(indices2):3} ({frac*100:2.0f}%)' +
-          f'  Mean={m:5.3}  Mean_r={m_r:5.3}')
+          f'  N_s = {num_select:3} ({100*num_select/num_sub:2.0f}%)  ' + 
+          f'  N_s_r = {num_select_r:3} ({100*num_select_r/num_sub_r:2.0f}%)  Mean={m:5.3}  Mean_r={m_r:5.3}')
 
 plt.show()    
-           
+
+#%%           
 # Make a histogram of all submits vs. totals
 
 bins = np.arange(1-0.25/2, 5.2, 0.25)
@@ -992,6 +1032,7 @@ if DO_INCLUDE_RESUBMITS:
 plt.title(f'SSW14-19, N={num_proposals}')
 plt.ylabel('N')
 plt.xlabel('Merit Mean')
+plt.xticks([1,2,3,4,5])
 
 plt.tight_layout()
 
