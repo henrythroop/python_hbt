@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
+This is my code to analyze repeat proposal scores. Written Spring-2020, NASA HQ, HBT.
 
-This is a temporary script file.
+Code reads in Excel files with scoresheets in a standard format.
+
+Code reads in a list of selections, in a CSV file.
+
+Code does *not* read in the entire dump from NSPIRES (e.g., budgets). It should be adapted to do so.
+
+This was the first real code I wrote in Python after a hiatus. It is not that pythonic. Mostly procedural, and
+it does not use functions or dictionaries very well.
+
 """
 
 import numpy as np
@@ -70,9 +78,17 @@ def get_jaccard_sim(str1, str2):
     c = a.intersection(b)
     return float(len(c)) / (len(a) + len(b) - len(c))
 
+##########
+### Start of Main Code
+##########
+    
+# Define the file inputs
+    
 path_base = '/Users/hthroop/Documents/HQ/SSW/'    
-file_xl = 'SSW Trends.xls'
-file_selections = 'Selections_SSW.csv'
+file_xl = 'SSW Trends.xls'  # Scoresheets
+file_selections = 'Selections_SSW.csv' # Text file with selection values (Yes/No)
+
+# Define the plot settings
 
 hbt.fontsize(12)
 hbt.figsize(7,5)
