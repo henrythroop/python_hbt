@@ -6,9 +6,18 @@ Created on Wed Jul  1 00:38:33 2020
 @author: hthroop
 """
 
-### This reads output from I-NSPIRES and makes plots.
-# Output as .xls.
-# Include all columns. Better to have too many, than too few.
+### 
+
+# This reads output from I-NSPIRES and makes plots.
+
+# I have used it to get the total $$ requested for SSW, as a function of time.
+# This code does not look at scoresheets. It only looks at the NSPIRES output.
+
+# To create the output from I-NSPIRES:
+# - Output as .xls.
+# - Include all columns. Better to have too many, than too few. Code will find the proper ones. 
+# - Be aware that there is a bug in NSPIRES that causes some columns to be mis-labeled (e.g., CDAP06).
+
 # HBT 1-Jul-2020
 
 import numpy as np
@@ -104,6 +113,7 @@ for file in files_xl:
     
     mean_y1 = np.nanmean(data['Proposed Budget Amount(by Year) 1'])
     median_y1 = np.nanmedian(data['Proposed Budget Amount(by Year) 1'])
+    tot_y1 = np.nansum(data['Proposed Budget Amount(by Year) 1'])
     mean_y1_sel = np.nanmean(data['Proposed Budget Amount(by Year) 1'][where_selected])
     median_y1_sel = np.nanmedian(data['Proposed Budget Amount(by Year) 1'][where_selected])
     tot_all = np.nansum(data['Proposed Amount Total'])
@@ -125,8 +135,10 @@ for file in files_xl:
     print(f'{name_program}')
     print(f' Y1            Mean, Median: ${mean_y1/1000:.0f}K, ${median_y1/1000:.0f}K')
     print(f' Y1 Selected   Mean, Median: ${mean_y1_sel/1000:.0f}K, ${median_y1_sel/1000:.0f}K')
+    print(f' Y1            Total:        ${tot_y1/1e6:.0f}M')
     print(f' Y1-3          Total:        ${tot_all/1e6:.0f}M')
     print(f' Y1-3 Selected Total:        ${tot_all_sel/1e6:.0f}M')
+    print(f' Selected           :        {num_selected} / {num_proposals} = {100*num_selected/num_proposals:5.1f}%')
     
     print()
     ii+=1
