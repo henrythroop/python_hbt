@@ -13,6 +13,8 @@ import xlrd as xlrd
 import re
 import glob
 import os
+from termcolor import colored
+
 
 def abbreviate(s):
 
@@ -96,6 +98,7 @@ def abbreviate(s):
     ('ISTITUTO NAZIONALE DI ASTROFISICA INAF', 'INAF Italy'),
     ('University of Virginia, Charlottesville', 'UVA'),
     ('The Pinhead', 'Pinhead'),
+    ('(THE)', ''),
 
 # Change some styles
     
@@ -157,9 +160,10 @@ for file_xl in files_xl:
 
     name_panel = os.path.basename(file_xl).replace('Panel_Compilation_','').replace('.xls', '')
     
-    print('------------------------')
-    print(f'{name_panel}')
-    print('------------------------')
+    print(colored('------------------------', 'red', attrs=['bold']))
+    print(colored(f'{name_panel}', 'red', attrs=['bold']))
+    print(colored('------------------------', 'red', attrs=['bold']))
+    print()
     
     workbook = xlrd.open_workbook(file_xl)
     sheet_names = workbook.sheet_names()
@@ -208,7 +212,9 @@ for file_xl in files_xl:
             # XXX Add a line to print the proposal number and title here.
 
             line = (f'{role} {name_first} {name_last} / {institution_short}')
-            if DO_LIST_FOR_GOOGLE:
+
+            if DO_LIST_FOR_GOOGLE: # Normal case
+                # print(colored(line, 'red', attrs=attrs))
                 print(line)
             if DO_LIST_FOR_NICY:
                 if (role == 'PI'):
