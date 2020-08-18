@@ -91,6 +91,7 @@ def abbreviate(s):
     ('Los Alamos National Security', 'LANL'),
     ('Dartmouth College', 'Dartmouth'),
     ('University Of Maryland Baltimore County', 'UMD, Baltimore'),
+    ('University of North Carolina,', 'UNC'),
     ('University Potsdam, Institute of physics and astronomy, Germany', 'U Potsdam, Germany'),
     ('New Mexico Institute Of Mining And Technology', 'NM Tech'),
     ('Spece Environmen Technologies', 'Space Env Tech'),
@@ -99,15 +100,17 @@ def abbreviate(s):
     ('University of Virginia, Charlottesville', 'UVA'),
     ('The Pinhead', 'Pinhead'),
     ('(THE)', ''),
+    ('Space Environment Technologies', 'Space Env Tech'),
 
 # Change some styles
     
     ('SELF', 'Self'),
     ('OXFORD', 'Oxford'),
+    ('(THE)', ''),
+    (', THE (INC)', ''),
 
 # Remove some campus names, for the main campus
     
-    (', THE (INC)', ''),
     (', Iowa City', ''),
     (', Ann Arbor', ''),
     (', Austin', ''),
