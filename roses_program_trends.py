@@ -16,7 +16,7 @@ it does not use functions or dictionaries very well.
 import numpy as np
 import xlrd as xlrd
 
-import matplotlib.pyplot as pltSSW19 W1 Impacts'
+import matplotlib.pyplot as plt
 import numpy as np
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
@@ -276,7 +276,7 @@ CriteriaSimilarityPI    = 75  # SSW19 has surnames only, so relax matching here.
 
 matches = []
 
-FILTER_STRING = ''   # Matches anything on the string output
+FILTER_STRING = 'Umur'   # Matches anything on the string output
 
 print('Searching for matches...')
 
@@ -952,7 +952,7 @@ plt.show()
 #%%
 # See what the most common institutions are
 
-DO_LIST_INSTITUTIONS = False
+DO_LIST_INSTITUTIONS = True
 
 if DO_LIST_INSTITUTIONS:
     institution = np.unique(NameInstitution) # Get a raw list of institutions. N = 179
