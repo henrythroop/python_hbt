@@ -44,8 +44,14 @@ import hbt_short as hbt
 import re
 import glob
 
-path_base = '/Users/hthroop/Downloads'
+path_base = '/Users/hthroop/Documents/HQ/ProgramStats'
 files_xl = glob.glob(path_base + '/SSW*-out.xls')
+files_xl = glob.glob(path_base + '/HW*-out.xls')
+# files_xl = glob.glob(path_base + '/CDAP*-out.xls')
+# files_xl = glob.glob(path_base + '/NFDAP*-out.xls')
+
+# files_xl = glob.glob(path_base + '/EW*-out.xls')
+
 # file_xl = 'SSW19-out.xls'
 files_xl = np.sort(files_xl)[::1]
 ii = 1
@@ -88,6 +94,12 @@ hbt.fontsize(18)
 
 hbt.figsize(20,15)
 
+year = []
+n_submit = []
+n_select = []
+budget_total_select = []
+budget_total_submit = []
+
 for file in files_xl:
  
     (data, name_columns) = read_excel_nspires(file)
@@ -100,24 +112,26 @@ for file in files_xl:
     # Remove most of these, leaving just one per proposal.
         
     where_letter = np.where(data['Document Type'] == 'Notification Letter')
+    where_letter = np.where(data['Document Type'] == 'Panel Evaluation') # CDAP13 does *not* have a notification letter for most.
     
     for name_column in name_columns:
         data[name_column] = data[name_column][where_letter]
     
     name_program  = (data['Proposal Number'][0].split('-')[1]).replace('_2', '')
     bins = np.arange(0,500000,25000)/1000
-    where_selected = np.where(data['Selection Status'] == 'Selected')
+    where_selected = np.where(np.logical_or( data['Selection Status'] == 'Selected',
+                                             data['Selection Status'] == 'Selected (Partial)' ))
     
     num_proposals = len(data[name_column])
     num_selected  = len(data[name_column][where_selected])
     
-    mean_y1 = np.nanmean(data['Proposed Budget Amount(by Year) 1'])
-    median_y1 = np.nanmedian(data['Proposed Budget Amount(by Year) 1'])
-    tot_y1 = np.nansum(data['Proposed Budget Amount(by Year) 1'])
-    mean_y1_sel = np.nanmean(data['Proposed Budget Amount(by Year) 1'][where_selected])
+    mean_y1       = np.nanmean(data['Proposed Budget Amount(by Year) 1'])
+    median_y1     = np.nanmedian(data['Proposed Budget Amount(by Year) 1'])
+    tot_y1        = np.nansum(data['Proposed Budget Amount(by Year) 1'])
+    mean_y1_sel   = np.nanmean(data['Proposed Budget Amount(by Year) 1'][where_selected])
     median_y1_sel = np.nanmedian(data['Proposed Budget Amount(by Year) 1'][where_selected])
-    tot_all = np.nansum(data['Proposed Amount Total'])
-    tot_all_sel = np.nansum(data['Proposed Amount Total'][where_selected])
+    tot_all       = np.nansum(data['Proposed Amount Total'])
+    tot_all_sel   = np.nansum(data['Proposed Amount Total'][where_selected])
     
     plt.hist(data['Proposed Budget Amount(by Year) 1']/1000, bins,
              alpha = 0.5,
@@ -140,9 +154,59 @@ for file in files_xl:
     print(f' Y1-3 Selected Total:        ${tot_all_sel/1e6:.0f}M')
     print(f' Selected           :        {num_selected} / {num_proposals} = {100*num_selected/num_proposals:5.1f}%')
     
+
+    year.append(name_program.replace('/2','')[-2::])  # Convert SSW19 and CDAPS12/2 into 19 and 12
+    n_submit.append(num_proposals)
+    n_select.append(num_selected)
+    budget_total_select.append(tot_all_sel)
+    budget_total_submit.append(tot_all)
+    
     print()
     ii+=1
 
 plt.show()
-    
+
+name_program_short = name_program[0:-2]
+
+year = np.array(year).astype(int)
+n_submit = np.array(n_submit)
+n_select = np.array(n_select)
+budget_total_select = np.array(budget_total_select)
+budget_total_submit = np.array(budget_total_submit)
+
+#%%%
+
+hbt.fontsize(20)
+
+plt.subplot(2,2,1)
+plt.plot(year, n_submit, label = '# Submit', ms=20, marker='.')
+plt.plot(year, n_select, label = '# Select', ms=20, marker='.')
+plt.legend()
+plt.ylabel('# Proposals')
+plt.xlabel('Year')
+plt.title(name_program_short)
+
+plt.subplot(2,2,3)
+plt.plot(year, budget_total_submit/1e6, label = '$M Submit', ms=20, marker='.')
+plt.plot(year, budget_total_select/1e6, label = '$M Select', ms=20, marker='.')
+plt.legend()
+plt.ylabel('$M Total')
+plt.xlabel('Year')
+plt.title(name_program_short)
+
+plt.subplot(2,2,2)
+plt.plot(year, budget_total_submit/n_submit/1e3, label = 'Mean Total Budget per Proposal', ms=20, marker='.')
+plt.legend()
+plt.ylabel('$K Per Proposal')
+plt.xlabel('Year')
+plt.title(name_program_short)
+
+plt.subplot(2,2,4)
+plt.plot(year, 100* n_select / n_submit, label = '% Select', ms=20, marker = '.')
+plt.legend()
+plt.ylabel('% Select')
+plt.xlabel('Year')
+plt.title(name_program_short)
+
+plt.show()
 
