@@ -101,6 +101,9 @@ workbook = xlrd.open_workbook(os.path.join(path_base, file_xl))
 sheet_names = workbook.sheet_names()
 print('Sheet Names', sheet_names)
 
+
+sheet_names = sheet_names[0:2]
+
 num_years = len(sheet_names)
 
 NamePI = []
@@ -130,7 +133,7 @@ column_Week      = 1
 column_NumberProposal  = 2
 column_NamePI          = 3
 column_TitleProposal   = 4
-column_NameInstitution = 5
+column_NameInstitution = 5   # Missing in 2019 data
 column_ScoreMeritMean  = 6
 column_ScoreCostMean   = 8
 column_ScoreRelevanceMean = 7
@@ -303,8 +306,8 @@ for i in range(num_proposals):
                     matches_i.insert(0,i)  # Add the i element to list (ie, the 1st proposal)
                     print()
                     print("Matched!")
-                print(f'{j:5} Ti: {SimilarityTitle[i,j]} {NumberProposal[j]:16} {NamePI[j]} {TitleProposal[j]}')
-                print(f'{i:5} PI: {SimilarityPI[i,j]} {NumberProposal[i]:16} {NamePI[i]} {TitleProposal[i]}')
+                print(f'{j:5} // {SimilarityTitle[i,j]} // {NumberProposal[j]:16} // {NamePI[j]} // {TitleProposal[j]}')
+                print(f'{i:5} // {SimilarityPI[i,j]}    // {NumberProposal[i]:16} // {NamePI[i]} // {TitleProposal[i]}')
                 print(f'Merit Mean: {ScoreMeritMean[matches_i]}')
                 print()
 
@@ -973,7 +976,6 @@ if DO_LIST_INSTITUTIONS:
     
     # Loop over all inst's, from top to bottom
     
-    
     for i in range(num_institutions):
         inst_i = institution[order[i]]
         mean = np.nanmean(ScoreMeritMean[indices_institution[order[i]]])
@@ -981,6 +983,12 @@ if DO_LIST_INSTITUTIONS:
         
         print(f'{i+1:3}. {inst_i}')
         print(f' N = {count_institution[order[i]]}. Mean = {mean:4.3} +- {stdev:4.3}')
+        
+        # List the number per year
+        
+        for y in np.unique(Year):
+            n = np.sum(np.logical_and( NameInstitution == inst_i, Year == y))
+            print(f' {y}: N = {n}')
         
         print()
 
