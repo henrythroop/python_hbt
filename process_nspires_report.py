@@ -45,12 +45,12 @@ import re
 import glob
 
 path_base = '/Users/hthroop/Documents/HQ/ProgramStats'
-files_xl = glob.glob(path_base + '/SSW*-out.xls')
-files_xl = glob.glob(path_base + '/HW*-out.xls')
+# files_xl = glob.glob(path_base + '/SSW*-out.xls')
+# files_xl = glob.glob(path_base + '/HW*-out.xls')
 # files_xl = glob.glob(path_base + '/CDAP*-out.xls')
 # files_xl = glob.glob(path_base + '/NFDAP*-out.xls')
-
 # files_xl = glob.glob(path_base + '/EW*-out.xls')
+files_xl = glob.glob(path_base + '/PDART*-out.xls')
 
 # file_xl = 'SSW19-out.xls'
 files_xl = np.sort(files_xl)[::1]
@@ -118,7 +118,7 @@ for file in files_xl:
         data[name_column] = data[name_column][where_letter]
     
     name_program  = (data['Proposal Number'][0].split('-')[1]).replace('_2', '')
-    bins = np.arange(0,500000,25000)/1000
+    bins = np.arange(0,1300000,50000)/1000
     where_selected = np.where(np.logical_or( data['Selection Status'] == 'Selected',
                                              data['Selection Status'] == 'Selected (Partial)' ))
     
@@ -133,15 +133,15 @@ for file in files_xl:
     tot_all       = np.nansum(data['Proposed Amount Total'])
     tot_all_sel   = np.nansum(data['Proposed Amount Total'][where_selected])
     
-    plt.hist(data['Proposed Budget Amount(by Year) 1']/1000, bins,
+    plt.hist(data['Proposed Amount Total']/1000, bins,
              alpha = 0.5,
-             label = f'All, mean=${mean_y1/1000:.0f}K')
-    plt.hist(data['Proposed Budget Amount(by Year) 1'][where_selected]/1000, bins,
+             label = f'All, mean=${tot_all/1000/num_proposals:.0f}K')
+    plt.hist(data['Proposed Amount Total'][where_selected]/1000, bins,
              alpha = 0.5, color='green',
-             label = f'Selected, mean=${mean_y1_sel/1000:.0f}K')
+             label = f'Selected, mean=${tot_all_sel/1000/num_selected:.0f}K')
     plt.legend()
     plt.title(f'{name_program}, N = {num_selected}/{num_proposals} = {100*num_selected/num_proposals:.0f}%')
-    plt.xlabel('Proposed Y1 Budget [$K]')
+    plt.xlabel('Proposed Budget [$K]')
     plt.ylabel('Number')
     plt.tight_layout()
     # plt.show()
@@ -195,7 +195,8 @@ plt.xlabel('Year')
 plt.title(name_program_short)
 
 plt.subplot(2,2,2)
-plt.plot(year, budget_total_submit/n_submit/1e3, label = 'Mean Total Budget per Proposal', ms=20, marker='.')
+plt.plot(year, budget_total_submit/n_submit/1e3, label = 'Mean Budget, Submitted', ms=20, marker='.')
+plt.plot(year, budget_total_select/n_select/1e3, label = 'Mean Budget, Selected', ms=20, marker='.')
 plt.legend()
 plt.ylabel('$K Per Proposal')
 plt.xlabel('Year')
