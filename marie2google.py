@@ -9,8 +9,12 @@ Created on Wed Feb 12 22:22:10 2020
 import numpy as np
 import xlrd as xlrd
 
-#import hbt
+#import hbtshort
 import re
+import glob
+import os
+from termcolor import colored
+
 
 def abbreviate(s):
 
@@ -77,14 +81,36 @@ def abbreviate(s):
     ('Rutgers University', 'Rutgers'),
     ('University of Texas, San Antonio', 'UTSA'),
     ('University of New Hampshire', 'UNH'),
+    ('University of Virginia', 'UVA'),
     ('University of Arkansas, Fayetteville', 'U Ark'),
     ('Hampton University', 'Hampton'),
     ('President and Fellows of Harvard College', 'Harvard'),
     ('American University', 'American U'),
     ('Lockheed Martin Inc.', 'Lockheed'),
     ('University of Wisconsin, Madison', 'U Wisc'),
+    ('Lawrence Berkeley National Laboratory', 'Lawrence Berkeley NL'),
+    ('Los Alamos National Security', 'LANL'),
+    ('Dartmouth College', 'Dartmouth'),
+    ('University Of Maryland Baltimore County', 'UMD, Baltimore'),
+    ('University of North Carolina,', 'UNC'),
+    ('University Potsdam, Institute of physics and astronomy, Germany', 'U Potsdam, Germany'),
+    ('New Mexico Institute Of Mining And Technology', 'NM Tech'),
+    ('LESIA, Paris Observatory, France', 'LESIA, France'),
+    ('ISTITUTO NAZIONALE DI ASTROFISICA INAF', 'INAF Italy'),
+    ('University of Virginia, Charlottesville', 'UVA'),
+    ('The Pinhead', 'Pinhead'),
+    ('(THE)', ''),
+    ('Space Environment Technologies', 'Space Env Tech'),
+
+# Change some styles
     
+    ('SELF', 'Self'),
+    ('OXFORD', 'Oxford'),
+    ('(THE)', ''),
     (', THE (INC)', ''),
+
+# Remove some campus names, for the main campus
+    
     (', Iowa City', ''),
     (', Ann Arbor', ''),
     (', Austin', ''),
@@ -103,6 +129,11 @@ def abbreviate(s):
     ('State University', 'State'),
     (', LLC', ''),
     ('University Of ', 'U '),
+    ('University', 'U'),
+    ('Universitaet', 'U'),
+    ('National Laboratory', 'NL'),
+    ('Research Center', ''),
+    (', Inc.', ''),
     
 ## Abbreviate the roles
     
@@ -123,35 +154,79 @@ def abbreviate(s):
 file_xl = '/Users/hthroop/Downloads/SSW_Volcanism.xls'
 file_xl = '/Users/hthroop/Downloads/CDAP20_ATM.xls'
 
-workbook = xlrd.open_workbook(file_xl)
-sheet_names = workbook.sheet_names()
-print('Sheet Names', sheet_names)
+files_xl = glob.glob('/Users/hthroop/Documents/HQ/CDAP20/MaRIE/Panel_Compilation*xls')
 
-num_proposals = len(sheet_names)-3
-#sheet_proposals = workbook.sheet_proposals
+DO_LIST_FOR_GOOGLE = True
+DO_LIST_FOR_NICY = not(DO_LIST_FOR_GOOGLE)
 
-for i in range(num_proposals):
-    sheet = workbook.sheet_by_index(i+3)
-    num_investigators = sheet.nrows-1
+for file_xl in files_xl:
 
-    print(sheet_names[i+3])
-    print('------')
-    for j in range(num_investigators):
-        
-        role = sheet.cell_value(j+1,0)  # row (1st row is 0), column (1st col is A)
-        role = abbreviate(role)
-        
-        name_last = sheet.cell_value(j+1,3)
-        name_first = sheet.cell_value(j+1,4)
-        if (role == 'PI'):
-            institution = sheet.cell_value(j+1,7)
-        else:
-            institution = sheet.cell_value(j+1,6)
-        
-        institution_short = abbreviate(institution)
-        # print(f'Shortened {institution} to {institution_short}')
-        
-        # XXX Add a line to print the proposal number and title here.
-        line = (f'{role} {name_first} {name_last} / {institution_short}')
-        print(line)
+    name_panel = os.path.basename(file_xl).replace('Panel_Compilation_','').replace('.xls', '')
+    
+    print(colored('------------------------', 'red', attrs=['bold']))
+    print(colored(f'{name_panel}', 'red', attrs=['bold']))
+    print(colored('------------------------', 'red', attrs=['bold']))
     print()
+    
+    workbook = xlrd.open_workbook(file_xl)
+    sheet_names = workbook.sheet_names()
+    # print('Sheet Names', sheet_names)
+    
+    num_proposals = len(sheet_names)-3
+    #sheet_proposals = workbook.sheet_proposals
+    
+    institutions = np.zeros(num_proposals).astype(set)
+    
+    for i in range(num_proposals):
+        
+        # institutions[i] = {}  # A set, which is unordered, and does not allow duplicates
+        
+        sheet = workbook.sheet_by_index(i+3)
+        num_investigators = sheet.nrows-1
+
+        num_proposal = sheet_names[i+3]
+
+        if DO_LIST_FOR_GOOGLE:                    
+            print(num_proposal)
+            print('------')
+        
+        institutions[i] = {}  # blank set
+        
+        for j in range(num_investigators):
+            
+            role = sheet.cell_value(j+1,0)  # row (1st row is 0), column (1st col is A)
+            role = abbreviate(role)
+            
+            name_last = sheet.cell_value(j+1,3)
+            name_first = sheet.cell_value(j+1,4)
+            
+            if (role == 'PI'):
+                institution = sheet.cell_value(j+1,7)
+                # institutions[i].add(institution)
+            else:
+                if (role == 'Co-I'):
+                    institution = sheet.cell_value(j+1,6)
+                    # institutions[i].add(institution)            
+                else:
+                    institution = sheet.cell_value(j+1,6)
+            
+            institution_short = abbreviate(institution)
+            
+            # XXX Add a line to print the proposal number and title here.
+
+            line = (f'{role} {name_first} {name_last} / {institution_short}')
+
+            if DO_LIST_FOR_GOOGLE: # Normal case
+                # print(colored(line, 'red', attrs=attrs))
+                print(line)
+            if DO_LIST_FOR_NICY:
+                if (role == 'PI'):
+                    print(f'{num_proposal} : {name_last} / {institution_short}')
+
+        if DO_LIST_FOR_GOOGLE:
+            print()
+    print()
+        
+    # Now print a list of the most conflicted institutions on this panel    
+
+    
