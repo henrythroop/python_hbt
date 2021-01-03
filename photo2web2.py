@@ -164,12 +164,24 @@ def make_thumbnails(files):
 #       
     
     return None
-    
+
+def check_path_ok():
+    """
+    Make sure we are running in an OK directory
+    """
+
+    file_inhibit = '.photo2web_inhibit'
+
+    if os.path.isfile(file_inhibit):
+      exit(f'File {file_inhibit} found -- stopping!');
+
 # =============================================================================
 # Start main code
 # =============================================================================
 
 def photo2web():
+
+    check_path_ok()
 
     dir_photos = os.getcwd()
     
