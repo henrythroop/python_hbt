@@ -47,6 +47,14 @@ To be done:
 # 17-Sep-2018
       - Handling of movies improved. Now there is a YOUTUBE: tag supplied, rather than a link; this can be parsed
         by both old and new galleries more consistently.
+        
+# 9-Jan-2021
+      - Makes two output files now: one with a thumbnail view of all images (like before), and one with a 
+        blog-style view (new -- though actually like the original photo2web). Both versions are JS-based and 
+        use LightGallery.
+        
+        This development *retires* the original output form the original photo2web page. I will still keep that
+        code, because it makes the thumbnails. But the HTML it generates is really not used any more.
                        
 """
 
@@ -72,6 +80,8 @@ def get_all_captions(files):
     
     NB: Looks like sips --getProperty description has a bug. If the length is > 1024 characters, then it returns 
     junk. No warning, and no way to detect this, except by seeing junk in the output.
+    
+    If captions are turned into junk, they just have to be shortened in Lightroom.
     
     """
     
@@ -150,6 +160,52 @@ def make_gallery_item(caption, basename, type = 'span'):
 
     return line
 
+def make_gallery_blog_item(caption, basename, type = 'span'):
+    """
+    Return an HTML line for the gallery, blog-style.
+    Each caption is wrapped in <span class=lg-caption>, and LightGallery further wraps this in <div lg-sub-html>.
+
+    Parameters
+    -----
+    
+    caption:
+        String caption, HTML.
+        
+    basename:
+        String. Can be a filename (IMG_5534.jpg) or a URL (http://www.youtube.com/asdfk98)
+        
+    """
+    
+    if '.jpg' in basename:
+        line  = '<table align=middle cellspacing=50 id=photoCellHorizontal>' + \
+                f'<tr><td align=middle>' + \
+                f'<span class="item" data-sub-html="<span class=lg-caption>{caption}</span>"' + \
+                f' data-src="originals/{basename}">\n' + \
+                f'  <a href="originals/{basename}"><img src="thumbnails/i{basename}"/></a>\n' + \
+                f'  </span>' + \
+                f'</td>' + \
+                f'<td cellpadding=10 width=0.3>' + \
+                f'<div class=caption><p>' + \
+                f'{caption}' + \
+                f'</p></div>' + \
+                f'</td></tr>' + \
+                f'</table>'    
+
+    if 'youtu' in basename:
+        id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4). # Create the YouTube thumbnail!
+        id = id.replace('watch?v=', '')
+        line  = f'<span class="item"' + \
+                f' data-src="{basename}"> ' + \
+                f'  <a href="{basename}" data-src="{basename}">' + \
+                f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/></a>' + \
+                f'  </span>\n\n'
+
+        # As a test, define the element as an <a> anchor.
+        
+#    line_a = f'<span class="item"> <a href="originals/{basename}"> <img src="thumbnails/s{basename}"/> </a></span>\n\n'
+
+    return line
+
 def make_thumbnails(files):
     """
     Make thumbnails for the specified files.
@@ -175,12 +231,34 @@ def check_path_ok():
     if os.path.isfile(file_inhibit):
       exit(f'File {file_inhibit} found -- stopping!');
 
+def output(lun_list, s):
+    """
+    Output a line of text or to a series of lun's. No explicit error handline.
+    Used to write HTML to one or more files.
+    
+    Parameters
+    ----------
+    lun_list : list of luns
+        List of lun's to write to
+    s: string
+        String to write to each of these luns
+
+    Returns
+    -------
+    None.
+
+    """
+    for lun in lun_list:
+        lun.write(s)
+            
 # =============================================================================
 # Start main code
 # =============================================================================
 
 def photo2web():
 
+    # os.chdir('/Users/throop/photos/Trips/ConjunctionJupiterSaturn_Dec20')
+    
     check_path_ok()
 
     dir_photos = os.getcwd()
@@ -198,7 +276,8 @@ def photo2web():
     file_header    = os.path.join(dir_js, 'header.html')    # Header with JS includes, CSS, etc.   
     file_footer    = os.path.join(dir_js, 'footer.html')  # HTML footer with JS startup, etc.
     file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. Line0 is gallery title
-    file_out       = os.path.join(dir_photos, 'index.html')    # Final output filename
+    file_out_thumbs = os.path.join(dir_photos, 'index_thumbs.html')    # Final output filename, for the thumb-based one
+    file_out_blog   = os.path.join(dir_photos, 'index.html')    # Final output filename, for the blog-like one
     
     captions = []
     header   = []
@@ -236,9 +315,16 @@ def photo2web():
             
     title_gallery = header_txt[0]
     header_txt = header_txt[1:]
+        
+    # Wrap the 'text header' in a <div>
+    # 'Text header' is the narrative introduction to the file ('I went on a trip...')
+    # Apply any CSS here -- e.g., to shrinks the margins a bit, to make it easier to read.
     
-    # Read HTML header. Plug in the gallery name as needed.
-              
+    header_txt = ["<div class=header>"] + header_txt + ["</div>"]
+    
+    # Read 'HTML header'. Plug in the gallery name as needed.
+    # 'HTML header' is the page title, the CSS and JS inclusions, etc.
+     
     with open(file_header, "r") as lun:
         for line in lun:
             header.append(line.replace('TITLE_HERE', title_gallery))
@@ -250,29 +336,34 @@ def photo2web():
         for line in lun:
             footer.append(line.replace('DATE_HERE', datestr))
     
-    # Now do the output
+    # Now create the output files themselves.
             
-    lun = open(file_out, "w")
+    lun_blog   = open(file_out_blog, "w")    # File that has the blog-style entries
+    lun_thumbs = open(file_out_thumbs, "w")  # File that has the thumbnails only 
     
-    # Write HTML header
+    # Make a list of all the LUN's that we output to. This way, we can easily write to two files with just one call.
+    
+    luns = [lun_blog, lun_thumbs]
+    
+    # Write 'HTML header' to the file
     
     for line in header:
-        lun.write(line)
+        output(luns, line)
     
-    # Write text header
+    # Write 'text header' to the file
     
     for line in header_txt:
-        lun.write(line)
+        output(luns, line)
     
-    lun.write('<div class="demo-gallery">\n')
-    lun.write('<div id="lightgallery" class="list-unstyled row">' + "\n")
+    output(luns,'<div class="demo-gallery">\n')
+    output(luns,'<div id="lightgallery" class="list-unstyled row">' + "\n")
     
     j = 0
     
     ## Make a list of sections here.
     
-    lun.write('<FONT SIZE=+0></B><br>Jump to section:<br></FONT></B>\n')
-    lun.write('<ul>')
+    output(luns, '<FONT SIZE=+0></B><br>Jump to section:<br></FONT></B>\n')
+    output(luns, '<ul>')
     
     for i,file in enumerate(files_original):
     
@@ -282,16 +373,21 @@ def photo2web():
     
         if  '##' in captions[i]:
             caption, section = caption.split('##')
-            lun.write(f'<li><a href=#{j+1}>{section}</a><br>\n')
+            output(luns,f'<li class=section><a href=#{j+1}>{section}</a><br>\n')
             # print(f'Section = {section}<br>')
             j+=1
                                              
-    lun.write('</ul>')
+    output(luns,'</ul>')
     
-    # Print a link to the old-style gallery
+    # Print links to the Thumbs page from blog page, and v/v.
 
-    lun.write("<p><a href=show_old.html><b>Slideshow (blog-style, all photos on one long page, with captions)</b></a><br><p>\n")
-    lun.write("<p><a href='..'><img src='../icons/info.gif' border=0><b>Return to list of galleries</b></a><p>\n")
+    output([lun_thumbs], 
+      "<p><a href=index.html><b>Slideshow View (blog-style, all photos on one long page, with captions)</b></a><br><p>\n")
+
+    output([lun_blog], 
+      "<p><a href=index_thumbs.html><b>Thumbnail View (no captions)</b></a><br><p>\n")
+    
+    output(luns, "<p><a href='..'><img src='../icons/info.gif' border=0><b>Return to list of galleries</b></a><p>\n")
     
     # Loop and print the entry for each image
     
@@ -305,10 +401,10 @@ def photo2web():
     
         if  '##' in captions[i]:
             if (j > 0):
-                lun.write('</div>\n')
+                output(luns, '</div>\n')
             caption, section = caption.split('##')
-            lun.write(f'<br><hr> <a name={j+1}></a> <h3>{section}</h3>\n\n')  # Anchor tag, so we can use index.html#1
-            lun.write(f'<div id="gallery{j}">\n')
+            output(luns, f'<br><hr> <a name={j+1}></a> <h3>{section}</h3>\n\n')  # Anchor tag, so we can use index.html#1
+            output(luns, f'<div id="gallery{j}">\n')
             j+=1
     
         # If caption is just a filename, then zero it out
@@ -334,8 +430,9 @@ def photo2web():
         #  - In the old HTML gallery, the YOUTUBE link will be turned into an <embed> link.
         
         if ('YOUTUBE:' not in caption):
-            line = make_gallery_item(caption, basename)                     # Normal caption and URL
-
+            line_thumbs = make_gallery_item(caption, basename)                     # Normal caption and URL
+            line_blog   = make_gallery_blog_item(caption, basename)
+            
         else:    
             
             try:
@@ -363,20 +460,24 @@ def photo2web():
             # line            = line1 + line2
         
         # Print the entire HTML line, with image, thumbnail, and caption, to the file
-    
-        lun.write(line)
-#        print(line) 
+
+        # This line here is DIFFERENT for the BLOG vs. THUMBS output files.
+        
+        output([lun_thumbs], line_thumbs)
+        output([lun_blog],   line_blog)
        
    # Print the HTML footer, and close the file
     
-    lun.write('</div>\n')    
-    lun.write('</div>\n')
+    output(luns, '</div>\n')    
+    output(luns, '</div>\n')
         
     for line in footer:
-        lun.write(line)    
+        output(luns, line)    
         
-    lun.close()
-    print(f'Wrote: {file_out}')
+    for lun in luns:
+        lun.close()
+    print(f'Wrote: {file_out_blog}')
+    print(f'Wrote: {file_out_thumbs}')
 
 # =============================================================================
 # Call the main code
