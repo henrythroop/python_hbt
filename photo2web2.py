@@ -65,6 +65,7 @@ from html import escape
 from bs4 import BeautifulSoup  # HTML parser
 import subprocess
 import datetime
+from shutil import copyfile
 
 # =============================================================================
 # Function definitions
@@ -86,8 +87,7 @@ def get_all_captions(files):
     """
     
     captions_all = subprocess.check_output(['sips', '--getProperty', 'description'] + files).decode("ISO-8859-1")
-    
-    
+     
     captions = []
     for i in range(len(files)):
         if (i < len(files)-1):
@@ -123,7 +123,7 @@ def get_all_captions_old(files):
     
     return captions_fixed
 
-def make_gallery_item(caption, basename, type = 'span'):
+def make_gallery_thumbs_item(caption, basename, type = 'span'):
     """
     Return an HTML line for the gallery.
     Each caption is wrapped in <span class=lg-caption>, and LightGallery further wraps this in <div lg-sub-html>.
@@ -238,7 +238,7 @@ def output(lun_list, s):
     
     Parameters
     ----------
-    lun_list : list of luns
+    luns : list of luns, or a single lun
         List of lun's to write to
     s: string
         String to write to each of these luns
@@ -248,9 +248,17 @@ def output(lun_list, s):
     None.
 
     """
+    
+    # print(f'{s}')
+    
     for lun in lun_list:
+        # print (f'outputting... {s}')
         lun.write(s)
-            
+    # else:
+    #     print (f'outputting single... {s}')
+    #     print(f'lun={luns}')
+    #     luns.write(s)
+
 # =============================================================================
 # Start main code
 # =============================================================================
@@ -277,7 +285,7 @@ def photo2web():
     file_footer    = os.path.join(dir_js, 'footer.html')  # HTML footer with JS startup, etc.
     file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. Line0 is gallery title
     file_out_thumbs = os.path.join(dir_photos, 'index_thumbs.html')    # Final output filename, for the thumb-based one
-    file_out_blog   = os.path.join(dir_photos, 'index.html')    # Final output filename, for the blog-like one
+    file_out_blog   = os.path.join(dir_photos, 'index_blog.html')    # Final output filename, for the blog-like one
     
     captions = []
     header   = []
@@ -328,7 +336,16 @@ def photo2web():
     with open(file_header, "r") as lun:
         for line in lun:
             header.append(line.replace('TITLE_HERE', title_gallery))
+
+    header_blog = header.copy()
+    header_thumbs = header.copy()
     
+    header_blog.append('<div>DESKTOP &starf;</div><div><a href=index_thumbs.html>MOBILE</a></div>')
+    header_thumbs.append('<div><a href=index_blog.html>DESKTOP</a></div><div>MOBILE &starf;</div>')
+    
+    header_thumbs.append("<p><a href='..'>Back to galleries</a><p>\n")
+    header_blog.append("<p><a href='..'>Back to galleries</a><p>\n")
+
     # Read HTML footer. Plug in the date as needed.
             
     datestr = datetime.datetime.now().strftime("%d %b %Y")
@@ -347,8 +364,11 @@ def photo2web():
     
     # Write 'HTML header' to the file
     
-    for line in header:
-        output(luns, line)
+    for line in header_blog:
+        output([lun_blog], line)
+
+    for line in header_thumbs:
+        output([lun_thumbs], line)
     
     # Write 'text header' to the file
     
@@ -378,17 +398,7 @@ def photo2web():
             j+=1
                                              
     output(luns,'</ul>')
-    
-    # Print links to the Thumbs page from blog page, and v/v.
-
-    output([lun_thumbs], 
-      "<p><a href=index.html><b>Slideshow View (blog-style, all photos on one long page, with captions)</b></a><br><p>\n")
-
-    output([lun_blog], 
-      "<p><a href=index_thumbs.html><b>Thumbnail View (no captions)</b></a><br><p>\n")
-    
-    output(luns, "<p><a href='..'><img src='../icons/info.gif' border=0><b>Return to list of galleries</b></a><p>\n")
-    
+            
     # Loop and print the entry for each image
     
     j = 0
@@ -430,7 +440,7 @@ def photo2web():
         #  - In the old HTML gallery, the YOUTUBE link will be turned into an <embed> link.
         
         if ('YOUTUBE:' not in caption):
-            line_thumbs = make_gallery_item(caption, basename)                     # Normal caption and URL
+            line_thumbs = make_gallery_thumbs_item(caption, basename)                     # Normal caption and URL
             line_blog   = make_gallery_blog_item(caption, basename)
             
         else:    
@@ -440,12 +450,22 @@ def photo2web():
             except:
                 raise ValueError(f"Can't parse caption: {caption}")
 
-            line1           = make_gallery_item(caption1, basename)
+            line1_blog        = make_gallery_blog_item(caption1, basename)
+            line1_thumbs      = make_gallery_thumbs_item(caption1, basename)
+
             url               = f'https://www.youtube.com/watch?v={video}'
             html              = f'<a href={url}>Link</a>'
-            line2           = make_gallery_item(caption1, url)            
-            line            = line1 + line2
-                
+            line2_blog        = make_gallery_blog_item(caption1, url)
+            line2_thumbs      = make_gallery_thumbs_item(caption1, url)
+            
+            line_thumbs       = line1_thumbs + line2_thumbs
+            line_blog         = line1_blog + line2_blog
+        
+            # XXX Not sure this line is right -- 10-Jan-2021
+            
+            # line_thumbs = line
+            # line_blog = line
+            
             # caption2        = a.contents[0]
             # html             = matchstr + html
             # soup            = BeautifulSoup(html, 'html5lib')
@@ -478,6 +498,11 @@ def photo2web():
         lun.close()
     print(f'Wrote: {file_out_blog}')
     print(f'Wrote: {file_out_thumbs}')
+    
+    # Finally, copy the landing page
+    
+    copyfile(dir_js + '/index_landing.html', dir_photos + '/index.html')
+    
 
 # =============================================================================
 # Call the main code
