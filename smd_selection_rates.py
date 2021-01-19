@@ -226,6 +226,7 @@ plt.show()
 
 #%%
 
+hbt.fontsize(20)
 
 for d in ['Planetary Science', 'Astrophysics']:
     plt.plot(year_u, np.array(selects_per_year[d]) / np.array(submits_per_year[d]), label=d, 

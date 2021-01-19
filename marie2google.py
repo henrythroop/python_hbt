@@ -154,7 +154,7 @@ def abbreviate(s):
 file_xl = '/Users/hthroop/Downloads/SSW_Volcanism.xls'
 file_xl = '/Users/hthroop/Downloads/CDAP20_ATM.xls'
 
-files_xl = glob.glob('/Users/hthroop/Documents/HQ/CDAP20/MaRIE/Panel_Compilation*xls')
+files_xl = glob.glob('/Users/hthroop/Documents/HQ/NFDAP20/MaRIE_Step2/Panel_Compilation*xls')
 
 DO_LIST_FOR_GOOGLE = True
 DO_LIST_FOR_NICY = not(DO_LIST_FOR_GOOGLE)
@@ -218,7 +218,10 @@ for file_xl in files_xl:
 
             if DO_LIST_FOR_GOOGLE: # Normal case
                 # print(colored(line, 'red', attrs=attrs))
-                print(line)
+                if (role == 'PI'):
+                    print(colored(line, 'grey', attrs=['bold']))
+                else:
+                    print(line)
             if DO_LIST_FOR_NICY:
                 if (role == 'PI'):
                     print(f'{num_proposal} : {name_last} / {institution_short}')
