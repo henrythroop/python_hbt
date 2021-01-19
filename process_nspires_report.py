@@ -25,7 +25,7 @@ Created on Wed Jul  1 00:38:33 2020
 # To create the output from I-NSPIRES:
 # - Selection Module → View All → Select All → Export Proposal(s).
 # - Output as .xls.
-# - Include all columns. Better to have too many, than too few. Code will find the proper ones. 
+# - Click every single box. Better to have too many, than too few. Code will find the proper ones. 
 # - Be aware that there is a bug in NSPIRES that causes some columns to be mis-labeled (e.g., CDAP06).
 
 # HBT 1-Jul-2020
@@ -71,7 +71,8 @@ def process_nspires_report():
 #%%%    
     programs = ['SSW', 'PDART', 'SSO', 'HW', 'LDAP', 'MDAP', 'CDAP', 'NFDAP']
     
-    # NB: All programs work, but SSO has some strangeness (e.g., 2015, 2016, 2018 mean proposal sizes are > $1M/yr)
+    # NB: All programs work, but SSO needs filtering. 
+    #  18-SSO18_2-43 is for $33M for Arecibo operations.
     #
     # programs = ['SSW', 'HW', 'PDART']
     # programs = ['LDAP','MDAP']
