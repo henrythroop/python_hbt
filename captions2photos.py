@@ -16,7 +16,14 @@ CAPTIONS2PHOTOS.PY
 
 This reads a captions.txt file, and applies it to a list of images.
 
+This idea is that this can be used to bring a very old photo2web gallery up to 'modern' standards.
+Original version of photo2web used a 'captions.txt' and 'sections.txt' file. New versions of this 
+(since 2010 or so) embed the caption + section in the EXIF info for the file.
+
 No inputs. It works in the current directory.
+
+HBT 16-Jan-2021.
+
 """
 
 
@@ -67,21 +74,25 @@ def captions2photos():
     
     for i, caption in enumerate(captions):  # This starts at 1
       if (files[i] == captions[i]):
-           pass
-           print(f'N={i}: Skipping, matched')
+          print(f'N={i}: Skipping, matched')
       else:    
-           # print(f'N={i}, file={files[i]}\n')
-           # print(f'{captions[i]}')
+          print(f'N={i}, file={files[i]}\n')
+          print(f'{captions[i]}')
 
-           cap = captions[i]
-           if i in sections_dict.keys():
+          cap = captions[i]
+          
+          # If this is a new section for this image, print a tag for it
+          
+          if i in sections_dict.keys():  
               cap = cap + '## ' + sections_dict[i]
               print(f'Identified section with cap = {cap}')
               print(f'{files[i]}')
 
-# Now actually set the caption in the jpeg file. But, this sips line does not work.
+# Now actually set the caption in the jpeg file.
+# Note that this line works, but only once! After an image caption has been set, sips will silently fail
+# on any additional attempts.
           
-           out = subprocess.check_output(['sips', '--setProperty', 'description', cap, files[i]])
+          out = subprocess.check_output(['sips', '--setProperty', 'description', cap, files[i]])
 
       print('-------')
     

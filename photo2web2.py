@@ -55,6 +55,11 @@ To be done:
         
         This development *retires* the original output form the original photo2web page. I will still keep that
         code, because it makes the thumbnails. But the HTML it generates is really not used any more.
+        
+Bug: for some reason the HTML outputted is not good for galleries with no captions at all. Not sure why. 
+I think it is a vestiage of the original photo2web, and having to force run 'captions_photo2web'
+        
+Bug: If there are no sections, then the 'Jump to section' text should not be printed.
                        
 """
 
@@ -151,7 +156,7 @@ def make_gallery_thumbs_item(caption, basename, type = 'span'):
         line  = f'<span class="item"' + \
                 f' data-src="{basename}"> ' + \
                 f'  <a href="{basename}" data-src="{basename}">' + \
-                f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/></a>' + \
+                f'  <img src="http://img.youtube.com/vi/{id}/hqdefault.jpg"/></a>' + \
                 f'  </span>\n\n'
 
         # As a test, define the element as an <a> anchor.
@@ -193,12 +198,34 @@ def make_gallery_blog_item(caption, basename, type = 'span'):
 
     if 'youtu' in basename:
         id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4). # Create the YouTube thumbnail!
+                                      # Can use 'maxresdefault' or 'hqdefault' or 'default' 
         id = id.replace('watch?v=', '')
-        line  = f'<span class="item"' + \
-                f' data-src="{basename}"> ' + \
-                f'  <a href="{basename}" data-src="{basename}">' + \
-                f'  <img src="http://img.youtube.com/vi/{id}/default.jpg"/></a>' + \
-                f'  </span>\n\n'
+        
+        line  = '<table align=middle cellspacing=50 id=photoCellHorizontal>' + \
+                f'<tr><td align=middle>' + \
+                f'<span class="item" data-sub-html="<span class=lg-caption>{caption}</span>"' + \
+                f' data-src="originals/{basename}">\n' + \
+                f'  <a href="http://youtu.be/{id}">' + \
+                f'   <img src="http://img.youtube.com/vi/{id}/hqdefault.jpg"/></a>\n' + \
+                f'  </span>' + \
+                f'</td>' + \
+                f'<td cellpadding=10 width=0.3>' + \
+                f'<div class=caption>' + \
+                f'<iframe width="560" height="315" src="https://www.youtube.com/embed/RT2tViflM_A" frameborder="0"' + \
+                f' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"' + \
+                f' allowfullscreen></iframe>' + \
+                f'</td></tr>' + \
+                f'</table>'    
+        
+        
+        
+        
+        # line  = f'<span class="item"' + \
+                # f' data-src="{basename}"> ' + \
+                # f'  <a href="{basename}" data-src="{basename}">' + \
+                # f'  <img src="http://img.youtube.com/vi/{id}/hqdefault.jpg"/></a>' + \
+                # f'  <div class=caption><a href=http://youtu.be/{id}></div>' + \
+                # f'  </span>\n\n'
 
         # As a test, define the element as an <a> anchor.
         
