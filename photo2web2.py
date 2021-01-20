@@ -311,8 +311,8 @@ def photo2web():
     file_header    = os.path.join(dir_js, 'header.html')    # Header with JS includes, CSS, etc.   
     file_footer    = os.path.join(dir_js, 'footer.html')  # HTML footer with JS startup, etc.
     file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. Line0 is gallery title
-    file_out_thumbs = os.path.join(dir_photos, 'index_thumbs.html')    # Final output filename, for the thumb-based one
-    file_out_blog   = os.path.join(dir_photos, 'index_blog.html')    # Final output filename, for the blog-like one
+    file_out_thumbs = os.path.join(dir_photos, 'index_m.html')    # Final output filename, for the thumb-based one
+    file_out_blog   = os.path.join(dir_photos, 'index.html')    # Final output filename, for the blog-like one
     
     captions = []
     header   = []
@@ -359,6 +359,7 @@ def photo2web():
     
     # Read 'HTML header'. Plug in the gallery name as needed.
     # 'HTML header' is the page title, the CSS and JS inclusions, etc.
+    # The '?s=1' switch forces target page not to be reloaded.
      
     with open(file_header, "r") as lun:
         for line in lun:
@@ -367,8 +368,8 @@ def photo2web():
     header_blog = header.copy()
     header_thumbs = header.copy()
     
-    header_blog.append('<div>DESKTOP &starf;</div><div><a href=index_thumbs.html>MOBILE</a></div>')
-    header_thumbs.append('<div><a href=index_blog.html>DESKTOP</a></div><div>MOBILE &starf;</div>')
+    header_blog.append('<div>DESKTOP &starf;</div><div><a href=index_m.html?s=1>MOBILE</a></div>')
+    header_thumbs.append('<div><a href=index.html?s=1>DESKTOP</a></div><div>MOBILE &starf;</div>')
     
     header_thumbs.append("<p><a href='..'>Back to galleries</a><p>\n")
     header_blog.append("<p><a href='..'>Back to galleries</a><p>\n")
@@ -527,8 +528,8 @@ def photo2web():
     print(f'Wrote: {file_out_thumbs}')
     
     # Finally, copy the landing page
-    
-    copyfile(dir_js + '/index_landing.html', dir_photos + '/index.html')
+    # 
+    # copyfile(dir_js + '/index_landing.html', dir_photos + '/index.html')
     
 
 # =============================================================================
