@@ -56,19 +56,19 @@ import glob
 import sys
 
 def process_nspires_report():
-"""
-    This is the wrapper program that runs the code. Each program (e.g., CDAP) is run individually,
-    and then the data are plotted together.
-    
-    This code can be cut + pasted to command line easily.
 
-    Returns
-    -------
-    None.
+# This is the wrapper program that runs the code. Each program (e.g., CDAP) is run individually,
+# and then the data are plotted together.
 
-    """
+# This code can be cut + pasted to command line easily.
+
+# Returns
+# -------
+# None.
+
 
 #%%%    
+
     programs = ['SSW', 'PDART', 'SSO', 'HW', 'LDAP', 'MDAP', 'CDAP', 'NFDAP']
     
     # NB: All programs work, but SSO needs filtering. 
@@ -78,12 +78,11 @@ def process_nspires_report():
     # programs = ['LDAP','MDAP']
     # programs = ['SSW']
     # programs = ['MDAP']
-    # path_program = 'CDAP/NSPIRES/'
-    # path_program = 'HW/NSPIRES/'
-    # path_program = 'SSO/NSPIRES/'
+    
+    programs = ['CDAP']
+    programs = ['NFDAP']
 
     out = {}
-    
     
     for program in programs:
         out[program] = read_nspires_multiyear(program)
@@ -112,7 +111,8 @@ def process_nspires_report():
 
     for program in programs:
         a = out[program]
-        plt.plot( a['year']+2000, a['budget_total_submit'] / a['n_submit']/1000, label=program, marker='.', ms=25, linewidth=3)
+        plt.plot( a['year']+2000, a['budget_total_submit'] / a['n_submit']/1000, label=program, marker='.', ms=25, 
+                 linewidth=3)
     plt.legend()
     plt.xlabel('ROSES Year')
     plt.ylabel('Mean Proposal Size [$K]')
@@ -150,24 +150,12 @@ def read_excel_nspires(file):
     return (data, np.array(list(data.keys())))
 
 def read_nspires_multiyear(name_program_in):
+
+### Routine to read a lot of NSPIRES files
     
     path_base = '/Users/hthroop/Documents/HQ/ProgramStats/'
     
     path_program = os.path.join(name_program_in, 'NSPIRES')
-    
-    # path_program = 'PDART/NSPIRES/'
-    # path_program = 'SSW/NSPIRES/'
-    # path_program = 'NFDAP/NSPIRES/'
-    # path_program = 'EW/NSPIRES/'
-     
-    # files_xl = glob.glob(path_base + '/SSW*-out.xls')
-    # files_xl = glob.glob(path_base + '/HW*-out.xls')
-    # files_xl = glob.glob(path_base + '/CDAP/NSPIfRES/*-out.xls')
-    # files_xl = glob.glob(path_base + '/NFDAP/NSPIRES/*-out.xls')
-    # files_xl = glob.glob(path_base + '/EW*-out.xls')
-    # files_xl = glob.glob(path_base + '/PDART*-out.xls')
-    
-    # file_xl = 'SSW19-out.xls'
     
     files_xl = glob.glob(os.path.join(path_base, path_program, '*-out.xls'))
     
@@ -177,10 +165,6 @@ def read_nspires_multiyear(name_program_in):
     if len(files_xl) == 0:
         sys.exit(f'0 files found in path {path_base + path_program}')
 
-    ##########
-    # Start main code
-    ########## 
-    
     # Damn! CDAP06 data breaks this. Its columns are not aligned with the data properly. Corruption on 
     # NSPIRES side.    
                
@@ -208,7 +192,8 @@ def read_nspires_multiyear(name_program_in):
         # Remove most of these, leaving just one per proposal.
             
         where_letter = np.where(data['Document Type'] == 'Notification Letter')
-        where_letter = np.where(data['Document Type'] == 'Panel Evaluation') # CDAP13 does *not* have a notification letter for most.
+        where_letter = np.where(data['Document Type'] == 'Panel Evaluation') 
+                                            # CDAP13 does *not* have a notification letter for most.
         
         for name_column in name_columns:
             data[name_column] = data[name_column][where_letter]
@@ -248,7 +233,7 @@ def read_nspires_multiyear(name_program_in):
         print(f' Y1            Total:        ${tot_y1/1e6:.0f}M')
         print(f' Y1-3          Total:        ${tot_all/1e6:.0f}M')
         print(f' Y1-3 Selected Total:        ${tot_all_sel/1e6:.0f}M')
-        print(f' Selected           :        {num_selected} / {num_proposals} = {100*num_selected/num_proposals:5.1f}%')
+        print(f' Selected           :        {num_selected}/{num_proposals} = {100*num_selected/num_proposals:5.1f}%')
         
     
         year.append(name_program.replace('/2','')[-2::])  # Convert SSW19 and CDAPS12/2 into 19 and 12
@@ -273,12 +258,7 @@ def read_nspires_multiyear(name_program_in):
     frac_select = n_select / n_submit
     frac_budget_total_select = budget_total_select / budget_total_submit
     
-    
-    # return(year, n_submit, n_select, frac_select, budget_total_submit, budget_total_select, frac_budget_total_select))
 
-    return({'year':year, 'n_submit':n_submit, 'n_select':n_select, 'frac_select':frac_select, 
-           'budget_total_submit':budget_total_submit, 'budget_total_select':budget_total_select, 
-           'frac_budget_total_select':frac_budget_total_select})
 
 #%%%
 
@@ -317,6 +297,10 @@ def read_nspires_multiyear(name_program_in):
     
     plt.show()
 
+    return({'year':year, 'n_submit':n_submit, 'n_select':n_select, 'frac_select':frac_select, 
+           'budget_total_submit':budget_total_submit, 'budget_total_select':budget_total_select, 
+           'frac_budget_total_select':frac_budget_total_select})
+
 #%%%
 # Print a data table for easy export to Excel etc.
 
@@ -324,8 +308,8 @@ def read_nspires_multiyear(name_program_in):
     print('year, n_submit, n_select, budget_total_submit, budget_total_select' )
     for i,year_i in enumerate(year):
         print(f'{year[i]+2000}, ' + \
-              f'{n_submit[i]}, {n_select[i]}, {n_select[i] / n_submit[i]}, ' + \
-              f'{budget_total_submit[i]}, {budget_total_select[i]}, {budget_total_select[i] / budget_total_submit[i]} ')
+             f'{n_submit[i]}, {n_select[i]}, {n_select[i] / n_submit[i]}, ' + \
+             f'{budget_total_submit[i]}, {budget_total_select[i]}, {budget_total_select[i] / budget_total_submit[i]} ')
     
 
 # =============================================================================
