@@ -34,6 +34,13 @@ import sys
 from openpyxl import load_workbook  # Reads .xlsx
 from openpyxl import Workbook
 
+# This program takes a directory full of Michael New's "High Risk / High Impact" spreadsheets.
+# It then converts from various forms of voting (tally markers, individual votes, etc.) into one format.
+# Then, it merges *all* of the files into one consolidated file.
+# The output is an Excel file that can be easily searched, sorted, etc.
+#
+# HBT 26-Jan-2021
+
 def tally2num(s):
     """
 
@@ -103,14 +110,18 @@ def calc_median(votes, vals):
 def process_risk_impact():
     
     # The main program. This loops over all the files in the directory, and then outputs one merged file
+
+    # Set the directory name. Change this if needed.
+    
+    dir = '/Users/hthroop/Documents/HQ/SSW19/RiskImpactSurveys'
             
     arr_number = []
     arr_PI = []
     arr_name_panel = []
     arr_adj_impact = []
     arr_adj_risk = []
-        
-    dir = '/Users/hthroop/Documents/HQ/SSW19/RiskImpactSurveys'
+
+    # Get a list of all the Excel files in the directory
     
     file_out = 'SSW19_RiskImpact.xlsx'
         
@@ -118,20 +129,17 @@ def process_risk_impact():
     
     files_good = []
     
-    # NB: If a file has '~$' in it, then it's a temporary file. Ignore this. Also ignore the output file.
+    # If a file has '~$' in it, then it's a temporary file. Ignore this. Also ignore the output file.
 
     for file in files:
         if (file_out not in file) and ('$' not in file):
             files_good.append(file)     
     
     files = files_good
-    
-    # files = [files[4]]
-    
+        
     for file in files:
         print(f'Reading: {file}')
         name_panel = file.replace(dir, '').replace('RiskImpact Spreadsheet ', '').replace('.xlsx', '').replace('/','')
-        # print(f'{name_panel}')
         
         wb = load_workbook(file)
         sheets = wb.sheetnames
@@ -143,7 +151,7 @@ def process_risk_impact():
         A = sheet['A']
         for i,cell in enumerate(range(len(A))):
             value = A[i].value  # NB: A[0] is row Cell A1
-            # print(f'{i}, {A[i].value}')
+
             if value is not None:
                 if 'Proposal #' in value:
                     row_index_header = i+1  # When we grab this, we should call it row i+1
@@ -184,13 +192,14 @@ def process_risk_impact():
     
         char_columns = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
     
-        for i in range(50):
+        for i in range(50):  # No more than this number of rows of valid data
+            
             row = sheet[row_index_header+i+1] # Grab the row itself
             
             number = row[column_index_number].value
             PI     = row[column_index_PI].value  
     
-            if PI is not None:
+            if PI is not None:   # Exclude empty rows. Empty cells are usually set to None, not ''.
     
                 # print(f'High = {row[column_index_high].value}') 
                 score_high  = tally2num(row[column_index_high].value)
@@ -227,10 +236,18 @@ def process_risk_impact():
     num_proposals = len(arr_number)
     
     wb = Workbook()
-    dest_filename = 'empty_book.xlsx'
-    
     ws = wb.active
     ws.title = "SSW19"
+    
+    # Make the header rows in the output file
+        
+    ws['A1'] = 'Proposal #'
+    ws['B1'] = 'PI'
+    ws['C1'] = 'Panel'
+    ws['D1'] = 'Impact'
+    ws['E1'] = 'Risk'
+     
+    # Fill out all the data in the output file
     
     for i in range(num_proposals):
         row = i + 2
@@ -239,17 +256,14 @@ def process_risk_impact():
         ws[f'C{row}'] = arr_name_panel[i]
         ws[f'D{row}'] = arr_adj_impact[i]
         ws[f'E{row}'] = arr_adj_risk[i]
-        # print(f'B{row} = {PI}')
-        # ws['A1'] = 'asdf'
-    ws['A1'] = 'Proposal #'
-    ws['B1'] = 'PI'
-    ws['C1'] = 'Panel'
-    ws['D1'] = 'Impact'
-    ws['E1'] = 'Risk'
-     
+
+    # Write the ouput file
+        
     file_out_full = os.path.join(dir, file_out)
     wb.save(filename = os.path.join(file_out_full))
-    print(f'Wrote: {file_out_full}')
+    print(f'Wrote:   {file_out_full}')
+
+# Wrapper routine to run the main function
         
 if (__name__ == '__main__'):
     process_risk_impact()
