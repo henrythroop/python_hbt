@@ -107,21 +107,34 @@ def photo2web_indexer():
     
     import numpy as np
     
-    os.chdir('/Volumes/SSD External/Hattenbach_v2')
-    os.chdir('/Users/throop/photos/Trips')
+    do_hh = True
+    do_hbt = False
+
+    if do_hh:
+        num_thumbs = 3    # Number of thumbnails per folder to display
+        file_out = 'index.html'
+        dir_base = '/Volumes/SSD External/Hattenbach_v2'
+        title = 'Hattenbach Photos'
+        file_target = 'index_m.html?s=1' # Do we visit index.html, or some other file, to start the gallery?
+                                         # For HH, we force to the mobile site, since there are zero captions anyhow.
     
-    num_thumbs = 10    # Number of thumbnails per folder to display
+    if do_hbt:
+        num_thumbs = 10    # Number of thumbnails per folder to display
+        file_out = 'index_all.html'
+        dir_base = '/Users/throop/photos/Trips'
+        file_target = 'index.html'  # NB: This is oversimplified. Sometimes it should be show.html, etc.
+        title = 'Henry Throop Photos' # HTML title
     
-    dir_base = os.getcwd()
-        
+    os.chdir(dir_base)
+
     dirs = sorted(glob.glob(os.path.join(dir_base, '*')))
     
     # Create the output file
+    # WARNING: DO NOT CALL THIS INDEX.HTML, since it might overwrite the existing HBT one.
     
-    file_out = 'index_all.html'
     lun   = open(file_out, "w")
-    lun.write('<head><link rel="stylesheet" type="text/css" href="photos.css"></head>')
-    
+    lun.write(f'<head><link rel="stylesheet" type="text/css" href="photos.css"><title>{title}</title></head>\n')
+    lun.write('\n')
     
     for dir in dirs:
     
@@ -134,16 +147,17 @@ def photo2web_indexer():
                 basename = os.path.basename(dir)
                 basename_edited = basename.replace('_', ' ')
                 
-                lun.write(f'<a href={basename}><h3>{basename_edited}</h3></a>\n')
+                lun.write(f'<a href={basename}/{file_target}><h3>{basename_edited}</h3></a>\n')
                 lun.write('<p>\n')
                 print(dir)
                 for i in range(np.amin([num_thumbs,len(files)])):
                     print(f'{i}/{num_thumbs} : {files[i]}')
-                    lun.write(f'<a href={basename}><img src={basename}/thumbnails/{os.path.basename(files[i])}></a>\n')
+                    lun.write(f'<a href={basename}/{file_target}><img src={basename}/thumbnails/{os.path.basename(files[i])}></a>\n')
                 lun.write('<p>\n')
                 print()
         
     lun.close()
+    print(f'Wrote: {os.path.join(dir_base,file_out)}')
     
         
 # =============================================================================
