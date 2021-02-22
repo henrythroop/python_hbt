@@ -26,12 +26,17 @@ def abbreviate(s):
     ('SETI Institute', 'SETI'),
     ('Jet Propulsion Laboratory', 'JPL'),
     ('NASA Ames Research Center', 'NASA Ames'),
+    ('Lawrence Livermore National Laboratory', 'LLNL'),
     ('Lowell Observatory', 'Lowell'),
     ('Johns Hopkins University', 'JHU'),
     ('University of Maryland, College Park', 'UMD'),
-    ('Brown University', 'Brown U'),
+    ('Brown University', 'Brown'),
+    ('Columbia University', 'Columbia'),
     ('NASA Johnson Space Center', 'NASA JSC'),
     ('University Of Colorado, Boulder', 'U Colorado'),
+    ('Pennsylvania State', 'Penn State'),
+    ('California State Polytechnic University', 'Cal State Poly'),
+    ('Leland Stanford Junior University', 'Stanford'),
     ('Southwest Research Institute', 'SwRI'),
     ('Space Science Institute', 'SSI'),
     ('Arizona State University', 'ASU'),
@@ -68,11 +73,14 @@ def abbreviate(s):
     ('Institute For Advanced Study', 'Princeton-IAS'),
     ('CTRE NAT DE LA RECHERCHE SCIENTIFIQUE', 'CNRS France'),
     ('Centre National de la Recherche Scientifique', 'CNRS France'),
+    ('Centre Nationale de la Recherche Scientifique', 'CNRS France'),
     ('Embry-Riddle Aeronautical University, Inc.', 'Embry-Riddle'),
     ('University of California, ', 'UC '),
     ('University of Michigan', 'U Mich'),
     ('Georgia Tech Research', 'GA Tech'),
     ('North Carolina State', 'NC State'),
+    ('University of Washington', 'U Wash'),
+    ('University of Wisconsin', 'U Wisc'),
     ('THE REGENTS OF THE UNIVERSITY OF CALIFORNIA', 'UC'),
     ('Smithsonian Institution', 'Smithsonian'),
     ('University of Texas, El Paso', 'UTEP'),
@@ -98,16 +106,33 @@ def abbreviate(s):
     ('LESIA, Paris Observatory, France', 'LESIA, France'),
     ('ISTITUTO NAZIONALE DI ASTROFISICA INAF', 'INAF Italy'),
     ('University of Virginia, Charlottesville', 'UVA'),
+    ('NASA Headquarters', 'NASA HQ'),
     ('The Pinhead', 'Pinhead'),
-    ('(THE)', ''),
+    ('Bear Fight Institute Inc', 'Bear Fight Inst'),
     ('Space Environment Technologies', 'Space Env Tech'),
+    ('National Institute Of Standards & Technology', 'NIST'),
+    ('United States Department of Geological Survey', 'USGS'),
+    ('A & M', 'A&M'),
+    ('Dept of Energy', 'DOE'),
+    ('American Museum Of Natural History', 'AMNH'),
+    ('Woods Hole Oceanographic Institution', 'Woods Hole'),
+    ('Worcester Polytechnic Institute', 'Worcester Polytech Inst'),
+    ('Carnegie Institution Of Washington', 'Carnegie Inst'),
+    ('Deutsches Zentrum Fuer Luft- Und Raumfahrt E.V', 'DLR Germany'),
+    ('New Jersey Institute Of Technology', 'NJ Inst Tech'),
+    ('Smithsonian/Smithsonian Astrophysical Observatory', 'Smithsonian + SAO'),
+    ('Virginia Polytechnic Institute & State University', 'VA Tech'),
+    ('Space Telescope Science Institute', 'STScI'),
+    ('University of Southern California', 'USC'),
 
 # Change some styles
     
     ('SELF', 'Self'),
     ('OXFORD', 'Oxford'),
-    ('(THE)', ''),
+    ('(THE) ', ' '),
     (', THE (INC)', ''),
+    ('TRUSTEES OF ', ''),
+    (' The$', ''),  # This is a regex. Take off a trailing THE
 
 # Remove some campus names, for the main campus
     
@@ -117,23 +142,33 @@ def abbreviate(s):
     (', Lafayette', ''),
     (', Athens', ''),
     (', Durham', ''),
+    (', Charlottesville', ''),
     (', New Brunswick', ''),
     (' DR14', ''),
     (' Flagstaff', ''),
     (' and A&M College', ''),
+    (', College Station', ''),
+    (', Seattle', ''),
+    (', Department of Physics'),
+    ('Tuscaloosa', ''),
+    (' Salt Lake City', ''),
+    (' Evanston', ''),
     
-
 ## Abbreviate a few common phrases
     
     ('Corporation', ''),
     ('State University', 'State'),
     (', LLC', ''),
+    (' LLC', ''),
     ('University Of ', 'U '),
     ('University', 'U'),
     ('Universitaet', 'U'),
     ('National Laboratory', 'NL'),
     ('Research Center', ''),
-    (', Inc.', ''),
+    ('RECTOR & VISITORS OF ', ''),
+    (', Inc\.', ''),
+    (' Inc\.', ''),
+    (' Inc$', ''),
     
 ## Abbreviate the roles
     
@@ -142,6 +177,7 @@ def abbreviate(s):
     ('Graduate/Undergraduate Student', 'Student'),
     ('(non-US organization only)', 'FOREIGN'),
     ('Postdoctoral Associate', 'Postdoc'),
+    ('Co-I/Institutional PI', 'Co-I/Inst PI'),
     ]
 
     for t in a:
@@ -154,7 +190,7 @@ def abbreviate(s):
 file_xl = '/Users/hthroop/Downloads/SSW_Volcanism.xls'
 file_xl = '/Users/hthroop/Downloads/CDAP20_ATM.xls'
 
-files_xl = glob.glob('/Users/hthroop/Documents/HQ/NFDAP20/MaRIE_Step2/Panel_Compilation*xls')
+files_xl = glob.glob('/Users/hthroop/Documents/HQ/SSW20/MaRIE/*xls')
 
 DO_LIST_FOR_GOOGLE = True
 DO_LIST_FOR_NICY = not(DO_LIST_FOR_GOOGLE)
