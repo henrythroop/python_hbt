@@ -17,7 +17,6 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 
-# print "Spice imported"
 dir_sp = "/Volumes/SSD External"
 dir_sp = "/Users/hthroop/kernels/"
 file_tm = 'gv_kernels_new_horizons.txt'
@@ -34,18 +33,18 @@ sp.furnsh(os.path.join(dir_sp, file_tm))
 ut =  "2015 July 15 01:58:00"
 et = sp.utc2et(ut)
 
-# num_lonlat = 100
+num_lat = 100 # Number of latitude points. Longitude point count is double this. 100 is good for rough; 300 is good for final plot
 
-resfac = 2  # Increase resolution by this much. 5 is good for plotting, but 1 is much faster.
-
-num_lat = 100*resfac
-num_lon = 200*resfac
+num_lat = num_lat
+num_lon = num_lat * 2
 
 lon = np.linspace(-90,  90, num=num_lon)
 lat = np.linspace(0,   360, num=num_lat)
 
 lon_rad = lon * d2r
 lat_rad = lat * d2r
+
+(lon_2d, lat_2d) = np.meshgrid(lat,lon)
 
 ang_pluto_sun    = np.zeros([num_lon, num_lat])  # Angle from Pluto surface point to Sun, rad
 ang_pluto_charon = np.zeros([num_lon, num_lat])  # Angle from Pluto surface point to Charon, rad
@@ -71,8 +70,6 @@ vec_pluto_sun    = state_pluto_sun[0:3]
 
 mx = sp.pxform('IAU_PLUTO', frame, et)
 
-(lon_2d, lat_2d) = np.meshgrid(lat,lon)
-
 for i,lat_i in enumerate(lat_rad):
     for j,lon_j in enumerate(lon_rad):
         
@@ -97,9 +94,8 @@ for i,lat_i in enumerate(lat_rad):
         vec_psurf_sc = vec_pluto_sc - vec_pluto_psurf
         ang = sp.vsep(vec_psurf_sc, vec_pluto_psurf)
         ang_pluto_sc[j,i] = ang
-
     
-        # Now, do this all a second way, since there is something messed up above
+        # Now, do this all a second way, just to validate.
         
         (trgepc, srfvec, phase, solar, emmisn) = sp.ilumin('ELLIPSOID', 'PLUTO', et, 'IAU_PLUTO', abcorr, 'Charon', vec_pluto_psurf_iau)
         
@@ -109,6 +105,7 @@ for i,lat_i in enumerate(lat_rad):
         (trgepc, srfvec, phase, solar, emmisn) = sp.ilumin('ELLIPSOID', 'PLUTO', et, 'IAU_PLUTO', abcorr, 'New Horizons', vec_pluto_psurf_iau)
         ang_pluto_sc_2[j,i] = emmisn  # Angle from surface normal, to observer. 0 .. pi. THIS MATCHES
         
+# Make some diagnostic plots
                  
 num_cols = 1
 num_rows = 3
@@ -118,19 +115,17 @@ ang_vis = math.pi/2
 # These 'ang_' arrays go from 0 .. pi. This makes sense. 
 # The sub-solar position should have an angle of 0. The Anti-solar position should have angle pi.
 
-# The sub-sc position should also.
-
 plt.subplot(num_rows, num_cols, 1) 
 plt.imshow(ang_pluto_sun.T < ang_vis, origin='lower')
-plt.title('Sun')
+plt.title('Sun visible from Pluto')
 
 plt.subplot(num_rows, num_cols, 2) 
 plt.imshow(ang_pluto_charon.T < ang_vis, origin='lower')
-plt.title('Charon')
+plt.title('Charon visible from Pluto')
 
 plt.subplot(num_rows, num_cols, 3) 
 plt.imshow(ang_pluto_sc.T < ang_vis, origin='lower')
-plt.title('SC')
+plt.title('NH visible from Pluto')
 
 plt.tight_layout()
 
@@ -175,7 +170,6 @@ ang_pluto_sun_k = sp.vsep(vec_psurf_sun, vec_pluto_psurf)
 print(f'At lon={lon_rad_k*r2d} deg, lat={lat_rad_k*r2d} deg, ' + 
       f'solar angle = {ang_pluto_sun_k * r2d} deg')
 
-
 # Now, go thru and convert each of these lon/lat points on Pluto, to an RA/Dec as seen from S/C.
 
 ra_disc    = np.zeros([num_lon, num_lat])
@@ -198,30 +192,28 @@ dec_disc = np.array(dec_disc)
 # Calc if Pluto is visible
 is_vis_pluto = ang_pluto_sc < (90 * d2r)
 
-# Plot entire disk
+# Now make a final plot of the entire disk, with regions marked
 
-ms = 3
+ms = 3  # Set the marker size
 
 plt.plot(ra_disc*r2d, dec_disc*r2d, 
          linestyle='none', marker='.', ms=ms, color='black')
 
 # Plot if Charon center is visible   
+
 is_vis_charon = ang_pluto_charon < (90 * d2r)
 is_good = np.logical_and(is_vis_pluto, is_vis_charon)
 plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
          linestyle='none', marker='.', ms=2, color='grey')
 
-# Plot the lat=0 line
+# Plot the lat=0 line (though what is plotted is lon=0, so maybe these are swapped?)
+
 is_good = np.logical_and(is_vis_pluto, np.abs(lat_2d) < 1)
 plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
          linestyle='none', marker='.', ms=1, color='blue')
 
-# Plot the lon=0 line
-# is_good = np.logical_and(is_vis_pluto, np.abs(lon_2d) < 1)
-# plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
-#          linestyle='none', marker='.', ms=1, color='blue')
+# Plot if Sun is visible (i.e., emission angle from normal is < 90 deg)
 
-# Plot if Sun is visible (i.e., )
 is_vis_sun = ang_pluto_sun < (90 * d2r)
 is_good = np.logical_and(is_vis_pluto, is_vis_sun)
 plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
@@ -233,13 +225,3 @@ plt.ylabel('Dec [deg]')
 plt.xlim([91.82, 91.6])
 plt.gca().set_aspect('equal')
 plt.show()
-
-# plt.plot(ra_disc[is_good], dec_disc[is_good], 
-#          linestyle='none', marker='.', ms=15, color='red')
-
-
-
-           
-# is_good = ang_pluto_charon < (90 * d2r)
-# plt.plot(ra_disc[is_good], dec_disc[is_good], 
-#          linestyle='none', marker='.', ms=15, color='green')
