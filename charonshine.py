@@ -33,18 +33,22 @@ sp.furnsh(os.path.join(dir_sp, file_tm))
 ut =  "2015 July 15 01:58:00"
 et = sp.utc2et(ut)
 
-num_lat = 100 # Number of latitude points. Longitude point count is double this. 100 is good for rough; 300 is good for final plot
+num_lat = 191 # Number of latitude points. Longitude point count is double this. 
+              # 100 is good for rough; 300 is good for final plot
 
 num_lat = num_lat
 num_lon = num_lat * 2
 
-lon = np.linspace(-90,  90, num=num_lon)
-lat = np.linspace(0,   360, num=num_lat)
+lat = np.linspace(-90,  90, num=num_lat)
+lon = np.linspace(0,   360, num=num_lon)
 
 lon_rad = lon * d2r
 lat_rad = lat * d2r
 
-(lon_2d, lat_2d) = np.meshgrid(lat,lon)
+# Make a 2D array, from 2 1D arrays. This is my previous comult() function.
+# Note that indexing = 'xy' is the default, but I do not want that here (it is swapped).
+
+(lon_2d, lat_2d) = np.meshgrid(lon,lat, indexing = 'ij') # This is the one to use.
 
 ang_pluto_sun    = np.zeros([num_lon, num_lat])  # Angle from Pluto surface point to Sun, rad
 ang_pluto_charon = np.zeros([num_lon, num_lat])  # Angle from Pluto surface point to Charon, rad
@@ -189,28 +193,42 @@ for i,lat_i in enumerate(lat_rad):
 ra_disc = np.array(ra_disc)
 dec_disc = np.array(dec_disc)
 
-# Calc if Pluto is visible
+# Calc if Pluto is visible to spacecraft
+
 is_vis_pluto = ang_pluto_sc < (90 * d2r)
 
+###########
 # Now make a final plot of the entire disk, with regions marked
+###########
 
-ms = 3  # Set the marker size
+#%%%
+
+ms = 5  # Set the marker size
 
 plt.plot(ra_disc*r2d, dec_disc*r2d, 
          linestyle='none', marker='.', ms=ms, color='black')
+
 
 # Plot if Charon center is visible   
 
 is_vis_charon = ang_pluto_charon < (90 * d2r)
 is_good = np.logical_and(is_vis_pluto, is_vis_charon)
 plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
-         linestyle='none', marker='.', ms=2, color='grey')
+         linestyle='none', marker='.', ms=ms, color='grey')
 
-# Plot the lat=0 line (though what is plotted is lon=0, so maybe these are swapped?)
+# Plot the lat=0 line. Q: Why is this only getting plotted halfway?
 
 is_good = np.logical_and(is_vis_pluto, np.abs(lat_2d) < 1)
+# is_good = np.abs(lat_2d) < 10
+
 plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
          linestyle='none', marker='.', ms=1, color='blue')
+
+# Plot the lon=0 line
+
+is_good = np.logical_and(is_vis_pluto, np.abs(lon_2d) < 1)
+plt.plot(ra_disc[is_good]*r2d, dec_disc[is_good]*r2d, 
+         linestyle='none', marker='.', ms=1, color='lightblue')
 
 # Plot if Sun is visible (i.e., emission angle from normal is < 90 deg)
 
