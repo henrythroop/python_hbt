@@ -35,6 +35,11 @@ To be done:
     - Q: At one point I was getting a custom URL each time I clicked around. But no longer. Why not?? 
       I really prefer it. [SOLVED: Turn the 'hash' option back on.]
 
+    - In the CSS, make it so that blockquotes are in <it></it>.
+
+    - For the OG metadata thumbnail, OK to choose #1 by default. But
+      preferentially use the thumbnail that has been set in ../index.html, or named explicitly.
+
 # 29-May-2018
       
       - Thumbnails are not yet made by this program. So, to use:
@@ -55,19 +60,24 @@ To be done:
         
         This development *retires* the original output form the original photo2web page. I will still keep that
         code, because it makes the thumbnails. But the HTML it generates is really not used any more.
-        
+
+# 16-Jan-2022
+      - Now properly adds OG metadata to allow for correct preview in Messages.
+
 Bug: for some reason the HTML outputted is not good for galleries with no captions at all. Not sure why. 
 I think it is a vestiage of the original photo2web, and having to force run 'captions_photo2web'
         
 Bug: If there are no sections, then the 'Jump to section' text should not be printed.
-                       
+
+Bug Apr-2021: Fails on .JPEG, which is photos.app default. Must use .JPG instead.
+
 """
 
 import glob
 import os.path
 import os
 from html import escape
-from bs4 import BeautifulSoup  # HTML parser
+# from bs4 import BeautifulSoup  # HTML parser
 import subprocess
 import datetime
 from shutil import copyfile
@@ -211,7 +221,7 @@ def make_gallery_blog_item(caption, basename, type = 'span'):
                 f'</td>' + \
                 f'<td cellpadding=10 width=0.3>' + \
                 f'<div class=caption>' + \
-                f'<iframe width="560" height="315" src="https://www.youtube.com/embed/RT2tViflM_A" frameborder="0"' + \
+                f'<iframe width="560" height="315" src="https://www.youtube.com/embed/{id}" frameborder="0"' + \
                 f' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"' + \
                 f' allowfullscreen></iframe>' + \
                 f'</td></tr>' + \
@@ -348,7 +358,7 @@ def photo2web():
     
     # Extract the title of the gallery from the header.txt file
             
-    title_gallery = header_txt[0]
+    title_gallery = header_txt[0].replace("\n", "")
     header_txt = header_txt[1:]
         
     # Wrap the 'text header' in a <div>
@@ -360,16 +370,40 @@ def photo2web():
     # Read 'HTML header'. Plug in the gallery name as needed.
     # 'HTML header' is the page title, the CSS and JS inclusions, etc.
     # The '?s=1' switch forces target page not to be reloaded.
-     
+    # I hate to hardcode the site name and path, but this seems to require it. Not sure.
+   
+    # Replace the HTML title with correct text. Add a thumbnail for Messages compatability.
+
+    path_element_gallery = os.path.basename(os.path.normpath(dir_photos))
+
+    file_thumb1 = sorted(glob.glob('thumbnails/*'))[0]
+
+    # Now check for a preferred thumbnail a different way: by searching through the 'index.html' 
+    # in the folder above.
+    # Not quite working yet.
+
+#       file_root_index = "../index.html"
+#   
+#       if os.path.isfile(file_root_index):
+#           with open(file_root_index):
+#   	    for line in lun:
+#   	        if path_element_gallery in line:
+#   		    file_thumb1 = line.split('"/')
+
+
+    url_thumb1 = "http://www.eaubergine.com/images/" + path_element_gallery + "/" + file_thumb1
+
     with open(file_header, "r") as lun:
         for line in lun:
-            header.append(line.replace('TITLE_HERE', title_gallery))
+            header.append(line.replace('TITLE_HERE', title_gallery).replace('THUMB1_HERE', url_thumb1))
 
     header_blog = header.copy()
     header_thumbs = header.copy()
     
-    header_blog.append('<div>DESKTOP &starf;</div><div><a href=index_m.html?s=1>MOBILE</a></div>')
-    header_thumbs.append('<div><a href=index.html?s=1>DESKTOP</a></div><div>MOBILE &starf;</div>')
+    # Add other stuff to the header
+
+    header_blog.append('<div>DESKTOP &starf;</div><div><a href=index_m.html?s=1>MOBILE</a></div>\n')
+    header_thumbs.append('<div><a href=index.html?s=1>DESKTOP</a></div><div>MOBILE &starf;</div>\n')
     
     header_thumbs.append("<p><a href='..'>Back to galleries</a><p>\n")
     header_blog.append("<p><a href='..'>Back to galleries</a><p>\n")
