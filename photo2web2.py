@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
+#!/Users/throop/anaconda3/bin/python
 # -*- coding: utf-8 -*-
+# !/usr/bin/env python3
 """
 Created on Sun May 20 21:11:35 2018
 
@@ -63,6 +64,9 @@ To be done:
 
 # 16-Jan-2022
       - Now properly adds OG metadata to allow for correct preview in Messages.
+
+# 13-Mar-2022
+      - If INHIBIT_BACK_TO_GALLERY, then does not print link back to gallery.
 
 Bug: for some reason the HTML outputted is not good for galleries with no captions at all. Not sure why. 
 I think it is a vestiage of the original photo2web, and having to force run 'captions_photo2web'
@@ -199,7 +203,7 @@ def make_gallery_blog_item(caption, basename, type = 'span'):
                 f'  <a href="originals/{basename}"><img src="thumbnails/i{basename}"/></a>\n' + \
                 f'  </span>' + \
                 f'</td>' + \
-                f'<td cellpadding=10 width=0.3>' + \
+                f'<td cellpadding=10>' + \
                 f'<div class=caption><p>' + \
                 f'{caption}' + \
                 f'</p></div>' + \
@@ -219,7 +223,7 @@ def make_gallery_blog_item(caption, basename, type = 'span'):
                 f'   <img src="http://img.youtube.com/vi/{id}/hqdefault.jpg"/></a>\n' + \
                 f'  </span>' + \
                 f'</td>' + \
-                f'<td cellpadding=10 width=0.3>' + \
+                f'<td cellpadding=10>' + \
                 f'<div class=caption>' + \
                 f'<iframe width="560" height="315" src="https://www.youtube.com/embed/{id}" frameborder="0"' + \
                 f' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"' + \
@@ -320,6 +324,10 @@ def photo2web():
     file_captions  = os.path.join(dir_photos, 'captions.txt')   # List of all captions, one per line-pair, via exiftool
     file_header    = os.path.join(dir_js, 'header.html')    # Header with JS includes, CSS, etc.   
     file_footer    = os.path.join(dir_js, 'footer.html')  # HTML footer with JS startup, etc.
+
+    if os.path.exists('INHIBIT_BACK_TO_GALLERY'):
+        file_footer    = os.path.join(dir_js, 'footer_inhibit_return.html')  # HTML footer with JS startup, etc.
+
     file_header_txt= os.path.join(dir_photos, 'header.txt')  # Header file which I type manually. Line0 is gallery title
     file_out_thumbs = os.path.join(dir_photos, 'index_m.html')    # Final output filename, for the thumb-based one
     file_out_blog   = os.path.join(dir_photos, 'index.html')    # Final output filename, for the blog-like one
@@ -360,7 +368,7 @@ def photo2web():
             
     title_gallery = header_txt[0].replace("\n", "")
     header_txt = header_txt[1:]
-        
+    
     # Wrap the 'text header' in a <div>
     # 'Text header' is the narrative introduction to the file ('I went on a trip...')
     # Apply any CSS here -- e.g., to shrinks the margins a bit, to make it easier to read.
@@ -404,9 +412,10 @@ def photo2web():
 
     header_blog.append('<div>DESKTOP &starf;</div><div><a href=index_m.html?s=1>MOBILE</a></div>\n')
     header_thumbs.append('<div><a href=index.html?s=1>DESKTOP</a></div><div>MOBILE &starf;</div>\n')
-    
-    header_thumbs.append("<p><a href='..'>Back to galleries</a><p>\n")
-    header_blog.append("<p><a href='..'>Back to galleries</a><p>\n")
+   
+    if not os.path.exists('INHIBIT_BACK_TO_GALLERY'):
+        header_thumbs.append("<p><a href='..'>Back to galleries</a><p>\n")
+        header_blog.append("<p><a href='..'>Back to galleries</a><p>\n")
 
     # Read HTML footer. Plug in the date as needed.
             
@@ -442,11 +451,21 @@ def photo2web():
     
     j = 0
     
-    ## Make a list of sections here.
+    ## Check if there are multiple sections. If there are, print an appropriate header to jump.
+    ## Manually go through and see if there are sections. A bit inelegant.
+   
+    has_sections = False
+
+    for caption_i in captions:
+      if '##' in caption_i:
+        has_sections = True
     
-    output(luns, '<FONT SIZE=+0></B><br>Jump to section:<br></FONT></B>\n')
-    output(luns, '<ul>')
+    if has_sections:
+        output(luns, '<FONT SIZE=+0></B><br>Jump to section:<br></FONT></B>\n')
+        output(luns, '<ul>')
     
+    ## Now, make a list of all the sections.
+
     for i,file in enumerate(files_original):
     
         caption = captions[i]

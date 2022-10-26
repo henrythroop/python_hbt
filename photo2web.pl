@@ -561,14 +561,14 @@ sub makeSinglePageShow {
         
         $html="<tr><td align=middle><a href=@Slidefile[$i]>" .  # was @JPGfiles[$i] to make it display full-res image
 	      "<img border=0 src=\"@intermediate[$i]\"></a></td>\n" .
-	      "<td cellpadding=10 width=0.3>\n" . 
+	      "<td cellpadding=10>\n" . 
 	      "<div class=caption><p>\n" . @captions[$i] ."\n</p></div>\n</td></tr>\n\n"; 
 								# Wrap the caption in a <p> tag for css.
 								# But I should really use a named tag for that.
 
         $html_vertical="<tr><td align=left><a href=@Slidefile[$i]>" .  
 	      "<img border=0 src=\"@intermediate[$i]\"></a></td></tr>\n" .
-	      "<tr><td cellpadding=0 align=left width=0.3>\n" . @captions[$i] ."<br><br><br></td></tr>\n\n"; 
+	      "<tr><td cellpadding=0 align=left>\n" . @captions[$i] ."<br><br><br></td></tr>\n\n"; 
 
         if ($DO_VERTICAL_CAPTIONS) {
 	  $html = $html_vertical;
