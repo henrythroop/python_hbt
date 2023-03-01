@@ -38,8 +38,14 @@ from astropy.visualization import PercentileInterval
 from   scipy.optimize import curve_fit
 from   astropy.convolution import Box1DKernel, Gaussian1DKernel, convolve
 from PIL import Image
+from scipy import ndimage
 
 import scipy.misc
+import pytz
+
+
+from suncalc import get_position, get_times
+from datetime import datetime, timezone, timedelta
 
 # https://circuitcellar.com/research-design-hub/projects/field-derotator-for-astrophotography-part-1/
 #  OK, this one above has a closed-form eq for the field rotation rate. But as input, it requires the alt + az of the sun. 
@@ -61,41 +67,74 @@ import scipy.misc
 #
 # NB: It is simple to get alt and az of Sun. I can use SPICE for that, as seen from Colombo    
 
-def derotate():
+def angle_sun():
     
-# SPICE logic to calc az, elev for Sun
-#     RECAZEL
-# Q: I can get the vector in J2000 space.
-# I need to get it relative to 
-# Maybe I just n3ed to define a new reference frame, for Colombo?
-# And then get vector from Earth to Sun, in that frame?
+# I gave up trying to calculate solar position using SPICE! It is really hard.
+# Instead, use the 'suncalc' library.     
 
     d2r = 2*math.pi/360
     r2d = 1/d2r
     
-    ut_start = "2023-02-13T07:28:35.594129"
-    ut_end   = "2023-02-13T12:28:35.594129"
+    date = datetime.now(pytz.timezone('UTC'))  # Input is UTC time, always. Not necessary to pass this, but is OK.
+    date = datetime.now()  
+    # Date: UTC time
+    # Longitude: Degrees. DC = -77 deg. Colombo = +79 deg.
+    # Azimuth: -90 = facting east; +90 = facing west. 0 = south??
+    # Altitude: degrees above horizon
+    # Lon / lat are degrees
     
-    file_tm = 'kernels_base.tm'
-    sp.unload(file_tm)
-    sp.furnsh(file_tm)
+    result = get_position(date, lon, lat)
+    az = result['azimuth']
+    alt = result['altitude']
+    print('Az = ' + str(az * r2d) + '; Alt = ' + str(alt * r2d))
     
-    et_start = sp.utc2et(ut_start)
-    et_end = sp.utc2et(ut_end)
+    
+def derotate():
 
+    ut_0   = "2003-02-13T01:28:35.594129"
+    ut_1   = "2003-02-14T01:28:35.594129"
+
+    # Parse time from a string, into python object
+    
+    t_0   = datetime.strptime(ut_0, "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo = timezone.utc)
+    t_1   = datetime.strptime(ut_1, "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo = timezone.utc)
+
+    # Now set up an array. Make one-second time bins.
+    
+    num_t          = int((t_1 - t_0).total_seconds() + 1) # Total duration, from start to end
+    t_arr          = np.ndarray(num_t, dtype=type(t_0))   # Array of datetime objects
+    az_arr         = np.zeros(num_t)
+    alt_arr        = np.zeros(num_t)
+    delta_t_arr    = np.zeros(num_t)
+    omegaField_arr = np.zeros(num_t) # Field rotation rate, rad/sec
+    angleField_arr = np.zeros(num_t) # Total radians that field has rotated since start
+    
+    for i in range(0,num_t):
+
+        # Create a new time object for this timestep
+        
+        t_i = t_0 + timedelta(seconds=i)
+
+        # Use the time object to look up the geometry right now
+        
+        result     = get_position(t_i, lon, lat)
+        az_arr[i]  = result['azimuth']
+        alt_arr[i] = result['altitude']
+        t_arr[i]   = t_i
+        omegaField_arr[i] = -omegaEarth * math.cos(az_arr[i]) * math.cos(lat*d2r) / math.cos(alt_arr[i])
+        
+        # Now finally get our answer! Rotation angle is just sum of all angles up til now
+        
+        angleField_arr[i] = np.sum(omegaField_arr[0:i]) 
+        
+    plt.plot(az_arr)
+    plt.plot(alt_arr)    
+    
     et = et_start
     
     lat_earth = 6*d2r
     lon_earth = 110*d2r # Check this
-    
-    code_earth = sp.bodn2c('Earth')
-    
-    pos_obs = sp.latrec(6700, lat_earth, lon_earth)
-    pos_obs = sp.srfrec(code_earth, lat_earth, lon_earth)
-    
-    (st,lt) = sp.spkezr('Sun', et, 'IAU_EARTH', 'lt', 'Earth')
-    (range, az, el) = sp.recazl(st[0:3], True, True)
-    
+       
 def process_all():
     
     ## Define the size of the output image, in pixels
@@ -103,15 +142,21 @@ def process_all():
     sizeXOut = 2000
     sizeYOut = 2000
     
-    DO_CROP = True
+    DO_CROP     = True
     DO_CENTROID = True
     DO_DEROTATE = False  # Either use SPICE, or https://github.com/cytan299/field_derotator/tree/master/field_derotator_formula
-    DO_LIMBFIT = False
-    
+    DO_LIMBFIT  = False
+
+    d2r = 2*math.pi/360
+    r2d = 1/d2r
+    omegaEarth = 2*math.pi / 86400  # Earth rotation rate, radians/sec.
+
+    lon = 79.86        
+    lat = 6.92
     
     # Set the path of the files to look at
     
-    path_in = '/Users/throop/Data/Solar/Movie_16Feb23'
+    path_in = '/Users/throop/Data/Solar/Movie_15Feb23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -124,6 +169,57 @@ def process_all():
     
     plt.set_cmap(plt.get_cmap('Greys_r'))
 
+# Do a first pass through the files, to get start and end times
+
+    t = []
+    for file in files:
+    
+        # Read the original data + header
+        
+        hdu = fits.open(file)
+        header = hdu['PRIMARY'].header
+        date_obs = header['DATE-OBS']
+        t.append(datetime.strptime(date_obs,"%Y-%m-%dT%H:%M:%S.%f"))
+        hdu.close()
+    t_0 = min(t) # Start time
+    t_1 = max(t) # End time
+    
+    dt  = max(t) - min(t)
+
+    num_t          = int((t_1 - t_0).total_seconds() + 1) # Total duration, from start to end
+
+    print(f'{len(files)} images found, spanning {num_t} seconds starting at {min(t)}')
+
+  # Now set up an array for rotation. Make one-second time bins.
+  
+    num_t          = int((t_1 - t_0).total_seconds() + 1) # Total duration, from start to end
+    t_arr          = np.ndarray(num_t, dtype=type(t_0))   # Array of datetime objects
+    az_arr         = np.zeros(num_t)
+    alt_arr        = np.zeros(num_t)
+    delta_t_arr    = np.zeros(num_t)
+    omegaField_arr = np.zeros(num_t) # Field rotation rate, rad/sec
+    angleField_arr = np.zeros(num_t) # Total radians that field has rotated since start
+  
+    for i in range(0,num_t):
+
+      # Create a new time object for this timestep
+      
+      t_i = t_0 + timedelta(seconds=i)
+
+      # Use the time object to look up the geometry right now
+      
+      result     = get_position(t_i, lon, lat)
+      az_arr[i]  = result['azimuth']
+      alt_arr[i] = result['altitude']
+      t_arr[i]   = t_i
+      omegaField_arr[i] = -omegaEarth * math.cos(az_arr[i]) * math.cos(lat*d2r) / math.cos(alt_arr[i])
+      
+      # Now finally get our answer! Rotation angle is just sum of all angles up til now
+      
+      angleField_arr[i] = np.sum(omegaField_arr[0:i]) 
+
+# Now do the real 
+
     for file in files:
         
         # Read the original data + header
@@ -131,6 +227,8 @@ def process_all():
         hdu = fits.open(file)
         img = hdu['PRIMARY'].data
         header = hdu['PRIMARY'].header
+        date_obs = header['DATE-OBS']
+        t = datetime.strptime(date_obs,"%Y-%m-%dT%H:%M:%S.%f")
         hdu.close()
         
         img_out = np.zeros((sizeXOut,sizeYOut), dtype='uint16')
@@ -149,31 +247,33 @@ def process_all():
                       int(widthX/2 + int(centerX-widthX/2) - sizeXOut/2):
                       int(widthX/2 + int(centerX-widthX/2) + sizeXOut/2)]
         
-        plt.imshow(img_out)                            
         
-        plt.show()
+        # Look up the rotation angle
+        
+        dt_since_start = (t - t_0).total_seconds()
+        delta_angle = angleField_arr[int(dt_since_start)]
         
         # Save the image
-        # Looks like PNG allows a 16-bit unsighed int, so use that!
+        # PNG allows a 16-bit unsigned int, so use that!
         
-        image_pil = Image.fromarray(img_out)
-        file_out = file.replace(path_in, path_out).replace('.fit', '.png')
-        image_pil.save(file_out)
-        print('Wrote: ' + file_out)
+        img_pil = Image.fromarray(img_out)
         
+        # Rotate this image, if desired
         
+        img_pil_r = Image.fromarray(ndimage.rotate(img_pil, delta_angle*r2d, reshape=False))
+        print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
 
-        # if cell > 0:
-        #     file_out = os.path.join(path_out,
-        #        os.path.basename(file).replace('.fits', f'_{cell}.fits'))
-        # else:
-        #     file_out = os.path.join(path_out, os.path.basename(file))
-            
-        # Write the new FITS file
+        plt.imshow(img_pil_r)                                    
+        plt.show()
         
-        # hdu_out = fits.PrimaryHDU(img_d, header=header)
-        # hdu_out.writeto(file_out, output_verify='ignore', overwrite=True)
-        # print(f'Wrote: {file_out}')
+        # Save 
+        file_out   = file.replace(path_in, path_out).replace('.fit', '.png')
+        file_out_r = file.replace(path_in, path_out).replace('.fit', '_r.png')
+
+        img_pil.save(file_out)
+        img_pil_r.save(file_out)
+        print('Wrote: ' + file_out)
+        print('Wrote: ' + file_out_r)
         
 
 if (__name__ == '__main__'):
