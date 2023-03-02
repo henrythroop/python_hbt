@@ -156,7 +156,7 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Users/throop/Data/Solar/Movie_15Feb23'
+    path_in = '/Users/throop/Data/Solar/Movie_2Mar23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -204,7 +204,9 @@ def process_all():
 
       # Create a new time object for this timestep
       
-      t_i = t_0 + timedelta(seconds=i)
+      fudge = 3600*5.5 # For some reason, need to do a timezone offset. Not sure why.
+      
+      t_i = t_0 + timedelta(seconds=i + fudge)
 
       # Use the time object to look up the geometry right now
       
@@ -220,7 +222,7 @@ def process_all():
 
 # Now do the real 
 
-    for file in files:
+    for i,file in enumerate(files):
         
         # Read the original data + header
         
@@ -233,7 +235,7 @@ def process_all():
         
         img_out = np.zeros((sizeXOut,sizeYOut), dtype='uint16')
         
-        isDisk = img > np.max(img)/10  # This seems to flag the solar disk
+        isDisk = img > np.max(img)/5  # This seems to flag the solar disk
         
         # Find center-of-mass, X dir
 
@@ -260,20 +262,36 @@ def process_all():
         
         # Rotate this image, if desired
         
-        img_pil_r = Image.fromarray(ndimage.rotate(img_pil, delta_angle*r2d, reshape=False))
+        img_out_r =ndimage.rotate(img_pil, delta_angle*r2d, reshape=False)        
+        img_pil_r = Image.fromarray(img_out_r)
+        
         print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
 
-        plt.imshow(img_pil_r)                                    
+        # plt.imshow(img_pil_r)                                    
+        # plt.show()
+        
+        # Stack the rotated and non-rotated together
+        
+        img_out_2 = np.hstack((img_out, img_out_r))
+        img_pil_2 = Image.fromarray(img_out_2)
+        plt.imshow(img_out_2)
         plt.show()
         
         # Save 
-        file_out   = file.replace(path_in, path_out).replace('.fit', '.png')
+        
+        # file_out   = file.replace(path_in, path_out).replace('.fit', '.png')
+        
         file_out_r = file.replace(path_in, path_out).replace('.fit', '_r.png')
+        
 
-        img_pil.save(file_out)
-        img_pil_r.save(file_out)
-        print('Wrote: ' + file_out)
-        print('Wrote: ' + file_out_r)
+        # img_pil.save(file_out)
+        img_pil_r.save(file_out_r)
+        print(f'{i}/{len(files)}: Wrote: ' + file_out_r)
+
+        # file_out_2 = file.replace(path_in, path_out).replace('.fit', '_2.png')
+        # img_pil_2.save(file_out_2)
+        print(f'{i}/{len(files)}: Wrote: ' + file_out_2)
+        print
         
 
 if (__name__ == '__main__'):
