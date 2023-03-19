@@ -39,10 +39,11 @@ from   scipy.optimize import curve_fit
 from   astropy.convolution import Box1DKernel, Gaussian1DKernel, convolve
 from PIL import Image
 from scipy import ndimage
+from astropy.visualization import simple_norm
+
 
 import scipy.misc
 import pytz
-
 
 from suncalc import get_position, get_times
 from datetime import datetime, timezone, timedelta
@@ -88,52 +89,6 @@ def angle_sun():
     alt = result['altitude']
     print('Az = ' + str(az * r2d) + '; Alt = ' + str(alt * r2d))
     
-    
-def derotate():
-
-    ut_0   = "2003-02-13T01:28:35.594129"
-    ut_1   = "2003-02-14T01:28:35.594129"
-
-    # Parse time from a string, into python object
-    
-    t_0   = datetime.strptime(ut_0, "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo = timezone.utc)
-    t_1   = datetime.strptime(ut_1, "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo = timezone.utc)
-
-    # Now set up an array. Make one-second time bins.
-    
-    num_t          = int((t_1 - t_0).total_seconds() + 1) # Total duration, from start to end
-    t_arr          = np.ndarray(num_t, dtype=type(t_0))   # Array of datetime objects
-    az_arr         = np.zeros(num_t)
-    alt_arr        = np.zeros(num_t)
-    delta_t_arr    = np.zeros(num_t)
-    omegaField_arr = np.zeros(num_t) # Field rotation rate, rad/sec
-    angleField_arr = np.zeros(num_t) # Total radians that field has rotated since start
-    
-    for i in range(0,num_t):
-
-        # Create a new time object for this timestep
-        
-        t_i = t_0 + timedelta(seconds=i)
-
-        # Use the time object to look up the geometry right now
-        
-        result     = get_position(t_i, lon, lat)
-        az_arr[i]  = result['azimuth']
-        alt_arr[i] = result['altitude']
-        t_arr[i]   = t_i
-        omegaField_arr[i] = -omegaEarth * math.cos(az_arr[i]) * math.cos(lat*d2r) / math.cos(alt_arr[i])
-        
-        # Now finally get our answer! Rotation angle is just sum of all angles up til now
-        
-        angleField_arr[i] = np.sum(omegaField_arr[0:i]) 
-        
-    plt.plot(az_arr)
-    plt.plot(alt_arr)    
-    
-    et = et_start
-    
-    lat_earth = 6*d2r
-    lon_earth = 110*d2r # Check this
        
 def process_all():
     
@@ -149,14 +104,15 @@ def process_all():
 
     d2r = 2*math.pi/360
     r2d = 1/d2r
-    omegaEarth = 2*math.pi / 86400  # Earth rotation rate, radians/sec.
+#     omegaEarth = 2*math.pi / 86400  # Earth rotation rate, radians/sec.
+    omegaEarth = 4.178e-3 * math.pi / 180 ## Rad/sec, fixed
 
-    lon = 79.86        
-    lat = 6.92
+    lon = 79.853        
+    lat = 6.913
     
     # Set the path of the files to look at
     
-    path_in = '/Users/throop/Data/Solar/Movie_2Mar23'
+    path_in = '/Users/throop/Data/Solar/Movie_17Mar23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -181,6 +137,7 @@ def process_all():
         date_obs = header['DATE-OBS']
         t.append(datetime.strptime(date_obs,"%Y-%m-%dT%H:%M:%S.%f"))
         hdu.close()
+        
     t_0 = min(t) # Start time
     t_1 = max(t) # End time
     
@@ -220,7 +177,15 @@ def process_all():
       
       angleField_arr[i] = np.sum(omegaField_arr[0:i]) 
 
-# Now do the real 
+      plt.plot(az_arr*r2d, label='Az')
+      plt.plot(alt_arr*r2d, label='Alt')
+      plt.plot(angleField_arr*r2d, label='Rotate')
+      plt.xlabel('Time Step')
+      plt.ylabel('Deg')
+      plt.legend()
+      plt.show()
+      
+# Now do the processing of each image
 
     for i,file in enumerate(files):
         
@@ -235,7 +200,8 @@ def process_all():
         
         img_out = np.zeros((sizeXOut,sizeYOut), dtype='uint16')
         
-        isDisk = img > np.max(img)/5  # This seems to flag the solar disk
+        # isDisk = img > np.max(img)/5  # This seems to flag the solar disk
+        isDisk = img > np.percentile(img,95)/4 # Flag the solar disk this way
         
         # Find center-of-mass, X dir
 
@@ -290,10 +256,105 @@ def process_all():
 
         # file_out_2 = file.replace(path_in, path_out).replace('.fit', '_2.png')
         # img_pil_2.save(file_out_2)
-        print(f'{i}/{len(files)}: Wrote: ' + file_out_2)
+        # print(f'{i}/{len(files)}: Wrote: ' + file_out_2)
         print
         
+def test():
 
+      ## This file has DSII with no polarizer
+      
+    file = '/Users/throop/Data/Solar/Movie_17Mar23/Light_Sun_10.0ms_Bin1_20230317-120747_0011.fit'
+
+    ## DSII w/ polarizer
+    
+    file = '/Users/throop/Data/Solar/Movie_17Mar23/Light_Sun_30.0ms_Bin1_20230317-163358_0060.fit'
+    
+    hdu = fits.open(file)
+    img = hdu['PRIMARY'].data
+    header = hdu['PRIMARY'].header
+    date_obs = header['DATE-OBS']
+    t = datetime.strptime(date_obs,"%Y-%m-%dT%H:%M:%S.%f")
+    hdu.close()
+    
+    isDisk = img > np.percentile(img,95)/4 # Flag the solar disk this way
+
+    factor_s = 10  # How much to smallen each dimension by
+    
+    img_s = img[::factor_s, ::factor_s]
+    isDisk_s = img_s > np.percentile(img_s, 95)/4
+    kernel = 1 + np.zeros((10,10))
+    kernel = kernel / np.sum(kernel)
+    isDisk_bigger_s = ndimage.convolve(isDisk_s, kernel, mode='constant', cval=0.0) > 0
+    isDisk_smaller_s = (isDisk_s.astype(float) - 
+                        (ndimage.convolve(isDisk_s, kernel, mode='constant', cval=0.0))) < 0.001
+    isDisk_smaller_s = np.logical_and(isDisk_smaller_s, isDisk_s)
+    
+    plt.imshow(isDisk_smaller_s)
+    
+    bg_s = img_s.copy().astype(float)
+    bg_s[isDisk_bigger_s] = np.nan
+
+    y, x = np.mgrid[:np.shape(img_s)[0], :np.shape(img_s)[1]]
+
+    not_nans = np.isfinite(bg_s) # Get the list of finite values 
+    p_init = models.Polynomial2D(degree=5)
+    
+    # p_init = models.Moffat2D()
+    # p_init = models.RickerWavelet2D()
+    # p_init = models.Ring2D()
+
+    # Do a fit to the background
+    
+    fit_p = fitting.LinearLSQFitter()
+    p_bg = fit_p(p_init, x[not_nans], y[not_nans], bg_s[not_nans])  # only fit the finite values
+    norm=simple_norm(img_s-p_bg(x,y), percent=99)
+    plt.imshow(img_s - p_bg(x,y),norm=norm)
+    plt.title('background flattened')
+    plt.show()
+    
+    # Do a fit to the solar disk
+    
+    p_init = models.Polynomial2D(degree=2)    
+    p_disk = fit_p(p_init, x[isDisk_smaller_s], y[isDisk_smaller_s], img_s[isDisk_smaller_s])  # only fit the finite values
+    plt.imshow(p_disk(x,y))
+
+    sfit = p_disk(x,y)
+    m = np.mean(img_s[isDisk_s])
+    
+    img_composite_s = img_s.copy().astype(float)
+    # img_composite_s[isDisk_s] = img_composite_s[isDisk_s] - sfit[isDisk_smaller_s] + m
+    img_composite_s[isDisk_s] = img_composite_s[isDisk_s] - sfit[isDisk_s] + m
+    
+    norm=simple_norm(img_composite_s, max_percent=100, min_percent=85, stretch='linear')
+    plt.imshow(img_composite_s,norm=norm)
+    plt.title('solar flattened')
+    plt.show()
+    
+    # Plot four images as output
+    
+    img_out_top = np.hstack((img_s, bg_s))
+    img_out_bot = np.hstack((p(x,y), img_s-p(x,y)))
+    img_out_merged = np.vstack((img_out_top,img_out_bot))
+    plt.imshow(img_out_merged)  
+    plt.show()
+
+
+# As a check, fit the Sun itself
+
+    # p_init = models.Polynomial2D(degree=3)
+    # fit_p = fitting.LinearLSQFitter()
+
+    p_init = models.Disk2D(amplitude=3000, x_0=250,y_0=200,R_0=50)
+    fit_p  = fitting.LevMarLSQFitter()
+    
+    p = fit_p(p_init, x, y, img_s)  
+    img_out_s2 = np.hstack((img_s, p(x,y)))
+    plt.imshow(img_out_s2)  
+    plt.show()
+    print(fit_p.fit_info)
+
+    
+    
 if (__name__ == '__main__'):
     process_all()        
 
