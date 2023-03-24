@@ -159,7 +159,7 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Users/throop/Data/Solar/Movie_17Mar23'
+    path_in = '/Users/throop/Data/Solar/Movie_22Mar23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -344,10 +344,13 @@ def getDiskFlattened(img, mask, x, y):  # Return an array, which is a fit to the
     img_flattened2 = img.copy()
     
     # Subtract the gradient off of just the disk
+    # This works OK, but there's occasionally a hard transition right at the edge of the sun.
     
     img_flattened[mask] = img_flattened[mask] - p_disk(x[mask],y[mask]) + np.mean( p_disk(x[mask],y[mask]) )
     
     # Or, substract the gradient off of the entire image (disk + bg)
+    # There is some wraparound error, causing a white-black transition beyond the edge.
+    # I think it would be better if it was a soft edge.
     
     img_flattened2 = img_flattened2 - (p_disk(x,y)).astype('uint16') + (np.mean(p_disk(x[mask],y[mask]))).astype('uint16')
     
