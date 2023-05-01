@@ -22,7 +22,7 @@ import astropy
 import astropy.modeling
 #import matplotlib.pyplot as plt # Define in each function individually
 import matplotlib                # We need this to access 'rc'
-import spiceypy as sp
+# import spiceypy as sp
 from   astropy.io import fits
 import subprocess
 # import hbt
@@ -144,6 +144,9 @@ def process_all():
     sizeXOut = 1600 # This is arbitrary
     sizeYOut = 1600
     
+    sizeXOut = 2800 # This is arbitrary
+    sizeYOut = 2800
+    
     DO_CROP     = True
     DO_CENTROID = True
     DO_DEROTATE = False  # Either use SPICE, or https://github.com/cytan299/field_derotator/tree/master/field_derotator_formula
@@ -159,7 +162,7 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Users/throop/Data/Solar/Movie_22Mar23'
+    path_in = '/Volumes/Data/Solar/Eclipse_20Apr23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -236,7 +239,7 @@ def process_all():
       
 # Now do the processing of each image
 
-    for i,file in enumerate(files):
+    for i,file in enumerate(files[145:]):
         
         # Read the data + header
         
@@ -281,6 +284,7 @@ def process_all():
           y, x = np.mgrid[:np.shape(img_out)[0], :np.shape(img_out)[1]]
 
         # Remove a linear gradiant from the image
+        # Add a suffix '_f', for 'flattened'
     
         mask = getMaskDisk(img_out)
         img_out_f = getDiskFlattened(img_out, mask, x, y)                     
@@ -291,17 +295,21 @@ def process_all():
         delta_angle = angleField_arr[int(dt_since_start)]
 
         # De-rotate this image
+        # Add suffix _r, for 'rotate'
 
         img_pil   = Image.fromarray(img_out_f)
-        img_out_rf = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False)        
-        img_pil_rf = Image.fromarray(img_out_rf)
+        # img_out_rf = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False) 
+        img_out_r = ndimage.rotate(img_out, delta_angle*r2d, reshape=False) 
+        
+        # img_pil_rf = Image.fromarray(img_out_rf)
+        img_pil_r  = Image.fromarray(img_out_r)
         
         print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
 
         # Stack the original and processed together
         
-        img_out_2 = np.hstack((img_out, img_out_rf))
-        img_pil_2 = Image.fromarray(img_out_2)
+        img_out_2 = np.hstack((img_out, img_out_r))
+        # img_pil_2 = Image.fromarray(img_out_2)
         plt.imshow(img_out_2)
         plt.show()
         
@@ -314,8 +322,11 @@ def process_all():
         file_out_r = file.replace(path_in, path_out).replace( '.fit', '_r.png')
     
         # img_pil.save(file_out)
-        img_pil_rf.save(file_out_rf)
-        print(f'{i}/{len(files)}: Wrote: ' + file_out_rf)
+        # img_pil_rf.save(file_out_rf)
+        # print(f'{i}/{len(files)}: Wrote: ' + file_out_rf)        
+        
+        img_pil_r.save(file_out_r)
+        print(f'{i}/{len(files)}: Wrote: ' + file_out_r)
 
         # file_out_2 = file.replace(path_in, path_out).replace('.fit', '_2.png')
         # img_pil_2.save(file_out_2)
@@ -456,8 +467,42 @@ def test():
     
     print(fit_p.fit_info)
 
+def fits2png():
+
+    path_in = '/Volumes/Data/Solar/Eclipse_20Apr23'
+    path_out = os.path.join(path_in, 'out')
     
+    if not(os.path.exists(path_out)):
+        os.mkdir(path_out)
+        print('Create: ' + path_out)
+        
+    files = glob.glob(os.path.join(path_in, '*.fit*'))
+    files = np.sort(files)
+        
+    plt.set_cmap(plt.get_cmap('Greys_r'))
+
+    for i,file in enumerate(files):
+
+        hdu = fits.open(file)
+        img = hdu['PRIMARY'].data
+        header = hdu['PRIMARY'].header
+        date_obs = header['DATE-OBS']
+        t = datetime.strptime(date_obs,"%Y-%m-%dT%H:%M:%S.%f")
+        hdu.close()    
+        
+        # img_c = img[1000:3500, 500:3000]
+        img_c = img[500:3000, 1000:3500]
+
+        plt.imshow(img_c)
+        plt.show()
     
+        file_out = file.replace(path_in, path_out).replace( '.fit', '.png')
+        img_pil   = Image.fromarray(img_c)
+        img_pil.save(file_out)
+
+        print(f'{i}/{len(files)}: Wrote: ' + file_out)
+
+
 if (__name__ == '__main__'):
     process_all()        
 
