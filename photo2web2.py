@@ -67,6 +67,9 @@ To be done:
 
 # 13-Mar-2022
       - If INHIBIT_BACK_TO_GALLERY, then does not print link back to gallery.
+      
+# 26-Jun-2023
+      - Slightly better handling of escaped characters in captions.      
 
 Bug: for some reason the HTML outputted is not good for galleries with no captions at all. Not sure why. 
 I think it is a vestiage of the original photo2web, and having to force run 'captions_photo2web'
@@ -85,6 +88,7 @@ from html import escape
 import subprocess
 import datetime
 from shutil import copyfile
+import html
 
 # =============================================================================
 # Function definitions
@@ -120,8 +124,9 @@ def get_all_captions(files):
         caption_i = caption_i[16:]
         caption_i = caption_i[:-1]  # Remove final \n
         caption_i = caption_i.replace('<nil>', '')  # Remove <nil>
+        caption_i = html.unescape(caption_i) # Convert &#x01ce to '  etc. LR apparently escapes all special chars.
         captions.append(caption_i)
-        # print(f'Added caption {i}: {caption_i}')
+        # print(f'Added caption {i}: {caption_i}\n')
         
     return captions
 
@@ -209,7 +214,9 @@ def make_gallery_blog_item(caption, basename, type = 'span'):
                 f'</p></div>' + \
                 f'</td></tr>' + \
                 f'</table>'    
-
+  
+        # print('\n' + caption + '\n');
+        
     if 'youtu' in basename:
         id = basename.split('/')[-1]  # Get the video ID (e.g., wiIoy44Q4). # Create the YouTube thumbnail!
                                       # Can use 'maxresdefault' or 'hqdefault' or 'default' 
@@ -306,7 +313,7 @@ def output(lun_list, s):
 
 def photo2web():
 
-    # os.chdir('/Users/throop/photos/Trips/ConjunctionJupiterSaturn_Dec20')
+    # os.chdir('/Users/throop/photos/Trips/AustraliaEclipse_Apr23')
     
     check_path_ok()
 
@@ -504,6 +511,8 @@ def photo2web():
             caption = ''
             
         # Handle " < > etc in captions. But actually I'm not sure I want to do that... just quotes, perhaps.
+        # Bascially, we want to allow quote-marks in captions, but they must be escaped so they won't be parsed
+        # as the end-of-caption.
         
         caption = caption.replace('"', '&quot;')
         caption = caption.replace("'", '&#x27;')
