@@ -159,7 +159,7 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Users/throop/Data/Solar/Movie_22Mar23'
+    path_in = '/Volumes/Data/Solar/Imaging_6Apr23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -256,9 +256,9 @@ def process_all():
         (centerY, centerX) = scipy.ndimage.measurements.center_of_mass(isDisk)
         (widthY, widthX) = np.shape(isDisk)
         
-        # Create a new image, based on this centering
+        # Create a new cropped image, based on this centering
         
-        img_out = img[int(widthY/2 + int(centerY-widthY/2) - sizeYOut/2):
+        img_c = img[int(widthY/2 + int(centerY-widthY/2) - sizeYOut/2):
                       int(widthY/2 + int(centerY-widthY/2) + sizeYOut/2),
                       int(widthX/2 + int(centerX-widthX/2) - sizeXOut/2):
                       int(widthX/2 + int(centerX-widthX/2) + sizeXOut/2)]
@@ -272,35 +272,42 @@ def process_all():
             
             img_pad = np.pad(img, ((dpad,dpad), (dpad,dpad)), mode='constant', constant_values=np.median(img))
             
-            img_out = img_pad[int(widthY/2 + dpad + int(centerY-widthY/2) - sizeYOut/2):
+            img_c = img_pad[int(widthY/2 + dpad + int(centerY-widthY/2) - sizeYOut/2):
                           int(widthY/2 + dpad + int(centerY-widthY/2) + sizeYOut/2),
                           int(widthX/2 + dpad + int(centerX-widthX/2) - sizeXOut/2):
                           int(widthX/2 + dpad + int(centerX-widthX/2) + sizeXOut/2)]
             
         if (i==0):  # Do this only the first time through            
-          y, x = np.mgrid[:np.shape(img_out)[0], :np.shape(img_out)[1]]
+          y, x = np.mgrid[:np.shape(img_c)[0], :np.shape(img_c)[1]]  # Create grids of x y values, for doing math
 
-        # Remove a linear gradiant from the image
+        # Remove a linear gradiant from the image, flattening it (_f)
+        # NB: This algorithm doesn't really work very well.
     
-        mask = getMaskDisk(img_out)
-        img_out_f = getDiskFlattened(img_out, mask, x, y)                     
+        mask = getMaskDisk(img_c)
+        img_cf = getDiskFlattened(img_c, mask, x, y)                     
         
         # Look up the rotation angle
         
         dt_since_start = (t - t_0).total_seconds()
         delta_angle = angleField_arr[int(dt_since_start)]
 
-        # De-rotate this image
+        # De-rotate the flattened image
 
-        img_pil   = Image.fromarray(img_out_f)
-        img_out_rf = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False)        
-        img_pil_rf = Image.fromarray(img_out_rf)
+        img_pil   = Image.fromarray(img_cf)
+        img_cfr = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False)        
+        img_pil_cfr = Image.fromarray(img_cfr)  # cfr = crop, flattened, rotated
+
+        # Derotate the non-flattened image
+        
+        img_pil   = Image.fromarray(img_c)
+        img_cr = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False)        
+        img_pil_cr = Image.fromarray(img_cr)  # cfr = crop, flattened, rotated
         
         print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
 
         # Stack the original and processed together
         
-        img_out_2 = np.hstack((img_out, img_out_rf))
+        img_out_2 = np.hstack((img_c, img_cfr))
         img_pil_2 = Image.fromarray(img_out_2)
         plt.imshow(img_out_2)
         plt.show()
@@ -310,16 +317,27 @@ def process_all():
         # PNG allows a 16-bit unsigned int, so use that!        
         # file_out   = file.replace(path_in, path_out).replace('.fit', '.png')
         
-        file_out_rf = file.replace(path_in, path_out).replace('.fit', '_rf.png')
-        file_out_r = file.replace(path_in, path_out).replace( '.fit', '_r.png')
+        file_out_r   = file.replace(path_in, path_out).replace('.fit', '_r.png')
+        file_out_cr  = file.replace(path_in, path_out).replace('.fit', '_cr.png')
+        file_out_cfr = file.replace(path_in, path_out).replace('.fit', '_cfr.png')
     
         # img_pil.save(file_out)
-        img_pil_rf.save(file_out_rf)
-        print(f'{i}/{len(files)}: Wrote: ' + file_out_rf)
+        
+        # Save the CFR file
 
-        # file_out_2 = file.replace(path_in, path_out).replace('.fit', '_2.png')
-        # img_pil_2.save(file_out_2)
-        # print(f'{i}/{len(files)}: Wrote: ' + file_out_2)
+        DO_SAVE_CFR = False
+        DO_SAVE_CR  = True
+        
+        if (DO_SAVE_CFR):
+            img_pil_cfr.save(file_out_cfr)
+            print(f'{i}/{len(files)}: Wrote: ' + file_out_cfr)
+    
+        # Save the CR file
+
+        if (DO_SAVE_CR):
+            img_pil_cr.save(file_out_cr)
+            print(f'{i}/{len(files)}: Wrote: ' + file_out_cr)
+
         print("\n")
 
 def getMaskDisk(img): # Return a mask which is the solar disk itself
@@ -329,7 +347,7 @@ def getMaskDisk(img): # Return a mask which is the solar disk itself
     return(isDisk)
 
 
-def getDiskFlattened(img, mask, x, y):  # Return an array, which is a fit to the solar disk
+def getDiskFlattened(img, mask, x, y):  # Return an array, which is a cleaned version of the image
 
  # Do a fit to the disk itself. We want to flatten the disk, essentially.
     
@@ -349,12 +367,22 @@ def getDiskFlattened(img, mask, x, y):  # Return an array, which is a fit to the
     img_flattened[mask] = img_flattened[mask] - p_disk(x[mask],y[mask]) + np.mean( p_disk(x[mask],y[mask]) )
     
     # Or, substract the gradient off of the entire image (disk + bg)
-    # There is some wraparound error, causing a white-black transition beyond the edge.
+    # This is not great, since it sets the background level very much off.
     # I think it would be better if it was a soft edge.
     
-    img_flattened2 = img_flattened2 - (p_disk(x,y)).astype('uint16') + (np.mean(p_disk(x[mask],y[mask]))).astype('uint16')
+    # In reality what we want is both of these combined. Some of the signal is truly a linear haze to subtract,
+    # and some of the signal is truly a gradient on the disk (caused by etalon).
     
-    return(img_flattened2)
+    # Bug: we have some wraparound issues here to be fixed. Highs are clipped.
+    
+    img_flattened2 = img_flattened2 - (p_disk(x,y)) + (np.mean(p_disk(x[mask],y[mask])))
+    img_flattened2 -= np.amin(img_flattened2)
+    img_flattened2 = img_flattened2.astype('uint16')
+    
+    # Just for r
+    img_flattened3 = (img_flattened/2 + img_flattened2/2).astype('uint16')
+    
+    return(img_flattened3)
 
     
 def test():
