@@ -44,6 +44,7 @@ from astropy.modeling import models
 from astropy.modeling.models import Polynomial1D
 from astropy.modeling.fitting import LinearLSQFitter
 from astropy.modeling import fitting
+from scipy import signal
 
 
 import scipy.misc
@@ -136,16 +137,54 @@ def test_angle_sun():
     get_position(get_times(date, lon, lat)['sunrise'] + timedelta(seconds=3600*5.5), lon, lat)
     
     get_times(datetime.now(), lon, lat)
+
+def cross_image(im1, im2):
+    # This detects the shift between two images. This is the real meat.
+    
+    # https://stackoverflow.com/questions/67560829/python-image-processing-how-do-you-align-images-that-have-been-rotated-and-shif
+    
+    im1_gray = im1.astype('float')
+    im2_gray = im2.astype('float')
+
+    im1_gray -= np.mean(im1_gray)
+    im2_gray -= np.mean(im2_gray)
+
+    return signal.fftconvolve(im1_gray, im2_gray[::-1,::-1], mode='same')
+
+def getMaskDisk(img): # Return a mask which is the solar disk itself
+
+    isDisk = img > np.percentile(img, 99.9)/4
+    
+    return(isDisk)
+
+def crop_square(im, dxy):
+
+    # Takes an 2D array (ie, image), and returns a square dxy x dxy extracted from the center
+    
+    widthX = np.shape(im)[1]
+    widthY = np.shape(im)[0]
+
+    centerY = widthY/2
+    centerX = widthX/2
+    
+    sizeYOut = dxy
+    sizeXOut = dxy
+    
+    
+    img_out = im[  int(widthY/2 + int(centerY-widthY/2) - sizeYOut/2):
+                   int(widthY/2 + int(centerY-widthY/2) + sizeYOut/2),
+                   int(widthX/2 + int(centerX-widthX/2) - sizeXOut/2):
+                   int(widthX/2 + int(centerX-widthX/2) + sizeXOut/2)]
+    
+    return(img_out)
+
     
 def process_all():
     
-    ## Define the size of the output image, in pixels
+    ## Define the size of the final output image, in pixels
     
-    sizeXOut = 1600 # This is arbitrary
-    sizeYOut = 1600
-    
-    sizeXOut = 2800 # This is arbitrary
-    sizeYOut = 2800
+    sizeXOut = 2000 # This is arbitrary
+    sizeYOut = 2000
     
     DO_CROP     = True
     DO_CENTROID = True
@@ -162,7 +201,7 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Volumes/Data/Solar/Eclipse_20Apr23'
+    path_in = '/Volumes/Data/Solar/Eclipse_NM_Oct23/14Oct23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -176,6 +215,7 @@ def process_all():
     plt.set_cmap(plt.get_cmap('Greys_r'))
 
 # Do a first pass through the files, to get start and end times
+# We use these to calculate the rotation angle, if we use it.
 
     t = []
     for file in files:
@@ -195,6 +235,7 @@ def process_all():
 
     num_t          = int((t_1 - t_0).total_seconds() + 1) # Total duration, from start to end
 
+    print(f'Path: {path_in}') 
     print(f'{len(files)} images found, spanning {num_t} seconds starting at {min(t)}')
 
   # Now set up an array for rotation. Make one-second time bins.
@@ -236,82 +277,108 @@ def process_all():
     plt.ylabel('Deg')
     plt.legend()
     plt.show()
-      
-# Now do the processing of each image
 
-    for i,file in enumerate(files[145:]):
+# Set up image centering, by defining a reference image which is indeed properly centered.
+
+    # For New Mexico:
+    # N = 120 = just before start
+    # N = 100 = good reference before eclipse
+    # N = 350 = at center
+    # N = 750 = just before exit
+    
+    # Load the reference image
+    
+    index_ref = 90
+    hdu = fits.open(files[index_ref])
+    img_ref = hdu['PRIMARY'].data
+    hdu.close()
+    img_ref_mask = getMaskDisk(img_ref)
+    
+    # Center it
+    
+    (centerY, centerX) = scipy.ndimage.measurements.center_of_mass(img_ref_mask)
+    
+    dx_roll = centerX-np.shape(img_ref_mask)[1]/2
+    dy_roll = centerY-np.shape(img_ref_mask)[0]/2
+    img_ref_mask_cen = np.roll(np.roll(img_ref_mask, -round(dx_roll), axis=1), -round(dy_roll), axis=0)
+
+    # Do the FFT on the centered reference image
+        
+    corr_img_null = cross_image(img_ref_mask_cen, img_ref_mask_cen)
+    
+    y0, x0 = np.unravel_index(np.argmax(corr_img_null), corr_img_null.shape)
+    
+    # Now we have created a centered image reference. We will align all images to this.    
+          
+# Now do the processing of each image in the sequence
+# THIS IS THE MAIN IMAGE LOOP
+
+    for i,file in enumerate(files):
         
         # Read the data + header
         
         hdu = fits.open(file)
-        img = hdu['PRIMARY'].data
-        header = hdu['PRIMARY'].header
-        date_obs = header['DATE-OBS']
-        t = datetime.strptime(date_obs,"%Y-%m-%dT%H:%M:%S.%f")
+        img_i = hdu['PRIMARY'].data
         hdu.close()
+        img_i_mask = getMaskDisk(img_i)
+                
+        # Calculate the offset between image and reference, using masks
         
-        img_out = np.zeros((sizeXOut,sizeYOut), dtype='uint16')
-        
-        isDisk = getMaskDisk(img)
-        
-        # Find center-of-mass, X dir
-
-        (centerY, centerX) = scipy.ndimage.measurements.center_of_mass(isDisk)
-        (widthY, widthX) = np.shape(isDisk)
-        
-        # Create a new cropped image, based on this centering
-        
-        img_c = img[int(widthY/2 + int(centerY-widthY/2) - sizeYOut/2):
-                      int(widthY/2 + int(centerY-widthY/2) + sizeYOut/2),
-                      int(widthX/2 + int(centerX-widthX/2) - sizeXOut/2):
-                      int(widthX/2 + int(centerX-widthX/2) + sizeXOut/2)]
-
-        # Error checking: If we get too close to the edge, the array returnd will be too small. 
-        # If this happens, no error is thrown. So we check, and if so, we pad the array fatly, and try again
-        
-        if np.shape(img_out) != (widthY, widthX):
+        corr_img = cross_image(img_i_mask, img_ref_mask_cen)
+        y, x     = np.unravel_index(np.argmax(corr_img), corr_img.shape)
             
-            dpad = 500  # Extra amount to pad each edge by
-            
-            img_pad = np.pad(img, ((dpad,dpad), (dpad,dpad)), mode='constant', constant_values=np.median(img))
-            
-            img_c = img_pad[int(widthY/2 + dpad + int(centerY-widthY/2) - sizeYOut/2):
-                          int(widthY/2 + dpad + int(centerY-widthY/2) + sizeYOut/2),
-                          int(widthX/2 + dpad + int(centerX-widthX/2) - sizeXOut/2):
-                          int(widthX/2 + dpad + int(centerX-widthX/2) + sizeXOut/2)]
-            
-        if (i==0):  # Do this only the first time through            
-          y, x = np.mgrid[:np.shape(img_c)[0], :np.shape(img_c)[1]]  # Create grids of x y values, for doing math
-
-        # Remove a linear gradiant from the image
-        # Add a suffix '_f', for 'flattened'
-    
-        mask = getMaskDisk(img_c)
-        img_cf = getDiskFlattened(img_c, mask, x, y)                     
+        ver_shift = y0-y
+        hor_shift = x0-x
         
-        # Look up the rotation angle
+        # Plot the recentered mask image, on top of the reference mask
+        # plt.imshow(img_ref_mask_cen - img_i_mask_cen/2)
         
-        dt_since_start = (t - t_0).total_seconds()
-        delta_angle = angleField_arr[int(dt_since_start)]
-
-        # De-rotate this image
-        # Add suffix _r, for 'rotate'
-
-        img_pil   = Image.fromarray(img_out_f)
-        # img_out_rf = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False) 
-        img_out_r = ndimage.rotate(img_out, delta_angle*r2d, reshape=False) 
+        # Now apply this offset to the actual image, not the mask
         
-        # img_pil_rf = Image.fromarray(img_out_rf)
-        img_pil_r  = Image.fromarray(img_out_r)
+        img_i_cen = np.roll(np.roll(img_i, hor_shift, axis=1), ver_shift, axis=0)
+        img_i_cen_crop = crop_square(img_i_cen, sizeXOut)
         
-        print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
-
-        # Stack the original and processed together
+        # Now create the output image
         
-        img_out_2 = np.hstack((img_out, img_out_r))
-        # img_pil_2 = Image.fromarray(img_out_2)
-        plt.imshow(img_out_2)
+        img_pil_c = Image.fromarray(img_i_cen_crop)
+        plt.imshow(img_i_cen_crop)
         plt.show()
+        
+        # This is our final image -- yay!!
+        
+        # Do some additional processing, if requested: Rotate, flatten, etc.
+        
+        if (False):
+
+            # Remove a linear gradiant from the image
+            # Add a suffix '_f', for 'flattened'
+        
+            mask = getMaskDisk(img_c)
+            img_cf = getDiskFlattened(img_c, mask, x, y)                     
+            
+            # Look up the rotation angle
+            
+            dt_since_start = (t - t_0).total_seconds()
+            delta_angle = angleField_arr[int(dt_since_start)]
+    
+            # De-rotate this image
+            # Add suffix _r, for 'rotate'
+    
+            # img_pil   = Image.fromarray(img_out_f)
+            # img_out_rf = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False) 
+            img_out_r = ndimage.rotate(img_out, delta_angle*r2d, reshape=False) 
+            
+            # img_pil_rf = Image.fromarray(img_out_rf)
+            img_pil_r  = Image.fromarray(img_out_r)
+            
+            print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
+
+            # Stack the original and processed together
+            
+            img_out_2 = np.hstack((img_out, img_out_r))
+            # img_pil_2 = Image.fromarray(img_out_2)
+            plt.imshow(img_out_2)
+            plt.show()
         
         # Save 
         # Save the image
@@ -319,6 +386,7 @@ def process_all():
         # file_out   = file.replace(path_in, path_out).replace('.fit', '.png')
         
         file_out_r   = file.replace(path_in, path_out).replace('.fit', '_r.png')
+        file_out_c   = file.replace(path_in, path_out).replace('.fit', '_c.png')
         file_out_cr  = file.replace(path_in, path_out).replace('.fit', '_cr.png')
         file_out_cfr = file.replace(path_in, path_out).replace('.fit', '_cfr.png')
     
@@ -326,17 +394,12 @@ def process_all():
         # img_pil_rf.save(file_out_rf)
         # print(f'{i}/{len(files)}: Wrote: ' + file_out_rf)        
         
-        img_pil_r.save(file_out_r)
-        print(f'{i}/{len(files)}: Wrote: ' + file_out_r)
+        # img_pil_r.save(file_out_r)
+        img_pil_c.save(file_out_c)
+        print(f'{i}/{len(files)}: Wrote: ' + file_out_c)
 
         print("\n")
-
-def getMaskDisk(img): # Return a mask which is the solar disk itself
-
-    isDisk = img > np.percentile(img, 95)/4
-    
-    return(isDisk)
-
+        
 
 def getDiskFlattened(img, mask, x, y):  # Return an array, which is a cleaned version of the image
 
@@ -374,6 +437,7 @@ def getDiskFlattened(img, mask, x, y):  # Return an array, which is a cleaned ve
     img_flattened3 = (img_flattened/2 + img_flattened2/2).astype('uint16')
     
     return(img_flattened3)
+
 
     
 def test():
