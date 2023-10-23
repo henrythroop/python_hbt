@@ -140,6 +140,13 @@ def test_angle_sun():
 
 def cross_image(im1, im2):
     # This detects the shift between two images. This is the real meat.
+    #   Limb-fit: can't find a good algorhtm for that.
+    #   Center-of-mass: tried that on Australia eclipse; it's not good.
+    #   Image correlation: This works well! a full-disk images and a small crescent cen be aligned this way, easily.
+    
+    # Basically the fftconvolve() does a cross-correlate between the two iamges, at all possible shift locations.
+    # This is the real bottleneck of the routine. Speed-wise I could rewrite to do this 
+    # at lower resolution, or not over the entire image, etc. That would really be superior.
     
     # https://stackoverflow.com/questions/67560829/python-image-processing-how-do-you-align-images-that-have-been-rotated-and-shif
     
@@ -151,7 +158,12 @@ def cross_image(im1, im2):
 
     return signal.fftconvolve(im1_gray, im2_gray[::-1,::-1], mode='same')
 
-def getMaskDisk(img): # Return a mask which is the solar disk itself
+def getMaskDisk(img): 
+    
+    # Return a mask which is the solar disk itself
+    # Philosophy here: Get the pixels that are at the 99th %ile (ie, definitely on the solar disk),
+    # and then back off a bit (to get *all* of the disk).
+    # This will faily during totality since zero disk visible, but still works during annularity.
 
     isDisk = img > np.percentile(img, 99.9)/4
     
@@ -201,7 +213,7 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Volumes/Data/Solar/Eclipse_NM_Oct23/14Oct23'
+    path_in = '/Volumes/Data/Solar/Eclipse_NM_Oct23/13Oct23'
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -302,10 +314,9 @@ def process_all():
     dy_roll = centerY-np.shape(img_ref_mask)[0]/2
     img_ref_mask_cen = np.roll(np.roll(img_ref_mask, -round(dx_roll), axis=1), -round(dy_roll), axis=0)
 
-    # Do the FFT on the centered reference image
+    # Do the FFT on the centered reference image vs. itself. This is to set up the FFT for next time.
         
     corr_img_null = cross_image(img_ref_mask_cen, img_ref_mask_cen)
-    
     y0, x0 = np.unravel_index(np.argmax(corr_img_null), corr_img_null.shape)
     
     # Now we have created a centered image reference. We will align all images to this.    
@@ -322,7 +333,8 @@ def process_all():
         hdu.close()
         img_i_mask = getMaskDisk(img_i)
                 
-        # Calculate the offset between image and reference, using masks
+        # Calculate the offset between image and reference. We do this using the binary mask of the image,
+        # rather than the images themselves. This routine is magic, and just gives the right answer, every time.
         
         corr_img = cross_image(img_i_mask, img_ref_mask_cen)
         y, x     = np.unravel_index(np.argmax(corr_img), corr_img.shape)
