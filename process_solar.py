@@ -29,7 +29,8 @@ import subprocess
 import warnings
 import importlib  # So I can do importlib.reload(module)
 # from   photutils import DAOStarFinder
-# import photutils
+from astropy.stats import SigmaClip
+from photutils.background import Background2D, MedianBackground
 from   astropy import units as u           # Units library
 import scipy.ndimage
 from astropy.time import Time
@@ -105,7 +106,8 @@ def test_angle_sun():
     r2d = 1/d2r
     
     date = datetime.now(pytz.timezone('UTC'))  # Input is UTC time, always. Not necessary to pass this, but is OK.
-    date = datetime.now()  
+    date = datetime.now()
+    
     # Date: UTC time
     # Longitude: Degrees. DC = -77 deg. Colombo = +79 deg.
     # Azimuth: -90 = facting east; +90 = facing west. 0 = south??
@@ -117,9 +119,12 @@ def test_angle_sun():
     #   azimuth: sun azimuth in radians (direction along the horizon, measured from south to west), 
     #      e.g. 0 is south and Math.PI * 3/4 is northwest
     
-    
-    lon = 79.853        
-    lat = 6.913
+    POS_HOME = 'Colombo'
+
+    if (POS_HOME == 'Colombo'):
+        lon         = 79.853        
+        lat         = 6.913
+        offset_gmt  = 5.5
     
     result = get_position(date, lon, lat)
     az = result['azimuth']
@@ -128,13 +133,13 @@ def test_angle_sun():
     
     date = datetime.now()
     
-    delta = timedelta(seconds=3600*5.5)
+    delta = timedelta(seconds=3600*offset_gmt)
 
     # Verify that sunrise and sunset elevations are correct. Yes they are -- but I need to pass local time, not UTC!
     # This is probably an issue with the timedate() module, moreso than with this code.
     
-    get_position(get_times(date, lon, lat)['sunset'] + timedelta(seconds=3600*5.5), lon, lat)
-    get_position(get_times(date, lon, lat)['sunrise'] + timedelta(seconds=3600*5.5), lon, lat)
+    get_position(get_times(date, lon, lat)['sunset'] + timedelta(seconds=3600*offset_gmt), lon, lat)
+    get_position(get_times(date, lon, lat)['sunrise'] + timedelta(seconds=3600*offset_gmt), lon, lat)
     
     get_times(datetime.now(), lon, lat)
 
@@ -165,8 +170,9 @@ def getMaskDisk(img):
     # and then back off a bit (to get *all* of the disk).
     # This will faily during totality since zero disk visible, but still works during annularity.
 
-    isDisk = img > np.percentile(img, 99.9)/4
-    
+    isDisk = img > np.percentile(img, 99.9)/4 ## Used this at first, for eclipses etc.
+    isDisk = img > np.percentile(img, 99.9)/2 ## Using more tight tolerance, for testing
+
     return(isDisk)
 
 def crop_square(im, dxy):
@@ -195,13 +201,13 @@ def process_all():
     
     ## Define the size of the final output image, in pixels
     
-    sizeXOut = 2000 # This is arbitrary
+    sizeXOut = 2000 # This is arbitrary. For NM, 2000 is a tight crop, but doesn't allow much rotation.
     sizeYOut = 2000
     
     DO_CROP     = True
-    DO_CENTROID = True
-    DO_DEROTATE = False  # Either use SPICE, or https://github.com/cytan299/field_derotator/tree/master/field_derotator_formula
+    DO_ROTATE = False  # Either use SPICE, or https://github.com/cytan299/field_derotator/tree/master/field_derotator_formula
     DO_LIMBFIT  = False
+    DO_FLATTEN  = True
 
     d2r = 2*math.pi/360
     r2d = 1/d2r
@@ -213,7 +219,8 @@ def process_all():
     
     # Set the path of the files to look at
     
-    path_in = '/Volumes/Data/Solar/Eclipse_NM_Oct23/13Oct23'
+    path_in = '/Volumes/Data/Solar/7Mar24'
+    
     path_out = os.path.join(path_in, 'out')
     if not(os.path.exists(path_out)):
         os.mkdir(path_out)
@@ -266,7 +273,10 @@ def process_all():
 
       # Create a new time object for this timestep
       
-      fudge = 3600*5.5 # For some reason, need to do a timezone offset. Not sure why.
+      # For some reason, need to do a timezone offset. Not sure why.
+      
+      fudge = 3600*5.5 #  For Colombo
+      fudge = 3600*(-6) #  For New Mexico
       
       t_i = t_0 + timedelta(seconds=i*stepsize_sec + fudge)
 
@@ -300,7 +310,7 @@ def process_all():
     
     # Load the reference image
     
-    index_ref = 90
+    index_ref = 0
     hdu = fits.open(files[index_ref])
     img_ref = hdu['PRIMARY'].data
     hdu.close()
@@ -316,101 +326,126 @@ def process_all():
 
     # Do the FFT on the centered reference image vs. itself. This is to set up the FFT for next time.
         
-    corr_img_null = cross_image(img_ref_mask_cen, img_ref_mask_cen)
-    y0, x0 = np.unravel_index(np.argmax(corr_img_null), corr_img_null.shape)
+    corr_img_null = cross_image(img_ref_mask_cen, img_ref_mask_cen) # Cross-correlate source and target mask
+    y0, x0 = np.unravel_index(np.argmax(corr_img_null), corr_img_null.shape) # And get position of peak of that CC.
     
     # Now we have created a centered image reference. We will align all images to this.    
           
 # Now do the processing of each image in the sequence
 # THIS IS THE MAIN IMAGE LOOP
 
+    
     for i,file in enumerate(files):
         
+        string_actions = ''
+
         # Read the data + header
         
         hdu = fits.open(file)
         img_i = hdu['PRIMARY'].data
         hdu.close()
-        img_i_mask = getMaskDisk(img_i)
-                
-        # Calculate the offset between image and reference. We do this using the binary mask of the image,
-        # rather than the images themselves. This routine is magic, and just gives the right answer, every time.
         
-        corr_img = cross_image(img_i_mask, img_ref_mask_cen)
-        y, x     = np.unravel_index(np.argmax(corr_img), corr_img.shape)
+        # Now make a copy of the img_i. We use this as the 'running' copy through all of the steps.
+        
+        img_0 = img_i.copy() # Save the original, so we can compare
+        
+        img = img_i.copy()
+        img_mask = getMaskDisk(img)
+        
+        if DO_CROP:       ## Do the centroid + crop, if requested
             
-        ver_shift = y0-y
-        hor_shift = x0-x
-        
-        # Plot the recentered mask image, on top of the reference mask
-        # plt.imshow(img_ref_mask_cen - img_i_mask_cen/2)
-        
-        # Now apply this offset to the actual image, not the mask
-        
-        img_i_cen = np.roll(np.roll(img_i, hor_shift, axis=1), ver_shift, axis=0)
-        img_i_cen_crop = crop_square(img_i_cen, sizeXOut)
-        
-        # Now create the output image
-        
-        img_pil_c = Image.fromarray(img_i_cen_crop)
-        plt.imshow(img_i_cen_crop)
-        plt.show()
-        
-        # This is our final image -- yay!!
-        
+            # Calculate the offset between image and reference. We do this using the binary mask of the image,
+            # rather than the images themselves. This routine is magic, and just gives the right answer, every time.
+            
+            corr_img = cross_image(img_mask, img_ref_mask_cen)
+            y, x     = np.unravel_index(np.argmax(corr_img), corr_img.shape)
+                
+            ver_shift = y0-y
+            hor_shift = x0-x
+            
+            # Plot the recentered mask image, on top of the reference mask
+            # plt.imshow(img_ref_mask_cen - img_i_mask_cen/2)
+            
+            # Now apply this offset to the actual image, not the mask
+            
+            img_cen = np.roll(np.roll(img, hor_shift, axis=1), ver_shift, axis=0)
+            img_cen_crop = crop_square(img_cen, sizeXOut)
+                
+            img_c = img_cen_crop
+            
+            # Now create the image for the next step
+            
+            img = img_c.copy()
+            
+            string_actions = string_actions + 'c'
+            
+            # img_pil_c = Image.fromarray(img_i_cen_crop)    
+                
         # Do some additional processing, if requested: Rotate, flatten, etc.
+    
+        if (DO_FLATTEN):
         
-        if (False):
-
-            # Remove a linear gradiant from the image
+            # Remove a background gradient from the image
             # Add a suffix '_f', for 'flattened'
+            
+            img_mask = getMaskDisk(img)
+            
+            bkg_estimator = MedianBackground()
+            
+            bkg = Background2D(img, (50, 50), filter_size=(3, 3), bkg_estimator=bkg_estimator, mask=img_mask)
         
-            mask = getMaskDisk(img_c)
-            img_cf = getDiskFlattened(img_c, mask, x, y)                     
+            img_f = (img - bkg.background)
+
+            plt.imshow(img_f)
+            
+            img = img_f.copy()
+            
+            string_actions = string_actions + 'f'
+            
+            ## img_pil_cf  = Image.fromarray(img_i_cen_crop_r)
+            
+        if (DO_ROTATE):
             
             # Look up the rotation angle
             
-            dt_since_start = (t - t_0).total_seconds()
+            dt_since_start = (t_arr[i] - t_arr[0]).total_seconds()
             delta_angle = angleField_arr[int(dt_since_start)]
     
             # De-rotate this image
-            # Add suffix _r, for 'rotate'
     
-            # img_pil   = Image.fromarray(img_out_f)
-            # img_out_rf = ndimage.rotate(img_pil, delta_angle*r2d, reshape=False) 
-            img_out_r = ndimage.rotate(img_out, delta_angle*r2d, reshape=False) 
-            
-            # img_pil_rf = Image.fromarray(img_out_rf)
-            img_pil_r  = Image.fromarray(img_out_r)
-            
+            img_r = ndimage.rotate(img, delta_angle*r2d, reshape=False) 
+                        
             print(f'Rotated image at t={dt_since_start} sec by {delta_angle * r2d} deg')
 
-            # Stack the original and processed together
+            string_actions = string_actions + 'r'
+
+            # Stack the original and rotated together
             
-            img_out_2 = np.hstack((img_out, img_out_r))
+            img_r_stack = np.hstack((img, img_r))
             # img_pil_2 = Image.fromarray(img_out_2)
-            plt.imshow(img_out_2)
+            plt.imshow(img_r_stack)
             plt.show()
         
-        # Save 
         # Save the image
         # PNG allows a 16-bit unsigned int, so use that!        
         # file_out   = file.replace(path_in, path_out).replace('.fit', '.png')
         
-        file_out_r   = file.replace(path_in, path_out).replace('.fit', '_r.png')
-        file_out_c   = file.replace(path_in, path_out).replace('.fit', '_c.png')
-        file_out_cr  = file.replace(path_in, path_out).replace('.fit', '_cr.png')
-        file_out_cfr = file.replace(path_in, path_out).replace('.fit', '_cfr.png')
-    
-        # img_pil.save(file_out)
-        # img_pil_rf.save(file_out_rf)
-        # print(f'{i}/{len(files)}: Wrote: ' + file_out_rf)        
+        # img_out     = img.copy() * ((2**16))/np.amax(img) ## Scaling is weird here. Not sure why I need to do this.
         
-        # img_pil_r.save(file_out_r)
-        img_pil_c.save(file_out_c)
-        print(f'{i}/{len(files)}: Wrote: ' + file_out_c)
+        img_out = (img.copy() - np.amin(img)).astype("uint16")
+        
+        img_pil_out = Image.fromarray(img_out)
+        # if img_pil_out.mode != 'RGB':
+          # img_pil_out = img_pil_out.convert('I')
+        
+        file_out   = file.replace(path_in, path_out).replace('.fit', '_' + string_actions + '.png')
+        
+        img_pil_out.save(file_out)
+        print(f'{i}/{len(files)}: Wrote: ' + file_out)
+        
+        plt.show()
 
-        print("\n")
+        # print("\n")
         
 
 def getDiskFlattened(img, mask, x, y):  # Return an array, which is a cleaned version of the image
@@ -553,7 +588,7 @@ def test():
 
 def fits2png():
 
-    path_in = '/Volumes/Data/Solar/Eclipse_20Apr23'
+    path_in = '/Volumes/Data/Solar/19Feb24'
     path_out = os.path.join(path_in, 'out')
     
     if not(os.path.exists(path_out)):
